@@ -3,17 +3,99 @@
   import TocItem from './components/TocItem.svelte';
   import PDFViewer from './components/PDFViewer.svelte';
   import {setOutline} from './utils/pdf-outliner';
-  import {PDFDocument} from 'pdf-lib';
+  import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
   import * as pdfjsLib from 'pdfjs-dist';
 
-  let pdfFile = null;
   let pdfDoc = null;
   let tocItems = [];
   let currentPage = 1;
   let totalPages = 0;
   let pdfScale = 1.0;
+  let pdfInstance = null;
+
+  let pageRendering = false;
+  let pageNumPending = null;
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `http://localhost:8080/pdf.worker.min.mjs`;
+
+  async function createTocPage(pdfDoc, items, level = 0) {
+    const page = pdfDoc.addPage();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+    let yOffset = page.getHeight() - 50;
+
+    if (level === 0) {
+      page.drawText('ToC', {
+        x: 50,
+        y: yOffset,
+        size: 16,
+        font,
+        color: rgb(0, 0, 0),
+      });
+      yOffset -= 30;
+    }
+
+    for (const item of items) {
+      const indent = level * 20;
+      page.drawText(item.title, {
+        x: 50 + indent,
+        y: yOffset,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+
+      page.drawText(String(item.to), {
+        x: page.getWidth() - 50,
+        y: yOffset,
+        size: fontSize,
+        font,
+        color: rgb(0, 0, 0),
+      });
+
+      const ref = pdfDoc.context.register(
+        pdfDoc.context.obj({
+          Type: 'Annot',
+          Subtype: 'Link',
+          Rect: [50 + indent, yOffset - 2, page.getWidth() - 50, yOffset + fontSize],
+          Border: [0, 0, 0],
+          Dest: [pdfDoc.getPage(0).ref, 'XYZ', 0, page.getHeight(), 0],
+        })
+      );
+      page.node.set(PDFName.of('Annots'), pdfDoc.context.obj([ref]));
+
+      yOffset -= 20;
+
+      if (item.children?.length) {
+        yOffset = await createTocPage(pdfDoc, item.children, level + 1);
+      }
+    }
+
+    return yOffset;
+  }
+  async function updatePDF() {
+    if (!pdfDoc) return;
+
+    try {
+      const newPdfDoc = await PDFDocument.create();
+      await createTocPage(newPdfDoc, tocItems);
+
+      const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      pages.forEach((page) => newPdfDoc.addPage(page));
+
+      setOutline(newPdfDoc, tocItems);
+
+      const pdfBytes = await newPdfDoc.save();
+      const loadingTask = pdfjsLib.getDocument(pdfBytes);
+
+      pdfInstance = await loadingTask.promise;
+
+      totalPages = pdfInstance.numPages;
+      renderPage(pdfInstance, currentPage);
+    } catch (error) {
+      console.error('Error updating PDF:', error);
+    }
+  }
 
   const loadPDF = async (event) => {
     const file = event.target.files[0];
@@ -25,9 +107,9 @@
         pdfDoc = await PDFDocument.load(arrayBuffer);
 
         const loadingTask = pdfjsLib.getDocument(arrayBuffer);
-        const pdf = await loadingTask.promise;
-        totalPages = pdf.numPages;
-        renderPage(pdf, currentPage);
+        pdfInstance = await loadingTask.promise;
+        totalPages = pdfInstance.numPages;
+        renderPage(pdfInstance, currentPage);
       };
       fileReader.readAsArrayBuffer(file);
     } catch (error) {
@@ -36,18 +118,34 @@
   };
 
   const renderPage = async (pdf, pageNum) => {
-    const canvas = document.getElementById('pdf-canvas');
-    const page = await pdf.getPage(pageNum);
+    if (pageRendering) {
+      pageNumPending = pageNum;
+    } else {
+      pageRendering = true;
 
-    const viewport = page.getViewport({scale: pdfScale});
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
+      const canvas = document.getElementById('pdf-canvas');
+      const page = await pdf.getPage(pageNum);
 
-    const renderContext = {
-      canvasContext: canvas.getContext('2d'),
-      viewport,
-    };
-    await page.render(renderContext).promise;
+      const viewport = page.getViewport({scale: pdfScale});
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      const renderContext = {
+        canvasContext: canvas.getContext('2d'),
+        viewport,
+      };
+
+      const renderTask = page.render(renderContext);
+      renderTask.promise.then(function () {
+        pageRendering = false;
+        if (pageNumPending !== null) {
+          // Waited page must be rendered
+          renderPage(pdfInstance, pageNumPending);
+          // Must be set to null to prevent infinite loop
+          pageNumPending = null;
+        }
+      });
+    }
   };
 
   const addTocItem = () => {
@@ -62,6 +160,7 @@
         open: true,
       },
     ];
+    updatePDF();
   };
 
   const updateTocItem = (item, updates) => {
@@ -81,6 +180,7 @@
     };
 
     tocItems = updateItemRecursive(tocItems);
+    updatePDF();
   };
 
   const deleteTocItem = (itemToDelete) => {
@@ -97,6 +197,7 @@
     };
 
     tocItems = deleteItemRecursive(tocItems);
+    updatePDF();
   };
 
   const exportPDFWithOutline = async () => {
@@ -105,9 +206,16 @@
     }
 
     try {
-      setOutline(pdfDoc, tocItems);
+      const newPdfDoc = await PDFDocument.create();
 
-      const modifiedPdfBytes = await pdfDoc.save();
+      await createTocPage(newPdfDoc, tocItems);
+
+      const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      pages.forEach((page) => newPdfDoc.addPage(page));
+
+      setOutline(newPdfDoc, tocItems);
+
+      const modifiedPdfBytes = await newPdfDoc.save();
       const pdfBlob = new Blob([modifiedPdfBytes], {type: 'application/pdf'});
 
       const downloadUrl = URL.createObjectURL(pdfBlob);
@@ -123,35 +231,6 @@
     } catch (error) {
       console.error('Error exporting PDF:', error);
     }
-  };
-
-  const generatePDF = async () => {
-    if (!pdfDoc) return;
-
-    const tocPage = pdfDoc.addPage();
-    const {width, height} = tocPage.getSize();
-
-    tocPage.drawText('Table of Contents', {x: 50, y: height - 50, size: 16});
-    let yOffset = height - 80;
-
-    for (const item of tocItems) {
-      tocPage.drawText(`${item.level} ${item.title}`, {
-        x: 50 + (item.level.toString().split('.').length - 1) * 20,
-        y: yOffset,
-        size: 12,
-      });
-      tocPage.drawText(item.page.toString(), {x: width - 50, y: yOffset, size: 12});
-      yOffset -= 20;
-    }
-
-    const pdfBytes = await pdfDoc.save();
-    const blob = new Blob([pdfBytes], {type: 'application/pdf'});
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'document-with-toc.pdf';
-    link.click();
   };
 </script>
 
