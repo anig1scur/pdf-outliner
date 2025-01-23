@@ -47,7 +47,7 @@
   }
 </script>
 
-<div class="ml-4 mt-24">
+<div class="ml-4">
   <div class="flex items-center gap-2 my-2">
     {#if item.children?.length > 0}
       <button
@@ -61,7 +61,7 @@
         {/if}
       </button>
     {:else}
-      <div class="w-6" ></div>
+      <div class="w-6" />
     {/if}
 
     <input
@@ -70,6 +70,7 @@
       on:blur={handleUpdateTitle}
       on:keypress={(e) => e.key === 'Enter' && handleUpdateTitle()}
       class="border rounded px-2 py-1 text-sm"
+      autofocus
     />
 
     <input
@@ -108,4 +109,3 @@
     </div>
   {/if}
 </div>
-

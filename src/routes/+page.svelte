@@ -1,8 +1,8 @@
 <script lang="ts">
   import {onMount} from 'svelte';
-  import TocItem from './components/TocItem.svelte';
-  import PDFViewer from './components/PDFViewer.svelte';
-  import {setOutline} from './utils/pdf-outliner';
+  import TocItem from '../components/TocItem.svelte';
+  import PDFViewer from '../components/PDFViewer.svelte';
+  import {setOutline} from '../lib/pdf-outliner';
   import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
   import * as pdfjsLib from 'pdfjs-dist';
 
@@ -234,8 +234,8 @@
   };
 </script>
 
-<div class="app">
-  <div class="sidebar">
+<div class="app flex">
+  <div class="sidebar p-4 w-[30%]">
     <input
       type="file"
       accept=".pdf"
@@ -260,13 +260,3 @@
     {pdfScale}
   />
 </div>
-
-<style>
-  .app {
-    display: flex;
-  }
-  .sidebar {
-    width: 30%;
-    padding: 1rem;
-  }
-</style>

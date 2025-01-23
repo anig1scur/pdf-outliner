@@ -16,35 +16,3 @@
 
   <canvas id="pdf-canvas"></canvas>
 </div>
-
-<style>
-  .pdf-viewer {
-    width: 70%;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .controls {
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  button {
-    padding: 0.5rem 1rem;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-  }
-  button:hover {
-    background-color: #0056b3;
-  }
-  canvas {
-    border: 1px solid #ddd;
-    max-width: 100%;
-    height: auto;
-  }
-</style>

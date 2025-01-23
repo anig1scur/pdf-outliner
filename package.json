@@ -1,36 +1,32 @@
 {
-  "name": "pdf-outliner",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "start": "sirv public --no-clear --host",
-    "check": "svelte-check"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^24.0.0",
-    "@rollup/plugin-node-resolve": "^15.0.0",
-    "@rollup/plugin-terser": "^0.4.0",
-    "@rollup/plugin-typescript": "^11.0.0",
-    "@tsconfig/svelte": "^3.0.0",
-    "rollup": "^3.15.0",
-    "rollup-plugin-css-only": "^4.3.0",
-    "rollup-plugin-livereload": "^2.0.0",
-    "rollup-plugin-svelte": "^7.1.2",
-    "svelte": "^3.55.0",
-    "svelte-check": "^3.0.0",
-    "svelte-preprocess": "^5.1.4",
-    "tslib": "^2.5.0",
-    "typescript": "^4.9.5"
-  },
-  "dependencies": {
-    "@rollup/plugin-json": "^6.1.0",
-    "lucide-svelte": "^0.473.0",
-    "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^4.10.38",
-    "short-unique-id": "^5.2.0",
-    "sirv-cli": "^2.0.0"
-  }
+	"name": "pdf-outliner",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev --host",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^4.0.0",
+		"@sveltejs/kit": "^2.16.0",
+		"@sveltejs/vite-plugin-svelte": "^5.0.0",
+		"@tailwindcss/typography": "^0.5.16",
+		"autoprefixer": "^10.4.20",
+		"svelte": "^5.0.0",
+		"svelte-check": "^4.0.0",
+		"tailwindcss": "^3.4.17",
+		"typescript": "^5.0.0",
+		"vite": "^6.0.0"
+	},
+	"dependencies": {
+		"lucide-svelte": "^0.474.0",
+		"pdf-lib": "^1.17.1",
+		"pdfjs-dist": "^4.10.38",
+		"short-unique-id": "^5.2.0"
+	}
 }
