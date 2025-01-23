@@ -1,12 +1,12 @@
 {
-  "name": "svelte-app",
+  "name": "pdf-outliner",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "rollup -c",
     "dev": "rollup -c -w",
-    "start": "sirv public --no-clear",
+    "start": "sirv public --no-clear --host",
     "check": "svelte-check"
   },
   "devDependencies": {
@@ -30,6 +30,7 @@
     "lucide-svelte": "^0.473.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
+    "short-unique-id": "^5.2.0",
     "sirv-cli": "^2.0.0"
   }
 }

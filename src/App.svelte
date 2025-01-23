@@ -16,7 +16,7 @@
   let pageRendering = false;
   let pageNumPending = null;
 
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `http://localhost:8080/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
   async function createTocPage(pdfDoc, items, level = 0) {
     const page = pdfDoc.addPage();
@@ -241,7 +241,7 @@
       accept=".pdf"
       on:change={loadPDF}
     />
-    <button on:click={addTocItem}>添加目录项</button>
+    <button on:click={addTocItem}>Add a New Item</button>
 
     {#each tocItems as item, idx (idx)}
       <TocItem
@@ -251,7 +251,7 @@
       />
     {/each}
 
-    <button on:click={exportPDFWithOutline}>生成PDF</button>
+    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
   </div>
 
   <PDFViewer

@@ -3,29 +3,15 @@
   export let totalPages = 0;
   export let pdfScale = 1.0;
 
-  const handleZoomIn = () => {
-    pdfScale += 0.1;
-    updateCanvas();
-  };
-
-  const handleZoomOut = () => {
-    if (pdfScale > 0.2) {
-      pdfScale -= 0.1;
-      updateCanvas();
-    }
-  };
-
   const updateCanvas = () => {
-    const event = new CustomEvent("scaleChange", { detail: pdfScale });
+    const event = new CustomEvent('scaleChange', {detail: pdfScale});
     dispatchEvent(event);
   };
 </script>
 
 <div class="pdf-viewer">
   <div class="controls">
-    <button on:click="{handleZoomOut}">缩小</button>
     <span>Page {currentPage} / {totalPages}</span>
-    <button on:click="{handleZoomIn}">放大</button>
   </div>
 
   <canvas id="pdf-canvas"></canvas>

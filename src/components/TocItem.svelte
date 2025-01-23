@@ -1,5 +1,6 @@
 <script>
   import {ChevronRight, ChevronDown, Plus, Trash} from 'lucide-svelte';
+  import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
 
   export let item;
@@ -29,7 +30,7 @@
 
   function handleAddChild() {
     const newChild = {
-      id: crypto.randomUUID(),
+      id: new ShortUniqueId({length: 10}),
       title: 'New Item',
       to: 1,
       children: [],
