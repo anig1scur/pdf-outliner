@@ -11,6 +11,9 @@ importers:
       '@rollup/plugin-json':
         specifier: ^6.1.0
         version: 6.1.0(rollup@3.29.5)
+      lucide-svelte:
+        specifier: ^0.473.0
+        version: 0.473.0(svelte@3.59.2)
       pdf-lib:
         specifier: ^1.17.1
         version: 1.17.1
@@ -385,6 +388,11 @@ packages:
   local-access@1.1.0:
     resolution: {integrity: sha512-XfegD5pyTAfb+GY6chk283Ox5z8WexG56OvM06RWLpAc/UHozO8X6xAxEkIitZOtsSMM1Yr3DkHgW5W+onLhCw==}
     engines: {node: '>=6'}
+
+  lucide-svelte@0.473.0:
+    resolution: {integrity: sha512-Lw2+vrDmVlz/WC1/KcuCEV/1ENrHtChw4GH1cssMbbpdUFyVjZkt9S+7olCOGW8jOZJOrzZNfefV1DdaDw46jQ==}
+    peerDependencies:
+      svelte: ^3 || ^4 || ^5.0.0-next.42
 
   magic-string@0.27.0:
     resolution: {integrity: sha512-8UnnX2PeRAPZuN12svgR9j7M1uWMovg/CEnIwIG0LFkXSJJe4PdfUGiTGl8V9bsBHFUtfVINcSyYxd7q+kx9fA==}
@@ -926,6 +934,10 @@ snapshots:
       - utf-8-validate
 
   local-access@1.1.0: {}
+
+  lucide-svelte@0.473.0(svelte@3.59.2):
+    dependencies:
+      svelte: 3.59.2
 
   magic-string@0.27.0:
     dependencies:

@@ -18,7 +18,6 @@
   const loadPDF = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    // const loadPDF = async (file) => {
     try {
       const fileReader = new FileReader();
       fileReader.onload = async function () {
@@ -51,84 +50,75 @@
     await page.render(renderContext).promise;
   };
 
+  const addTocItem = () => {
+    tocItems = [
+      ...tocItems,
+      {
+        title: 'New Section',
+        to: 1,
+        italic: false,
+        bold: false,
+        children: [],
+        open: true,
+      },
+    ];
+  };
+
+  const updateTocItem = (item, updates) => {
+    const updateItemRecursive = (items) => {
+      return items.map((currentItem) => {
+        if (currentItem === item) {
+          return {...currentItem, ...updates};
+        }
+        if (currentItem.children?.length) {
+          return {
+            ...currentItem,
+            children: updateItemRecursive(currentItem.children),
+          };
+        }
+        return currentItem;
+      });
+    };
+
+    tocItems = updateItemRecursive(tocItems);
+  };
+
+  const deleteTocItem = (itemToDelete) => {
+    const deleteItemRecursive = (items) => {
+      return items.filter((item) => {
+        if (item === itemToDelete) {
+          return false;
+        }
+        if (item.children?.length) {
+          item.children = deleteItemRecursive(item.children);
+        }
+        return true;
+      });
+    };
+
+    tocItems = deleteItemRecursive(tocItems);
+  };
+
   const exportPDFWithOutline = async () => {
     if (!pdfDoc) {
       return;
     }
 
     try {
-      // Convert outlines to PDF outline format
-      const convertOutlinesToPDFFormat = (items) => {
-        return items.map((item) => ({
-          title: item.title,
-          to: [{num: item.to, gen: 0}, {name: 'XYZ'}, null, null, null],
-          bold: item.bold,
-          italic: item.italic,
-          children: item.children ? convertOutlinesToPDFFormat(item.children) : [],
-        }));
-      };
-
-      const pdfOutlines = [
-        {
-          title: 'New Item 1',
-          to: 1,
-          italic: false,
-          bold: false,
-          children: [
-            {
-              title: 'New Item 4',
-              to: 2,
-              italic: false,
-              bold: false,
-              children: [],
-              open: true,
-            },
-          ],
-          open: true,
-        },
-        {
-          title: 'New Item 2',
-          to: 3,
-          italic: false,
-          bold: false,
-          children: [
-            {
-              title: 'New Item 4',
-              to: 6,
-              italic: false,
-              bold: false,
-              children: [],
-              open: true,
-            },
-          ],
-          open: true,
-        },
-        {
-          title: 'New Item 3',
-          to: 4,
-          italic: false,
-          bold: false,
-          children: [],
-          open: true,
-        },
-      ];
-      setOutline(pdfDoc, pdfOutlines);
+      setOutline(pdfDoc, tocItems);
 
       const modifiedPdfBytes = await pdfDoc.save();
       const pdfBlob = new Blob([modifiedPdfBytes], {type: 'application/pdf'});
 
-      // Create download link
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
       downloadLink.download = 'document_with_outline.pdf';
 
-      // Trigger download
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
 
-      // Cleanup
       URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error('Error exporting PDF:', error);
@@ -163,18 +153,6 @@
     link.download = 'document-with-toc.pdf';
     link.click();
   };
-
-  const addTocItem = () => {
-    tocItems = [...tocItems, {id: Date.now(), level: tocItems.length + 1, title: 'New Section', page: 1}];
-  };
-
-  const updateTocItem = (id, updates) => {
-    tocItems = tocItems.map((item) => (item.id === id ? {...item, ...updates} : item));
-  };
-
-  const deleteTocItem = (id) => {
-    tocItems = tocItems.filter((item) => item.id !== id);
-  };
 </script>
 
 <div class="app">
@@ -186,7 +164,7 @@
     />
     <button on:click={addTocItem}>添加目录项</button>
 
-    {#each tocItems as item (item.id)}
+    {#each tocItems as item, idx (idx)}
       <TocItem
         {item}
         onUpdate={updateTocItem}

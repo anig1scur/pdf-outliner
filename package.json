@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@rollup/plugin-json": "^6.1.0",
+    "lucide-svelte": "^0.473.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "sirv-cli": "^2.0.0"
