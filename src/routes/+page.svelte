@@ -1,13 +1,13 @@
 <script lang="ts">
   import {onMount} from 'svelte';
-  import TocItem from '../components/TocItem.svelte';
+  import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import {setOutline} from '../lib/pdf-outliner';
   import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
+  import {tocItems} from "../stores";
   import * as pdfjsLib from 'pdfjs-dist';
 
   let pdfDoc = null;
-  let tocItems = [];
   let currentPage = 1;
   let totalPages = 0;
   let pdfScale = 1.0;
@@ -17,6 +17,9 @@
   let pageNumPending = null;
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
+
+
+  tocItems.subscribe(updatePDF)
 
   async function createTocPage(pdfDoc, items, level = 0) {
     const page = pdfDoc.addPage();
@@ -73,17 +76,18 @@
 
     return yOffset;
   }
+
   async function updatePDF() {
     if (!pdfDoc) return;
 
     try {
       const newPdfDoc = await PDFDocument.create();
-      await createTocPage(newPdfDoc, tocItems);
+      await createTocPage(newPdfDoc, $tocItems);
 
       const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
       pages.forEach((page) => newPdfDoc.addPage(page));
 
-      setOutline(newPdfDoc, tocItems);
+      setOutline(newPdfDoc, $tocItems);
 
       const pdfBytes = await newPdfDoc.save();
       const loadingTask = pdfjsLib.getDocument(pdfBytes);
@@ -148,58 +152,6 @@
     }
   };
 
-  const addTocItem = () => {
-    tocItems = [
-      ...tocItems,
-      {
-        title: 'New Section',
-        to: 1,
-        italic: false,
-        bold: false,
-        children: [],
-        open: true,
-      },
-    ];
-    updatePDF();
-  };
-
-  const updateTocItem = (item, updates) => {
-    const updateItemRecursive = (items) => {
-      return items.map((currentItem) => {
-        if (currentItem === item) {
-          return {...currentItem, ...updates};
-        }
-        if (currentItem.children?.length) {
-          return {
-            ...currentItem,
-            children: updateItemRecursive(currentItem.children),
-          };
-        }
-        return currentItem;
-      });
-    };
-
-    tocItems = updateItemRecursive(tocItems);
-    updatePDF();
-  };
-
-  const deleteTocItem = (itemToDelete) => {
-    const deleteItemRecursive = (items) => {
-      return items.filter((item) => {
-        if (item === itemToDelete) {
-          return false;
-        }
-        if (item.children?.length) {
-          item.children = deleteItemRecursive(item.children);
-        }
-        return true;
-      });
-    };
-
-    tocItems = deleteItemRecursive(tocItems);
-    updatePDF();
-  };
-
   const exportPDFWithOutline = async () => {
     if (!pdfDoc) {
       return;
@@ -208,12 +160,12 @@
     try {
       const newPdfDoc = await PDFDocument.create();
 
-      await createTocPage(newPdfDoc, tocItems);
+      await createTocPage(newPdfDoc, $tocItems);
 
       const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
       pages.forEach((page) => newPdfDoc.addPage(page));
 
-      setOutline(newPdfDoc, tocItems);
+      setOutline(newPdfDoc, $tocItems);
 
       const modifiedPdfBytes = await newPdfDoc.save();
       const pdfBlob = new Blob([modifiedPdfBytes], {type: 'application/pdf'});
@@ -234,29 +186,20 @@
   };
 </script>
 
-<div class="app flex">
-  <div class="sidebar p-4 w-[30%]">
-    <input
-      type="file"
-      accept=".pdf"
-      on:change={loadPDF}
-    />
-    <button on:click={addTocItem}>Add a New Item</button>
-
-    {#each tocItems as item, idx (idx)}
-      <TocItem
-        {item}
-        onUpdate={updateTocItem}
-        onDelete={deleteTocItem}
-      />
-    {/each}
-
-    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
-  </div>
-
+<div class="flex">
+  <TocEditor />
   <PDFViewer
     {currentPage}
     {totalPages}
     {pdfScale}
   />
+  <div>
+
+    <input
+    type="file"
+    accept=".pdf"
+    on:change={loadPDF}
+    />
+    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
+    </div>
 </div>

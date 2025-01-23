@@ -1,111 +1,67 @@
 <script>
-  import {ChevronRight, ChevronDown, Plus, Trash} from 'lucide-svelte';
-  import ShortUniqueId from 'short-unique-id';
-  import Self from './TocItem.svelte';
+  import TocItem from './TocItem.svelte';
+  import {tocItems} from "../stores";
 
-  export let item;
-  export let onUpdate;
-  export let onDelete;
+  const addTocItem = () => {
+    $tocItems = [
+      ...$tocItems,
+      {
+        title: 'New Section',
+        to: 1,
+        italic: false,
+        bold: false,
+        children: [],
+        open: true,
+      },
+    ];
+  };
 
-  let editTitle = item.title;
-
-  function handleToggle() {
-    item.open = !item.open;
-    onUpdate(item, {open: item.open});
-  }
-
-  function handleUpdateTitle() {
-    onUpdate(item, {title: editTitle});
-  }
-
-  function handlePageChange(e) {
-    const page = parseInt(e.target.value) || 1;
-    onUpdate(item, {to: page});
-  }
-
-  function handleDeleteChild(childItem) {
-    const updatedChildren = item.children.filter((c) => c !== childItem);
-    onUpdate(item, {children: updatedChildren});
-  }
-
-  function handleAddChild() {
-    const newChild = {
-      id: new ShortUniqueId({length: 10}),
-      title: 'New Item',
-      to: 1,
-      children: [],
-      open: true,
+  const updateTocItem = (item, updates) => {
+    const updateItemRecursive = (items) => {
+      return items.map((currentItem) => {
+        if (currentItem === item) {
+          return {...currentItem, ...updates};
+        }
+        if (currentItem.children?.length) {
+          return {
+            ...currentItem,
+            children: updateItemRecursive(currentItem.children),
+          };
+        }
+        return currentItem;
+      });
     };
 
-    const updatedChildren = [...(item.children || []), newChild];
-    onUpdate(item, {children: updatedChildren});
-  }
+    $tocItems = updateItemRecursive($tocItems);
+  };
 
-  function handleUpdateChild(childItem, updates) {
-    const updatedChildren = item.children.map((child) => (child.id === childItem.id ? {...child, ...updates} : child));
-    onUpdate(item, {children: updatedChildren});
-  }
+  const deleteTocItem = (itemToDelete) => {
+    const deleteItemRecursive = (items) => {
+      return items.filter((item) => {
+        if (item === itemToDelete) {
+          return false;
+        }
+        if (item.children?.length) {
+          item.children = deleteItemRecursive(item.children);
+        }
+        return true;
+      });
+    };
+
+    $tocItems = deleteItemRecursive($tocItems);
+  };
+
 </script>
 
-<div class="ml-4">
-  <div class="flex items-center gap-2 my-2">
-    {#if item.children?.length > 0}
-      <button
-        on:click={handleToggle}
-        class="p-1 hover:bg-gray-100 rounded"
-      >
-        {#if item.open}
-          <ChevronDown size={16} />
-        {:else}
-          <ChevronRight size={16} />
-        {/if}
-      </button>
-    {:else}
-      <div class="w-6" />
-    {/if}
+<div class="sidebar p-4 w-[30%]">
+  <button on:click={addTocItem}>Add a New Item</button>
 
-    <input
-      type="text"
-      bind:value={editTitle}
-      on:blur={handleUpdateTitle}
-      on:keypress={(e) => e.key === 'Enter' && handleUpdateTitle()}
-      class="border rounded px-2 py-1 text-sm"
-      autofocus
+  {#each $tocItems as item, idx (idx)}
+    <TocItem
+      {item}
+      onUpdate={updateTocItem}
+      onDelete={deleteTocItem}
     />
+  {/each}
 
-    <input
-      type="number"
-      bind:value={item.to}
-      on:input={handlePageChange}
-      class="w-16 border rounded px-2 py-1 text-sm"
-      min="1"
-    />
-
-    <div class="flex gap-1">
-      <button
-        on:click={handleAddChild}
-        class="p-1 hover:bg-gray-100 rounded"
-      >
-        <Plus size={16} />
-      </button>
-      <button
-        on:click={() => onDelete(item)}
-        class="p-1 hover:bg-gray-100 rounded text-red-500"
-      >
-        <Trash size={16} />
-      </button>
-    </div>
-  </div>
-
-  {#if item.children && item.children.length > 0}
-    <div class="ml-4">
-      {#each item.children as child (child.id)}
-        <Self
-          item={child}
-          onUpdate={handleUpdateChild}
-          onDelete={handleDeleteChild}
-        />
-      {/each}
-    </div>
-  {/if}
 </div>
