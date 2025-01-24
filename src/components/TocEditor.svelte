@@ -13,6 +13,8 @@
 3.2 Pumpkin 6
 4 Junk Food 7`;
 
+  let isSyncing = false; // forbid loop
+
   function parseText(text) {
     const lines = text.split('\n').filter((line) => line.trim());
     const items = [];
@@ -64,8 +66,10 @@
       .join('\n');
   }
 
-  $: {
+  $: if (!isSyncing) {
+    isSyncing = true;
     $tocItems = parseText(text);
+    isSyncing = false;
   }
 
   const addTocItem = () => {

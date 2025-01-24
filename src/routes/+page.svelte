@@ -8,7 +8,9 @@
   import {setOutline} from '../lib/pdf-outliner';
   import {tocItems} from '../stores';
 
+  let yOffset = 0;
   let pdfDoc = null;
+  let newPdfDoc = null;
   let currentPage = 1;
   let totalPages = 0;
   let pdfScale = 1.0;
@@ -21,13 +23,13 @@
 
   tocItems.subscribe(updatePDF);
 
-  async function createTocPage(pdfDoc, items, level = 0) {
-    const page = pdfDoc.addPage();
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  async function createTocPage(doc, items, pages, level = 0, curPage = null) {
+    let page = curPage || doc.addPage();
+    const font = await doc.embedFont(StandardFonts.Helvetica);
     const fontSize = 12;
-    let yOffset = page.getHeight() - 50;
+    yOffset = curPage ? yOffset : page.getHeight() - 20;
 
-    if (level === 0) {
+    if (level === 0 && !curPage) {
       page.drawText('ToC', {
         x: 50,
         y: yOffset,
@@ -39,7 +41,13 @@
     }
 
     for (const item of items) {
+      if (yOffset < 50) {
+        page = doc.addPage();
+        yOffset = page.getHeight() - 50;
+      }
+
       const indent = level * 20;
+
       page.drawText(item.title, {
         x: 50 + indent,
         y: yOffset,
@@ -56,36 +64,45 @@
         color: rgb(0, 0, 0),
       });
 
-      const ref = pdfDoc.context.register(
-        pdfDoc.context.obj({
+      const targetPage = pages[Math.min(pages.length - 1, item.to - 1)];
+
+      const ref = doc.context.register(
+        doc.context.obj({
           Type: 'Annot',
           Subtype: 'Link',
-          Rect: [50 + indent, yOffset - 2, page.getWidth() - 50, yOffset + fontSize],
+          Rect: [50 + indent, yOffset, page.getWidth() - 50, yOffset + fontSize],
           Border: [0, 0, 0],
-          Dest: [pdfDoc.getPage(0).ref, 'XYZ', 0, page.getHeight(), 0],
+          Dest: [targetPage.ref, 'XYZ', 0, targetPage.getHeight(), 0],
         })
       );
-      page.node.set(PDFName.of('Annots'), pdfDoc.context.obj([ref]));
+
+      const existingAnnots = page.node.get(PDFName.of('Annots'));
+      if (existingAnnots) {
+        existingAnnots.push(ref);
+      } else {
+        page.node.set(PDFName.of('Annots'), doc.context.obj([ref]));
+      }
 
       yOffset -= 20;
 
       if (item.children?.length) {
-        yOffset = await createTocPage(pdfDoc, item.children, level + 1);
+        const newYOffset = await createTocPage(doc, item.children, pages, level + 1, page);
+        yOffset = newYOffset;
       }
     }
 
     return yOffset;
   }
-
   async function updatePDF() {
     if (!pdfDoc) return;
 
     try {
-      const newPdfDoc = await PDFDocument.create();
-      await createTocPage(newPdfDoc, $tocItems);
+      newPdfDoc = await PDFDocument.create();
 
-      const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
-      pages.forEach((page) => newPdfDoc.addPage(page));
+      const copiedPages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      await createTocPage(newPdfDoc, $tocItems, copiedPages);
+
+      copiedPages.forEach((page) => newPdfDoc.addPage(page));
 
       setOutline(newPdfDoc, $tocItems);
 
@@ -100,7 +117,6 @@
       console.error('Error updating PDF:', error);
     }
   }
-
   let dropzoneRef;
   let isDragging = false;
 
@@ -166,22 +182,13 @@
   };
 
   const exportPDFWithOutline = async () => {
-    if (!pdfDoc) {
+    if (!newPdfDoc) {
       return;
     }
 
     try {
-      const newPdfDoc = await PDFDocument.create();
-
-      await createTocPage(newPdfDoc, $tocItems);
-
-      const pages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
-      pages.forEach((page) => newPdfDoc.addPage(page));
-
-      setOutline(newPdfDoc, $tocItems);
-
-      const modifiedPdfBytes = await newPdfDoc.save();
-      const pdfBlob = new Blob([modifiedPdfBytes], {type: 'application/pdf'});
+      const pdfBytes = await newPdfDoc.save();
+      const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
 
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
