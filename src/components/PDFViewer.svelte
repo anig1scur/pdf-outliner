@@ -9,9 +9,9 @@
   };
 </script>
 
-<div class="pdf-viewer">
+<div class="flex flex-col items-center mt-3 gap-2">
   <div class="controls">
-    <span>Page {currentPage} / {totalPages}</span>
+    <span class="text-stone-500">Page {currentPage} / {totalPages}</span>
   </div>
 
   <canvas id="pdf-canvas"></canvas>

@@ -202,30 +202,48 @@
 <div class="flex p-4 gap-6 mx-auto w-[80%] justify-between">
   <TocEditor />
   <div class="flex flex-col flex-1">
-    <Dropzone
-      bind:this={dropzoneRef}
-      accept=".pdf"
-      on:drop={handleFileDrop}
-      on:dragenter={handleDragEnter}
-      on:dragleave={handleDragLeave}
-    >
-      <div
-        class="w-full p-8 border-2 border-dashed rounded-lg text-center cursor-pointer"
-        class:border-blue-500={isDragging}
-        class:bg-blue-50={isDragging}
+    <div class="relative h-full">
+      <Dropzone
+        bind:this={dropzoneRef}
+        containerClasses={pdfInstance ? 'opaciyu-0' : 'h-full'}
+        accept=".pdf"
+        disableDefaultStyles
+        on:drop={handleFileDrop}
+        on:dragenter={handleDragEnter}
+        on:dragleave={handleDragLeave}
       >
-        {#if isDragging}
-          <p>Drop your PDF file here...</p>
-        {:else}
-          <p>Drag and drop your PDF file here, or click to select</p>
-        {/if}
+        <div
+          class="w-full absolute inset-0 p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors duration-200 {pdfInstance
+            ? 'bg-transparent hover:bg-white/50'
+            : ''}"
+          class:border-blue-500={isDragging}
+          class:bg-blue-50={isDragging}
+        >
+          {#if !pdfInstance || isDragging}
+            <div class="absolute text-stone-500 inset-0 flex items-center justify-center">
+              {#if isDragging}
+                <p>Drop your PDF file here...</p>
+              {:else}
+                <p>Drag and drop your PDF file here, or click to select</p>
+              {/if}
+            </div>
+          {/if}
+        </div>
+      </Dropzone>
+
+      <div class={pdfInstance ? 'block' : 'hidden'}>
+        <button
+          class="absolute top-2 right-2 z-10 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          on:click={exportPDFWithOutline}
+        >
+          Generate Outlined PDF
+        </button>
+        <PDFViewer
+          {currentPage}
+          {totalPages}
+          {pdfScale}
+        />
       </div>
-    </Dropzone>
-    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
-    <PDFViewer
-      {currentPage}
-      {totalPages}
-      {pdfScale}
-    />
+    </div>
   </div>
 </div>
