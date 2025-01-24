@@ -1,11 +1,12 @@
 <script lang="ts">
-  import {onMount} from 'svelte';
+  import * as pdfjsLib from 'pdfjs-dist';
+  import Dropzone from 'svelte-file-dropzone';
+  import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
+
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import {setOutline} from '../lib/pdf-outliner';
-  import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
   import {tocItems} from '../stores';
-  import * as pdfjsLib from 'pdfjs-dist';
 
   let pdfDoc = null;
   let currentPage = 1;
@@ -100,24 +101,37 @@
     }
   }
 
-  const loadPDF = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-    try {
-      const fileReader = new FileReader();
-      fileReader.onload = async function () {
-        const arrayBuffer = new Uint8Array(this.result);
-        pdfDoc = await PDFDocument.load(arrayBuffer);
+  let dropzoneRef;
+  let isDragging = false;
 
-        const loadingTask = pdfjsLib.getDocument(arrayBuffer);
+  const handleFileDrop = async (e) => {
+    const {acceptedFiles} = e.detail;
+    isDragging = false;
+
+    if (acceptedFiles.length) {
+      const file = acceptedFiles[0];
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        pdfDoc = await PDFDocument.load(uint8Array);
+
+        const loadingTask = pdfjsLib.getDocument(uint8Array);
         pdfInstance = await loadingTask.promise;
         totalPages = pdfInstance.numPages;
         renderPage(pdfInstance, currentPage);
-      };
-      fileReader.readAsArrayBuffer(file);
-    } catch (error) {
-      console.error('Error loading PDF:', error);
+      } catch (error) {
+        console.error('Error loading PDF:', error);
+      }
     }
+  };
+
+  const handleDragEnter = () => {
+    isDragging = true;
+  };
+
+  const handleDragLeave = () => {
+    isDragging = false;
   };
 
   const renderPage = async (pdf, pageNum) => {
@@ -185,17 +199,29 @@
   };
 </script>
 
-<div class="flex">
+<div class="flex p-4 gap-6 mx-auto w-[80%] justify-between">
   <TocEditor />
-  <div class="flex flex-col">
-    <div>
-      <input
-        type="file"
-        accept=".pdf"
-        on:change={loadPDF}
-      />
-      <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
-    </div>
+  <div class="flex flex-col flex-1">
+    <Dropzone
+      bind:this={dropzoneRef}
+      accept=".pdf"
+      on:drop={handleFileDrop}
+      on:dragenter={handleDragEnter}
+      on:dragleave={handleDragLeave}
+    >
+      <div
+        class="w-full p-8 border-2 border-dashed rounded-lg text-center cursor-pointer"
+        class:border-blue-500={isDragging}
+        class:bg-blue-50={isDragging}
+      >
+        {#if isDragging}
+          <p>Drop your PDF file here...</p>
+        {:else}
+          <p>Drag and drop your PDF file here, or click to select</p>
+        {/if}
+      </div>
+    </Dropzone>
+    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
     <PDFViewer
       {currentPage}
       {totalPages}

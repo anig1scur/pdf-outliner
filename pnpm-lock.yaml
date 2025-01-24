@@ -20,6 +20,9 @@ importers:
       short-unique-id:
         specifier: ^5.2.0
         version: 5.2.0
+      svelte-file-dropzone:
+        specifier: ^2.0.9
+        version: 2.0.9(svelte@5.19.2)
     devDependencies:
       '@sveltejs/adapter-auto':
         specifier: ^4.0.0
@@ -650,6 +653,10 @@ packages:
       picomatch:
         optional: true
 
+  file-selector@0.6.0:
+    resolution: {integrity: sha512-QlZ5yJC0VxHxQQsQhXvBaC7VRJ2uaxTf+Tfpu4Z/OcVQJVpZO+DGU0rkoVW5ce2SccxugvpBJoMvUs59iILYdw==}
+    engines: {node: '>= 12'}
+
   fill-range@7.1.1:
     resolution: {integrity: sha512-YsGpe3WHLK8ZYi4tWDg2Jy3ebRz2rXowDxnld4bkQB00cc/1Zw9AWnC0i9ztDJitivtQvaI9KaLyKrc+hBW0yg==}
     engines: {node: '>=8'}
@@ -992,6 +999,11 @@ packages:
       svelte: ^4.0.0 || ^5.0.0-next.0
       typescript: '>=5.0.0'
 
+  svelte-file-dropzone@2.0.9:
+    resolution: {integrity: sha512-+gS9DscyEcy2Q0jhcADPs7uUEnz56YKudKtLGteEGNi4lF7anPTyxDXoDRiNACWzsp3PF5KfYkw0GgrTieZK9Q==}
+    peerDependencies:
+      svelte: ^3.54.0 || ^4.0.0 || ^5
+
   svelte@5.19.2:
     resolution: {integrity: sha512-Ww1uLgdX5MdQrAO5zfU1dWUh6zqiPR6uIbwqm8a+4eQ+tNEYHRPgypvKKfHh9lmTkmJ30PWZ2O5qX8aS+PblRQ==}
     engines: {node: '>=18'}
@@ -1021,6 +1033,9 @@ packages:
 
   tslib@1.14.1:
     resolution: {integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
   typescript@5.7.3:
     resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
@@ -1565,6 +1580,10 @@ snapshots:
 
   fdir@6.4.3: {}
 
+  file-selector@0.6.0:
+    dependencies:
+      tslib: 2.8.1
+
   fill-range@7.1.1:
     dependencies:
       to-regex-range: 5.0.1
@@ -1888,6 +1907,11 @@ snapshots:
     transitivePeerDependencies:
       - picomatch
 
+  svelte-file-dropzone@2.0.9(svelte@5.19.2):
+    dependencies:
+      file-selector: 0.6.0
+      svelte: 5.19.2
+
   svelte@5.19.2:
     dependencies:
       '@ampproject/remapping': 2.3.0
@@ -1949,6 +1973,8 @@ snapshots:
   ts-interface-checker@0.1.13: {}
 
   tslib@1.14.1: {}
+
+  tslib@2.8.1: {}
 
   typescript@5.7.3: {}
 
