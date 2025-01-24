@@ -27,53 +27,82 @@
   tocItems.subscribe(debouncedUpdatePDF);
 
   async function createTocPage(doc, items, pages, level = 0, curPage = null) {
-    let page = curPage || doc.addPage();
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 12;
-    yOffset = curPage ? yOffset : page.getHeight() - 20;
+    const [firstPage] = pdfDoc.getPages();
+    const {width: originalWidth, height: originalHeight} = firstPage.getSize();
+
+    let page = curPage || doc.addPage([originalWidth, originalHeight]);
+    const regularFont = await doc.embedFont(StandardFonts.Helvetica);
+    const boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
+    yOffset = curPage ? yOffset : (page.getHeight() / 3) * 2;
 
     if (level === 0 && !curPage) {
-      page.drawText('ToC', {
+      const titleFontSize = 18;
+      page.drawText('Table of Contents', {
         x: 50,
         y: yOffset,
-        size: 16,
-        font,
+        size: titleFontSize,
+        font: boldFont,
         color: rgb(0, 0, 0),
       });
-      yOffset -= 30;
+      yOffset -= titleFontSize + 20;
     }
 
     for (const item of items) {
       if (yOffset < 50) {
-        page = doc.addPage();
+        page = doc.addPage([originalWidth, originalHeight]);
         yOffset = page.getHeight() - 50;
       }
 
       const indent = level * 20;
+      const textFont = level === 0 ? boldFont : regularFont;
+      const color = level === 0 ? rgb(0, 0, 0) : rgb(0.3, 0.3, 0.3);
+      const fontSize = level === 0 ? 10 : 9;
+      const lineSpacing = fontSize + (level === 0 ? 8 : 6);
 
+      const titleX = 50 + indent;
+      const titleWidth = page.getWidth() - 100 - indent;
+      if (level == 0) {
+        yOffset -= 8;
+      }
       page.drawText(item.title, {
-        x: 50 + indent,
+        x: titleX,
         y: yOffset,
         size: fontSize,
-        font,
-        color: rgb(0, 0, 0),
+        font: textFont,
+        color,
+        maxWidth: titleWidth,
       });
 
-      page.drawText(String(item.to), {
-        x: page.getWidth() - 50,
+      if (level === 0) {
+        const dotsXStart = titleX + item.title.length * (fontSize * 0.5) + 10;
+        const dotsXEnd = page.getWidth() - 65;
+        for (let x = dotsXStart; x < dotsXEnd; x += 5) {
+          page.drawText('.', {
+            x,
+            y: yOffset - 1,
+            size: fontSize * 0.6,
+            font: regularFont,
+            color: rgb(0.2, 0.2, 0.2),
+          });
+        }
+      }
+
+      const pageNumText = String(item.to);
+      const pageNumWidth = boldFont.widthOfTextAtSize(pageNumText, fontSize);
+      page.drawText(pageNumText, {
+        x: page.getWidth() - 50 - pageNumWidth,
         y: yOffset,
         size: fontSize,
-        font,
+        font: textFont,
         color: rgb(0, 0, 0),
       });
 
       const targetPage = pages[Math.min(pages.length - 1, item.to - 1)];
-
       const ref = doc.context.register(
         doc.context.obj({
           Type: 'Annot',
           Subtype: 'Link',
-          Rect: [50 + indent, yOffset, page.getWidth() - 50, yOffset + fontSize],
+          Rect: [titleX, yOffset - 2, page.getWidth() - 50, yOffset + fontSize],
           Border: [0, 0, 0],
           Dest: [targetPage.ref, 'XYZ', 0, targetPage.getHeight(), 0],
         })
@@ -86,7 +115,7 @@
         page.node.set(PDFName.of('Annots'), doc.context.obj([ref]));
       }
 
-      yOffset -= 20;
+      yOffset -= lineSpacing;
 
       if (item.children?.length) {
         const newYOffset = await createTocPage(doc, item.children, pages, level + 1, page);
@@ -96,6 +125,7 @@
 
     return yOffset;
   }
+
   async function updatePDF() {
     if (!pdfDoc) return;
 
@@ -259,5 +289,5 @@
 </div>
 
 <svelte:head>
-  <title>PDF-OUTLINER ·  Create PDF outliners in JavaScript environment.</title>
+  <title>PDF-OUTLINER · Create PDF outliners in JavaScript environment.</title>
 </svelte:head>
