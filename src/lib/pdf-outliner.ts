@@ -59,8 +59,6 @@ const getOpeningCount = (outlines: readonly PDFOutline[]) => {
 
 export const setOutline = async (doc: PDFDocument, outlines: readonly PDFOutline[]) => {
 
-  console.log(doc, outlines);
-
   const rootRef = doc.context.nextRef();
   const refMap = new WeakMap<PDFOutline, PDFRef>();
 

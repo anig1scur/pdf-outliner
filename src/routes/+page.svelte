@@ -4,7 +4,7 @@
   import PDFViewer from '../components/PDFViewer.svelte';
   import {setOutline} from '../lib/pdf-outliner';
   import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
-  import {tocItems} from "../stores";
+  import {tocItems} from '../stores';
   import * as pdfjsLib from 'pdfjs-dist';
 
   let pdfDoc = null;
@@ -18,8 +18,7 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
-
-  tocItems.subscribe(updatePDF)
+  tocItems.subscribe(updatePDF);
 
   async function createTocPage(pdfDoc, items, level = 0) {
     const page = pdfDoc.addPage();
@@ -188,18 +187,19 @@
 
 <div class="flex">
   <TocEditor />
-  <PDFViewer
-    {currentPage}
-    {totalPages}
-    {pdfScale}
-  />
-  <div>
-
-    <input
-    type="file"
-    accept=".pdf"
-    on:change={loadPDF}
-    />
-    <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
+  <div class="flex flex-col">
+    <div>
+      <input
+        type="file"
+        accept=".pdf"
+        on:change={loadPDF}
+      />
+      <button on:click={exportPDFWithOutline}>generate outlined PDF</button>
     </div>
+    <PDFViewer
+      {currentPage}
+      {totalPages}
+      {pdfScale}
+    />
+  </div>
 </div>

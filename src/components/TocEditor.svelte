@@ -1,19 +1,85 @@
 <script>
   import TocItem from './TocItem.svelte';
-  import {tocItems} from "../stores";
+  import {tocItems, maxPage} from '../stores';
+  import ShortUniqueId from 'short-unique-id';
+
+  let text = `1 Food What I love 1
+2 Fruits 2
+2.1 Strawberry 3
+2.2 Pineapple 4
+2.2 Mango 4
+3 Vegetables 5
+3.1 Basil 6
+3.2 Pumpkin 6
+4 Junk Food 7`;
+
+  function parseText(text) {
+    const lines = text.split('\n').filter((line) => line.trim());
+    const items = [];
+    const stack = [{level: 0, item: {children: items}}];
+
+    lines.forEach((line) => {
+      const match = line.match(/^(\d+(?:\.\d+)*)\s+(.+?)\s+(\d+)$/);
+      if (match) {
+        const id = new ShortUniqueId({length: 10});
+        const [, number, title, pageStr] = match;
+        const level = number.split('.').length;
+        const page = parseInt(pageStr);
+        const newItem = {
+          id,
+          title: title,
+          to: page,
+          children: [],
+          open: true,
+        };
+
+        if (page > $maxPage) {
+          $maxPage = page;
+        }
+
+        while (stack[stack.length - 1].level >= level) {
+          stack.pop();
+        }
+
+        stack[stack.length - 1].item.children.push(newItem);
+        stack.push({level, item: newItem});
+      }
+    });
+
+    return items;
+  }
+
+  function generateText(items, prefix = '') {
+    return items
+      .map((item, index) => {
+        const number = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
+        let text = `${number} ${item.title} ${item.to}`;
+
+        if (item.children && item.children.length > 0) {
+          text += '\n' + generateText(item.children, number);
+        }
+
+        return text;
+      })
+      .join('\n');
+  }
+
+  $: {
+    $tocItems = parseText(text);
+  }
 
   const addTocItem = () => {
     $tocItems = [
       ...$tocItems,
       {
+        id: new ShortUniqueId({length: 10}),
         title: 'New Section',
-        to: 1,
-        italic: false,
-        bold: false,
+        to: $maxPage + 1,
         children: [],
         open: true,
       },
     ];
+    text = generateText($tocItems);
   };
 
   const updateTocItem = (item, updates) => {
@@ -33,6 +99,7 @@
     };
 
     $tocItems = updateItemRecursive($tocItems);
+    text = generateText($tocItems);
   };
 
   const deleteTocItem = (itemToDelete) => {
@@ -49,19 +116,30 @@
     };
 
     $tocItems = deleteItemRecursive($tocItems);
+    text = generateText($tocItems);
   };
-
 </script>
 
-<div class="sidebar p-4 w-[30%]">
-  <button on:click={addTocItem}>Add a New Item</button>
-
-  {#each $tocItems as item, idx (idx)}
-    <TocItem
-      {item}
-      onUpdate={updateTocItem}
-      onDelete={deleteTocItem}
-    />
-  {/each}
-
+<div class="flex flex-col gap-4 p-4">
+  <div class="h-64">
+    <textarea
+      bind:value={text}
+      class="w-full h-full border rounded p-2 font-mono text-sm"
+    ></textarea>
+  </div>
+  <div>
+    {#each $tocItems as item (item.id)}
+      <TocItem
+        {item}
+        onUpdate={updateTocItem}
+        onDelete={deleteTocItem}
+      />
+    {/each}
+    <button
+      on:click={addTocItem}
+      class="ml-9 mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+    >
+      Add New Section
+    </button>
+  </div>
 </div>

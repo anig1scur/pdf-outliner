@@ -2,6 +2,7 @@
   import {ChevronRight, ChevronDown, Plus, Trash} from 'lucide-svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
+  import {maxPage} from '../stores';
 
   export let item;
   export let onUpdate;
@@ -23,16 +24,11 @@
     onUpdate(item, {to: page});
   }
 
-  function handleDeleteChild(childItem) {
-    const updatedChildren = item.children.filter((c) => c !== childItem);
-    onUpdate(item, {children: updatedChildren});
-  }
-
   function handleAddChild() {
     const newChild = {
       id: new ShortUniqueId({length: 10}),
       title: 'New Item',
-      to: 1,
+      to: $maxPage + 1,
       children: [],
       open: true,
     };
@@ -45,9 +41,14 @@
     const updatedChildren = item.children.map((child) => (child.id === childItem.id ? {...child, ...updates} : child));
     onUpdate(item, {children: updatedChildren});
   }
+
+  function handleDeleteChild(childItem) {
+    const updatedChildren = item.children.filter((c) => c.id !== childItem.id);
+    onUpdate(item, {children: updatedChildren});
+  }
 </script>
 
-<div class="ml-4 mt-24">
+<div class="ml-1">
   <div class="flex items-center gap-2 my-2">
     {#if item.children?.length > 0}
       <button
@@ -61,7 +62,7 @@
         {/if}
       </button>
     {:else}
-      <div class="w-6" ></div>
+      <div class="w-6"></div>
     {/if}
 
     <input
@@ -97,7 +98,7 @@
   </div>
 
   {#if item.children && item.children.length > 0}
-    <div class="ml-4">
+    <div class="ml-2">
       {#each item.children as child (child.id)}
         <Self
           item={child}
@@ -108,4 +109,3 @@
     </div>
   {/if}
 </div>
-
