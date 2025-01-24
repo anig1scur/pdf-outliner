@@ -10,6 +10,7 @@
   import {tocItems} from '../stores';
 
   let yOffset = 0;
+  let filename = '';
   let pdfDoc = null;
   let newPdfDoc = null;
   let currentPage = 1;
@@ -22,7 +23,7 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
-  const debouncedUpdatePDF = debounce(updatePDF, 300);
+  const debouncedUpdatePDF = debounce(updatePDF, 400);
 
   tocItems.subscribe(debouncedUpdatePDF);
 
@@ -134,7 +135,6 @@
 
       const copiedPages = await newPdfDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
       await createTocPage(newPdfDoc, $tocItems, copiedPages);
-
       copiedPages.forEach((page) => newPdfDoc.addPage(page));
 
       setOutline(newPdfDoc, $tocItems);
@@ -150,6 +150,7 @@
       console.error('Error updating PDF:', error);
     }
   }
+
   let dropzoneRef;
   let isDragging = false;
 
@@ -159,11 +160,14 @@
 
     if (acceptedFiles.length) {
       const file = acceptedFiles[0];
+      filename = file.name;
       try {
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
 
         pdfDoc = await PDFDocument.load(uint8Array);
+
+        updatePDF();
 
         const loadingTask = pdfjsLib.getDocument(uint8Array);
         pdfInstance = await loadingTask.promise;
@@ -226,7 +230,7 @@
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
-      downloadLink.download = 'document_with_outline.pdf';
+      downloadLink.download = `${filename}_outlined.pdf`;
 
       document.body.appendChild(downloadLink);
       downloadLink.click();
@@ -239,10 +243,10 @@
   };
 </script>
 
-<div class="flex p-4 gap-6 mx-auto w-[80%] justify-between">
+<div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] justify-between">
   <TocEditor />
   <div class="flex flex-col flex-1">
-    <div class="relative h-full">
+    <div class="relative h-fit pb-8 min-h-[85vh]">
       <Dropzone
         bind:this={dropzoneRef}
         containerClasses={pdfInstance ? 'opaciyu-0' : 'h-full'}
@@ -273,12 +277,13 @@
 
       <div class={pdfInstance ? 'block' : 'hidden'}>
         <button
-          class="absolute top-2 right-2 z-10 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          class="absolute top-3 right-3 z-20 btn"
           on:click={exportPDFWithOutline}
         >
           Generate Outlined PDF
         </button>
         <PDFViewer
+          {filename}
           {currentPage}
           {totalPages}
           {pdfScale}
@@ -289,5 +294,5 @@
 </div>
 
 <svelte:head>
-  <title>PDF-OUTLINER · Create PDF outliners in JavaScript environment.</title>
+  <title>PDF OUTLINER · Create PDF Outlines / Table of Contents in browser</title>
 </svelte:head>

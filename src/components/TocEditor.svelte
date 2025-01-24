@@ -2,6 +2,7 @@
   import TocItem from './TocItem.svelte';
   import {tocItems, maxPage} from '../stores';
   import ShortUniqueId from 'short-unique-id';
+  import Logo from '../assets/logo-dark.svelte';
 
   let text = `1 Food What I love 1
 2 Fruits 2
@@ -122,11 +123,15 @@
   };
 </script>
 
-<div class="flex flex-col gap-4 p-4">
+<div class="flex flex-col gap-4">
+  <div class="flex items-center gap-6">
+    <span class="text-3xl font-semibold font-mono">PDF Outliner</span>
+    <Logo />
+  </div>
   <div class="h-64">
     <textarea
       bind:value={text}
-      class="w-full h-full border rounded p-2 font-mono text-sm"
+      class="w-full h-full border outline-black focus:outline-dashed rounded p-2 font-mono text-sm"
     ></textarea>
   </div>
   <div>
@@ -139,7 +144,7 @@
     {/each}
     <button
       on:click={addTocItem}
-      class="ml-9 mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      class="ml-9 mt-2 mb-4 btn"
     >
       Add New Section
     </button>

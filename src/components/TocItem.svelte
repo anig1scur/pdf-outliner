@@ -90,7 +90,7 @@
       </button>
       <button
         on:click={() => onDelete(item)}
-        class="p-1 hover:bg-gray-100 rounded text-red-500"
+        class="p-1 hover:bg-gray-100 rounded text-black"
       >
         <Trash size={16} />
       </button>

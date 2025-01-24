@@ -1,3 +1,20 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
-@import 'tailwindcss/utilities'
+@import 'tailwindcss/utilities';
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md border border-black bg-white text-black text-sm transition duration-200
+  }
+
+  .btn:hover {
+    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0);
+  }
+
+
+  .btn2 {
+    @apply px-6 py-2 bg-black text-white rounded-lg font-bold transform hover:-translate-y-1 transition
+  }
+
+  /* why  */
+}
