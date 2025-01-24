@@ -6,6 +6,7 @@
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import {setOutline} from '../lib/pdf-outliner';
+  import {debounce} from '../lib';
   import {tocItems} from '../stores';
 
   let yOffset = 0;
@@ -21,7 +22,9 @@
 
   pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
 
-  tocItems.subscribe(updatePDF);
+  const debouncedUpdatePDF = debounce(updatePDF, 300);
+
+  tocItems.subscribe(debouncedUpdatePDF);
 
   async function createTocPage(doc, items, pages, level = 0, curPage = null) {
     let page = curPage || doc.addPage();
@@ -254,3 +257,7 @@
     </div>
   </div>
 </div>
+
+<svelte:head>
+  <title>PDF-OUTLINER ·  Create PDF outliners in JavaScript environment.</title>
+</svelte:head>
