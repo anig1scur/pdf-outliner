@@ -230,7 +230,7 @@
       const downloadUrl = URL.createObjectURL(pdfBlob);
       const downloadLink = document.createElement('a');
       downloadLink.href = downloadUrl;
-      downloadLink.download = `${filename}_outlined.pdf`;
+      downloadLink.download = `${filename.substring(0, filename.length - 4)}_outlined.pdf`;
 
       document.body.appendChild(downloadLink);
       downloadLink.click();
