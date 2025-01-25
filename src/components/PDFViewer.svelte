@@ -29,64 +29,66 @@
   $: ({filename, currentPage, scale, totalPages} = pdfState);
 </script>
 
-<div class="flex flex-col items-center justify-start w-full max-w-full overflow-x-auto">
-  <div class="flex z-10 items-center justify-start w-full max-w-4xl px-4 py-3 bg-white">
-    <div class="text-gray-600 font-serif flex gap-3 items-center">
-      <span class="truncate max-w-xs">{filename}</span>
-      <span class="text-gray-300">|</span>
-      <span>{currentPage} / {totalPages}</span>
+<div>
+  <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white">
+    <div class="flex z-10  items-center justify-start w-full max-w-full overflow-x-auto">
+      <div class="text-gray-600 font-serif flex gap-3 items-center">
+        <span class="truncate max-w-xs">{filename}</span>
+        <span class="text-gray-300">|</span>
+        <span>{currentPage} / {totalPages}</span>
+      </div>
+
+      <div class="flex items-center gap-2 ml-3">
+        <button
+          on:click={zoomOut}
+          class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+          title="zoom out"
+        >
+          <ZoomOut size={20} />
+        </button>
+        <span class="min-w-[60px] text-center text-gray-600">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          on:click={zoomIn}
+          class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+          title="zoom in"
+        >
+          <ZoomIn size={20} />
+        </button>
+        <button
+          on:click={resetZoom}
+          class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+          title="reset"
+        >
+          <RotateCw size={20} />
+        </button>
+      </div>
     </div>
 
-    <div class="flex items-center gap-2 ml-3">
+    <div class="relative flex items-center justify-center w-full">
       <button
-        on:click={zoomOut}
-        class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-        title="zoom out"
+        on:click={goToPrevPage}
+        disabled={currentPage <= 1}
+        class="absolute left-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <ZoomOut size={20} />
+        <ChevronLeft size={24} />
       </button>
-      <span class="min-w-[60px] text-center text-gray-600">
-        {Math.round(scale * 100)}%
-      </span>
+
+      <div class="overflow-auto max-w-full p-4">
+        <canvas
+          class="max-w-full"
+          id="pdf-canvas"
+        ></canvas>
+      </div>
+
       <button
-        on:click={zoomIn}
-        class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-        title="zoom in"
+        on:click={goToNextPage}
+        disabled={currentPage >= totalPages}
+        class="absolute right-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <ZoomIn size={20} />
-      </button>
-      <button
-        on:click={resetZoom}
-        class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-        title="reset"
-      >
-        <RotateCw size={20} />
+        <ChevronRight size={24} />
       </button>
     </div>
-  </div>
-
-  <div class="relative flex items-center justify-center w-full">
-    <button
-      on:click={goToPrevPage}
-      disabled={currentPage <= 1}
-      class="absolute left-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <ChevronLeft size={24} />
-    </button>
-
-    <div class="overflow-auto max-w-full p-4">
-      <canvas
-        class="max-w-full"
-        id="pdf-canvas"
-      ></canvas>
-    </div>
-
-    <button
-      on:click={goToNextPage}
-      disabled={currentPage >= totalPages}
-      class="absolute right-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      <ChevronRight size={24} />
-    </button>
   </div>
 </div>
