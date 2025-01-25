@@ -181,6 +181,9 @@ export class PDFService {
   }
 
   async renderPage(pdf: any, pageNum: number, scale: number) {
+    if (!pdf) {
+      return;
+    }
     const page = await pdf.getPage(pageNum);
     const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
     const viewport = page.getViewport({scale});

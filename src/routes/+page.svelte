@@ -9,10 +9,9 @@
 
   import {setOutline} from '../lib/pdf-outliner';
   import {PDFService, type PDFState} from '../lib/pdf.service';
-  import {tocItems} from '../stores';
+  import {tocItems, pdfService} from '../stores';
   import {debounce} from '../lib';
 
-  let pdfService: PDFService;
   let isDragging = false;
 
   let pdfState: PDFState = {
@@ -26,15 +25,19 @@
   };
 
   onMount(() => {
-    pdfService = new PDFService();
+    $pdfService = new PDFService();
   });
+
+  $: {
+    $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+  }
 
   const updatePDF = async () => {
     if (!pdfState.doc) return;
 
     try {
       // Create new PDF with TOC
-      const newDoc = await pdfService.createTocPage(pdfState.doc, $tocItems);
+      const newDoc = await $pdfService.createTocPage(pdfState.doc, $tocItems);
 
       setOutline(newDoc, $tocItems);
       // Convert to viewable format
@@ -44,7 +47,7 @@
       pdfState.totalPages = pdfState.instance.numPages;
 
       // Render first page
-      await pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+      await $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
 
       // Store for export
       pdfState.newDoc = newDoc;
@@ -78,7 +81,7 @@
 
         await updatePDF();
 
-        await pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+        await $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
       } catch (error) {
         console.error('Error loading PDF:', error);
       }
@@ -143,7 +146,7 @@
         >
           Generate Outlined PDF
         </button>
-        <PDFViewer {...pdfState} />
+        <PDFViewer bind:pdfState />
       {/if}
     </div>
   </div>
