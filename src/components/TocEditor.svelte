@@ -71,6 +71,23 @@
     $tocItems = parseText(text);
   }
 
+  $: firstItemWithChildrenId = (() => {
+    const findFirst = (items) => {
+      for (const item of items) {
+        if (item.children?.length > 0) {
+          return item.id;
+        }
+        if (item.children) {
+          const childResult = findFirst(item.children);
+          if (childResult) return childResult;
+        }
+      }
+      return null;
+    };
+
+    return findFirst($tocItems);
+  })();
+
   const addTocItem = () => {
     $tocItems = [
       ...$tocItems,
@@ -131,13 +148,14 @@
   <div class="h-64">
     <textarea
       bind:value={text}
-      class="w-full h-full border outline-black focus:outline-dashed rounded p-2 font-mono text-sm"
+      class="w-full h-full border myfocus rounded p-2 font-mono text-sm"
     ></textarea>
   </div>
-  <div>
+  <div class="-ml-9">
     {#each $tocItems as item (item.id)}
       <TocItem
         {item}
+        showTooltip={item.id === firstItemWithChildrenId}
         onUpdate={updateTocItem}
         onDelete={deleteTocItem}
       />

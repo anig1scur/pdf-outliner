@@ -1,5 +1,6 @@
 <script>
-  import {ChevronRight, ChevronDown, Plus, Trash} from 'lucide-svelte';
+  import {ChevronRight, ChevronDown, Plus, Trash, CircleHelp, CircleHelpIcon} from 'lucide-svelte';
+  import Tooltip from '../components/Tooltip.svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
   import {maxPage} from '../stores';
@@ -7,6 +8,7 @@
   export let item;
   export let onUpdate;
   export let onDelete;
+  export let showTooltip;
 
   let editTitle = item.title;
 
@@ -51,6 +53,17 @@
 <div class="ml-1">
   <div class="flex items-center gap-2 my-2">
     {#if item.children?.length > 0}
+      {#if showTooltip}
+        <Tooltip
+          text={`This flag determines whether a PDF outline item is expanded or collapsed.
+
+Only a few PDF viewer support it. Chrome collapses all items by default.`}
+          position="right"
+          className="-ml-6"
+        >
+          <CircleHelpIcon size={16} />
+        </Tooltip>
+      {/if}
       <button
         on:click={handleToggle}
         class="p-1 hover:bg-gray-100 rounded"
@@ -70,14 +83,14 @@
       bind:value={editTitle}
       on:blur={handleUpdateTitle}
       on:keypress={(e) => e.key === 'Enter' && handleUpdateTitle()}
-      class="border rounded px-2 py-1 text-sm"
+      class="border rounded px-2 py-1 text-sm myfocus"
     />
 
     <input
       type="number"
       bind:value={item.to}
       on:input={handlePageChange}
-      class="w-16 border rounded px-2 py-1 text-sm"
+      class="w-16 border rounded px-2 py-1 text-sm myfocus"
       min="1"
     />
 
@@ -102,6 +115,7 @@
       {#each item.children as child (child.id)}
         <Self
           item={child}
+          showTooltip={false}
           onUpdate={handleUpdateChild}
           onDelete={handleDeleteChild}
         />

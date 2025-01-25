@@ -294,5 +294,5 @@
 </div>
 
 <svelte:head>
-  <title>PDF OUTLINER · Create PDF Outlines / Table of Contents in browser</title>
+  <title>PDF OUTLINER · Add or edit PDF Outlines / Table of Contents in browser</title>
 </svelte:head>
