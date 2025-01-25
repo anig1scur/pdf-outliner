@@ -1,5 +1,5 @@
 <script>
-  import {ChevronRight, ChevronDown, Plus, Trash, CircleHelp, CircleHelpIcon} from 'lucide-svelte';
+  import {ChevronRight, ChevronDown, Plus, Trash, CircleHelpIcon} from 'lucide-svelte';
   import Tooltip from '../components/Tooltip.svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';

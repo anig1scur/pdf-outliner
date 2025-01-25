@@ -13,7 +13,7 @@
 <div class="flex flex-col items-center mt-4 gap-6">
   <div class="text-gray-600 font-serif z-10 flex gap-3 items-start justify-self-start w-full ml-8">
     <span>{filename}</span>
-    <span class="text-gray-500"> | </span>
+    <span class="text-gray-300"> | </span>
     <span>{currentPage} / {totalPages}</span>
   </div>
 

@@ -4,11 +4,10 @@
   import ShortUniqueId from 'short-unique-id';
   import Logo from '../assets/logo-dark.svelte';
 
-  let text = `1 Food What I love 1
+  let text = `1 Food Categories I Love 1
 2 Fruits 2
 2.1 Strawberry 3
 2.2 Pineapple 4
-2.2 Mango 4
 3 Vegetables 5
 3.1 Basil 6
 3.2 Pumpkin 6
