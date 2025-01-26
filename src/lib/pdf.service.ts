@@ -34,10 +34,10 @@ export class PDFService {
 
     // Create TOC page
     const tocPage = newDoc.addPage([width, height]);
-    const regularFont = await newDoc.embedFont(StandardFonts.Helvetica);
-    const boldFont = await newDoc.embedFont(StandardFonts.HelveticaBold);
+    const regularFont = await newDoc.embedFont(StandardFonts.TimesRoman);
+    const boldFont = await newDoc.embedFont(StandardFonts.TimesRomanBold);
 
-    let yOffset = (height / 1.2) ;
+    let yOffset = (height / 3) * 2;
 
     // Draw TOC title
     tocPage.drawText('Table of Contents', {
@@ -99,7 +99,7 @@ export class PDFService {
 
       // Draw title
       const titleX = 50 + indent;
-      page.drawText(item.title, {
+      page.drawText(this.replaceUnsupportedCharacters(item.title, font), {
         x: titleX,
         y: yOffset,
         size: fontSize,
@@ -195,5 +195,28 @@ export class PDFService {
       canvasContext: canvas.getContext('2d'),
       viewport,
     }).promise;
+  }
+
+  /* Checks for each code point whether the given font supports it.
+   If not, tries to remove diacritics from said code point.
+   If that doesn't work either, replaces the unsupported character with '?'. */
+  replaceUnsupportedCharacters(string, font) {
+    const charSet = font.getCharacterSet();
+    const codePoints = [];
+    for (const codePointStr of string) {
+      const codePoint = codePointStr.codePointAt(0);
+      if (!charSet.includes(codePoint)) {
+        const withoutDiacriticsStr = codePointStr.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+        const withoutDiacritics = withoutDiacriticsStr.charCodeAt(0);
+        if (charSet.includes(withoutDiacritics)) {
+          codePoints.push(withoutDiacritics);
+        } else {
+          codePoints.push('?'.codePointAt(0));
+        }
+      } else {
+        codePoints.push(codePoint);
+      }
+    }
+    return String.fromCodePoint(...codePoints);
   }
 }

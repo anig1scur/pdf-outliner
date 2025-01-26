@@ -14,3 +14,4 @@ Add or edit PDF outlines / Table of contents in browser
 - [ ] AI prompt suggestion button
 - [ ] Analyse text to outline by Tab
 - [ ] Load outlines from PDF own
+- [ ] Responsive UI

@@ -14,7 +14,10 @@
 4 Junk Food 7`;
 
   function parseText(text) {
-    const lines = text.split('\n').filter((line) => line.trim());
+    const lines = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
     const items = [];
     const stack = [{level: 0, item: {children: items}}];
 
