@@ -1,7 +1,9 @@
 <script>
-  import TocItem from './TocItem.svelte';
-  import {tocItems, maxPage} from '../stores';
   import ShortUniqueId from 'short-unique-id';
+  import {CircleHelpIcon} from 'lucide-svelte';
+  import TocItem from './TocItem.svelte';
+  import Tooltip from './Tooltip.svelte';
+  import {tocItems, maxPage} from '../stores';
   import Logo from '../assets/logo-dark.svelte';
 
   let text = `1 Food Categories I Love 1
@@ -147,7 +149,27 @@
     <span class="text-3xl font-semibold">PDF Outliner</span>
     <Logo />
   </div>
-  <div class="h-64">
+  <div class="h-64 relative">
+    <div class="absolute -left-2">
+    <Tooltip
+      isTextCopiable
+      width="min-w-96"
+      text={`Prompt to get the target format:
+
+1 Food Categories I Love 1
+2 Fruits 2
+2.1 Strawberry 3
+
+organize the ToCs in below to the target format, remove useless comments
+
+\${YOUR_TOCS_COPY_FROM_ANYWHERE}`}
+      position="right"
+      className="-ml-6"
+    >
+      <CircleHelpIcon size={16} />
+    </Tooltip>
+  </div>
+
     <textarea
       bind:value={text}
       class="w-full h-full border myfocus leading-6 rounded p-2 text-sm"
