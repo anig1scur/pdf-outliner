@@ -109,7 +109,7 @@
   };
 </script>
 
-<div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] justify-between">
+<div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] font-mono justify-between">
   <TocEditor />
 
   <div class="flex flex-col flex-1">

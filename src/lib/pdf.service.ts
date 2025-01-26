@@ -37,7 +37,7 @@ export class PDFService {
     const regularFont = await newDoc.embedFont(StandardFonts.Helvetica);
     const boldFont = await newDoc.embedFont(StandardFonts.HelveticaBold);
 
-    let yOffset = (height / 3) * 2;
+    let yOffset = (height / 1.2) ;
 
     // Draw TOC title
     tocPage.drawText('Table of Contents', {

@@ -141,13 +141,13 @@
 
 <div class="flex flex-col gap-4">
   <div class="flex items-center gap-6">
-    <span class="text-3xl font-semibold font-mono">PDF Outliner</span>
+    <span class="text-3xl font-semibold">PDF Outliner</span>
     <Logo />
   </div>
   <div class="h-64">
     <textarea
       bind:value={text}
-      class="w-full h-full border myfocus rounded p-2 font-mono text-sm"
+      class="w-full h-full border myfocus leading-6 rounded p-2 text-sm"
     ></textarea>
   </div>
   <div class="-ml-9">
