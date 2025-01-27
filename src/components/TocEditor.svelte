@@ -4,7 +4,6 @@
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
-  import Logo from '../assets/logo-dark.svelte';
 
   let text = `1 Food Categories I Love 1
 2 Fruits 2
@@ -145,16 +144,12 @@
 </script>
 
 <div class="flex flex-col gap-4">
-  <div class="flex items-center gap-6">
-    <span class="text-3xl font-semibold">PDF Outliner</span>
-    <Logo />
-  </div>
   <div class="h-64 relative">
     <div class="absolute -left-2">
-    <Tooltip
-      isTextCopiable
-      width="min-w-96"
-      text={`Prompt to get the target format:
+      <Tooltip
+        isTextCopiable
+        width="min-w-96"
+        text={`Prompt to get the target format:
 
 1 Food Categories I Love 1
 2 Fruits 2
@@ -163,12 +158,12 @@
 organize the ToCs in below to the target format, remove useless comments
 
 \${YOUR_TOCS_COPY_FROM_ANYWHERE}`}
-      position="right"
-      className="-ml-6"
-    >
-      <CircleHelpIcon size={16} />
-    </Tooltip>
-  </div>
+        position="right"
+        className="-ml-6"
+      >
+        <CircleHelpIcon size={16} />
+      </Tooltip>
+    </div>
 
     <textarea
       bind:value={text}

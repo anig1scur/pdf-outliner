@@ -30,16 +30,16 @@
 </script>
 
 <div class={'relative inline-block ' + className}>
-  <div
+  <button
     class="cursor-pointer"
     on:mouseenter={setVisible}
     on:mouseleave={delay(setInVisible)}
   >
     <slot />
-  </div>
+  </button>
 
   {#if isVisible}
-    <div
+    <button
       on:mouseenter={setVisible}
       on:mouseleave={delay(setInVisible)}
       on:click={isTextCopiable ? copyText : null}
@@ -57,6 +57,6 @@
         ${position === 'left' ? 'right-[-4px] top-1/2 transform -translate-y-1/2' : ''}
         ${position === 'right' ? 'left-[-4px] top-1/2 transform -translate-y-1/2' : ''}`}
       ></span>
-    </div>
+    </button>
   {/if}
 </div>

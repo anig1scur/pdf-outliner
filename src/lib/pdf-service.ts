@@ -1,5 +1,7 @@
+import {get} from 'svelte/store';
 import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
+import {showNumberedList} from '../stores';
 
 export interface PDFState {
   doc: PDFDocument | null;
@@ -74,32 +76,39 @@ export class PDFService {
       regularFont: any;
       boldFont: any;
       pageWidth: number;
+      prefix?: string;
     }
   ) {
     let yOffset = startY;
     const {regularFont, boldFont, pageWidth} = options;
+    let {prefix} = options;
 
-    for (const item of items) {
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       if (yOffset < 50) {
         page = doc.addPage([pageWidth, page.getHeight()]);
         yOffset = page.getHeight() - 50;
       }
 
-      const indent = level * 20;
       const isFirstLevel = level === 0;
 
+      const indent = level * 20;
       const fontSize = isFirstLevel ? 11 : 9;
       const font = isFirstLevel ? boldFont : regularFont;
       const color = isFirstLevel ? rgb(0, 0, 0) : rgb(0.3, 0.3, 0.3);
       const lineSpacing = fontSize + (isFirstLevel ? 8 : 6);
 
-      if (isFirstLevel) {
-        yOffset -= 6;
-      }
+      // Calculate prefix
+      const snl = get(showNumberedList);
+      const itemPrefix = snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
+      const title = `${itemPrefix} ${item.title}`;
 
       // Draw title
       const titleX = 50 + indent;
-      page.drawText(this.replaceUnsupportedCharacters(item.title, font), {
+      if (isFirstLevel) {
+        yOffset -= 6;
+      }
+      page.drawText(this.replaceUnsupportedCharacters(title, font), {
         x: titleX,
         y: yOffset,
         size: fontSize,
@@ -108,23 +117,25 @@ export class PDFService {
         maxWidth: pageWidth - 100 - indent,
       });
 
-      if (isFirstLevel) {
-        const dotsXStart = titleX + item.title.length * (fontSize * 0.5) + 10;
-        const dotsXEnd = page.getWidth() - 65;
-        for (let x = dotsXStart; x < dotsXEnd; x += 5) {
-          page.drawText('.', {
-            x,
-            y: yOffset - 1,
-            size: fontSize * 0.6,
-            font: regularFont,
-            color: rgb(0.2, 0.2, 0.2),
-          });
-        }
+      // Draw dots
+      const titleWidth = font.widthOfTextAtSize(title, fontSize);
+      const dotsXStart = titleX + titleWidth + 10;
+      const dotsXEnd = pageWidth - 65;
+
+      for (let x = dotsXStart; x < dotsXEnd; x += 5) {
+        page.drawText('.', {
+          x,
+          y: yOffset,
+          size: fontSize * 0.6,
+          font: regularFont,
+          color: rgb(0.5, 0.5, 0.5),
+        });
       }
 
       // Draw page number
       const pageNum = String(item.to);
       const pageNumWidth = font.widthOfTextAtSize(pageNum, fontSize);
+
       page.drawText(pageNum, {
         x: pageWidth - 50 - pageNumWidth,
         y: yOffset,
@@ -143,13 +154,16 @@ export class PDFService {
       yOffset -= lineSpacing;
 
       if (item.children?.length) {
-        yOffset = await this.drawTocItems(doc, page, item.children, pages, level + 1, yOffset, options);
+        // Pass the current item's prefix to children
+        yOffset = await this.drawTocItems(doc, page, item.children, pages, level + 1, yOffset, {
+          ...options,
+          prefix: itemPrefix,
+        });
       }
     }
 
     return yOffset;
   }
-
   private createLinkAnnotation(
     doc: PDFDocument,
     page: any,

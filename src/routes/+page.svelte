@@ -6,10 +6,11 @@
 
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
+  import Logo from '../assets/logo-dark.svelte';
 
   import {setOutline} from '../lib/pdf-outliner';
-  import {PDFService, type PDFState} from '../lib/pdf.service';
-  import {tocItems, pdfService} from '../stores';
+  import {PDFService, type PDFState} from '../lib/pdf-service';
+  import {tocItems, pdfService, showNumberedList} from '../stores';
   import {debounce} from '../lib';
 
   let isDragging = false;
@@ -18,7 +19,6 @@
     doc: null,
     newDoc: null,
     filename: '',
-    instance: null,
     currentPage: 1,
     totalPages: 0,
     scale: 1.0,
@@ -58,6 +58,7 @@
 
   const debouncedUpdatePDF = debounce(updatePDF, 300);
   tocItems.subscribe(debouncedUpdatePDF);
+  showNumberedList.subscribe(debouncedUpdatePDF);
 
   const handleFileDrop = async (e: CustomEvent) => {
     const {acceptedFiles} = e.detail;
@@ -110,8 +111,22 @@
 </script>
 
 <div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] font-mono justify-between">
-  <TocEditor />
-
+  <div>
+    <div class="flex items-center gap-6">
+      <span class="text-3xl font-semibold">PDF Outliner</span>
+      <Logo />
+    </div>
+    <div class="border-dashed border-gray-100 rounded border-2 my-4 p-2">
+      <input
+        bind:checked={$showNumberedList}
+        type="checkbox"
+        id="show_numbered_list"
+        name="show_numbered_list"
+      />
+      <label for="show_numbered_list">with numbered list</label>
+    </div>
+    <TocEditor />
+  </div>
   <div class="flex flex-col flex-1">
     <div class="relative h-fit pb-8 min-h-[85vh]">
       <Dropzone
