@@ -1,5 +1,5 @@
 import {get} from 'svelte/store';
-import {PDFDocument, PDFName, rgb, StandardFonts} from 'pdf-lib';
+import {PDFDocument, PDFName, PDFPage, PDFFont, rgb, StandardFonts} from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import {showNumberedList} from '../stores';
 
@@ -34,7 +34,7 @@ export class PDFService {
     // Copy all pages from source document
     const copiedPages = await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
 
-    // Create TOC page
+    // Create first TOC page
     const tocPage = newDoc.addPage([width, height]);
     const regularFont = await newDoc.embedFont(StandardFonts.TimesRoman);
     const boldFont = await newDoc.embedFont(StandardFonts.TimesRomanBold);
@@ -57,6 +57,7 @@ export class PDFService {
       regularFont,
       boldFont,
       pageWidth: width,
+      pageHeight: height,
     });
 
     // Add remaining pages
@@ -67,31 +68,35 @@ export class PDFService {
 
   private async drawTocItems(
     doc: PDFDocument,
-    page: any,
+    currentPage: PDFPage,
     items: TocItem[],
-    pages: any[],
+    pages: PDFPage[],
     level: number,
     startY: number,
     options: {
-      regularFont: any;
-      boldFont: any;
+      regularFont: PDFFont;
+      boldFont: PDFFont;
       pageWidth: number;
+      pageHeight: number;
       prefix?: string;
     }
   ) {
     let yOffset = startY;
-    const {regularFont, boldFont, pageWidth} = options;
+    const {regularFont, boldFont, pageWidth, pageHeight} = options;
     let {prefix} = options;
+    let currentWorkingPage = currentPage;
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (yOffset < 50) {
-        page = doc.addPage([pageWidth, page.getHeight()]);
-        yOffset = page.getHeight() - 50;
+
+      // Check if we need a new page
+      // Add more space for margin at bottom
+      if (yOffset < 60) {
+        currentWorkingPage = doc.addPage([pageWidth, pageHeight]);
+        yOffset = pageHeight - 60;
       }
 
       const isFirstLevel = level === 0;
-
       const indent = level * 20;
       const fontSize = isFirstLevel ? 11 : 9;
       const font = isFirstLevel ? boldFont : regularFont;
@@ -110,7 +115,7 @@ export class PDFService {
       }
 
       title = this.replaceUnsupportedCharacters(title, font);
-      page.drawText(title, {
+      currentWorkingPage.drawText(title, {
         x: titleX,
         y: yOffset,
         size: fontSize,
@@ -125,7 +130,7 @@ export class PDFService {
       const dotsXEnd = pageWidth - 65;
 
       for (let x = dotsXStart; x < dotsXEnd; x += 5) {
-        page.drawText('.', {
+        currentWorkingPage.drawText('.', {
           x,
           y: yOffset,
           size: fontSize * 0.6,
@@ -138,7 +143,7 @@ export class PDFService {
       const pageNum = String(item.to);
       const pageNumWidth = font.widthOfTextAtSize(pageNum, fontSize);
 
-      page.drawText(pageNum, {
+      currentWorkingPage.drawText(pageNum, {
         x: pageWidth - 50 - pageNumWidth,
         y: yOffset,
         size: fontSize,
@@ -147,7 +152,7 @@ export class PDFService {
       });
 
       // Create link annotation
-      this.createLinkAnnotation(doc, page, {
+      this.createLinkAnnotation(doc, currentWorkingPage, {
         pageNum: item.to,
         pages,
         rect: [titleX, yOffset - 2, pageWidth - 50, yOffset + fontSize],
@@ -157,15 +162,22 @@ export class PDFService {
 
       if (item.children?.length) {
         // Pass the current item's prefix to children
-        yOffset = await this.drawTocItems(doc, page, item.children, pages, level + 1, yOffset, {
+        const childResult = await this.drawTocItems(doc, currentWorkingPage, item.children, pages, level + 1, yOffset, {
           ...options,
           prefix: itemPrefix,
         });
+        // Update current working page and yOffset from child results
+        currentWorkingPage = childResult.currentPage;
+        yOffset = childResult.yOffset;
       }
     }
 
-    return yOffset;
+    return {
+      currentPage: currentWorkingPage,
+      yOffset,
+    };
   }
+
   private createLinkAnnotation(
     doc: PDFDocument,
     page: any,

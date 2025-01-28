@@ -8,7 +8,7 @@ Add or edit PDF outlines / Table of contents in browser
 
 ## Todo
 
-- [ ] Fix paging bug
+- [x] Fix paging bug
 - [x] ToC with number order
 - [ ] ToC style config
 - [x] AI prompt suggestion button
