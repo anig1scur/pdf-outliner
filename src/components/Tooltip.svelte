@@ -43,7 +43,7 @@
       on:mouseenter={setVisible}
       on:mouseleave={delay(setInVisible)}
       on:click={isTextCopiable ? copyText : null}
-      class={`whitespace-pre-wrap ${width} ${isTextCopiable ? 'cursor-copy' : ''} bg-opacity-60 backdrop-blur-sm absolute z-10 px-3 py-2 text-sm text-white bg-black rounded shadow-lg
+      class={`text-left whitespace-pre-wrap ${width} ${isTextCopiable ? 'cursor-copy' : ''} bg-opacity-60 backdrop-blur-sm absolute z-10 px-3 py-2 text-sm text-white bg-black rounded shadow-lg
       ${position === 'top' ? 'bottom-full left-1/2 transform -translate-x-1/2 mb-2' : ''}
       ${position === 'bottom' ? 'top-full left-1/2 transform -translate-x-1/2 mt-2' : ''}
       ${position === 'left' ? 'right-full top-1/2 transform -translate-y-1/2 mr-2' : ''}

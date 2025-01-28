@@ -138,7 +138,7 @@
         on:dragleave={() => (isDragging = false)}
       >
         <div
-          class="w-full absolute inset-0 p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors duration-200 {pdfState.instance
+          class="max-w-5xl w-full absolute inset-0 p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors duration-200 {pdfState.instance
             ? 'bg-transparent hover:bg-white/50'
             : ''}"
           class:border-blue-500={isDragging}
@@ -146,7 +146,7 @@
         >
           {#if !pdfState.instance || isDragging}
             <div class="absolute text-stone-500 inset-0 flex items-center justify-center">
-              <p>
+              <p class="px-2">
                 {isDragging ? 'Drop your PDF file here...' : 'Drag and drop your PDF file here, or click to select'}
               </p>
             </div>

@@ -101,14 +101,16 @@ export class PDFService {
       // Calculate prefix
       const snl = get(showNumberedList);
       const itemPrefix = snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
-      const title = `${itemPrefix} ${item.title}`;
+      let title = `${itemPrefix} ${item.title}`;
 
       // Draw title
       const titleX = 50 + indent;
       if (isFirstLevel) {
         yOffset -= 6;
       }
-      page.drawText(this.replaceUnsupportedCharacters(title, font), {
+
+      title = this.replaceUnsupportedCharacters(title, font);
+      page.drawText(title, {
         x: titleX,
         y: yOffset,
         size: fontSize,
