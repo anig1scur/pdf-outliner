@@ -3,6 +3,11 @@
 @import 'tailwindcss/utilities';
 
 @layer components {
+
+  input {
+    @apply outline-none;
+  }
+
   .btn {
     @apply px-4 py-2 rounded-md border border-black bg-white text-black text-sm transition duration-200
   }

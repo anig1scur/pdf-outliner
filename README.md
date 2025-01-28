@@ -10,7 +10,7 @@ Add or edit PDF outlines / Table of contents in browser
 
 - [x] Fix paging bug
 - [x] ToC with number order
-- [ ] ToC style config
+- [x] ToC style config
 - [x] AI prompt suggestion button
 - [ ] Analyse text to outline by Tab
 - [ ] Load outlines from PDF own

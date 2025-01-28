@@ -10,14 +10,30 @@
 
   import {setOutline} from '../lib/pdf-outliner';
   import {PDFService, type PDFState} from '../lib/pdf-service';
-  import {tocItems, pdfService, showNumberedList} from '../stores';
+  import {tocItems, pdfService, type TocConfig} from '../stores';
   import {debounce} from '../lib';
+
+  import {tocConfig} from '../stores';
+
+  let config: TocConfig;
+  tocConfig.subscribe((value) => (config = value));
+
+  function updateTocField(fieldPath, value) {
+    tocConfig.update((cfg) => {
+      const keys = fieldPath.split('.');
+      let target = cfg;
+      keys.slice(0, -1).forEach((key) => (target = target[key]));
+      target[keys[keys.length - 1]] = value;
+      return cfg;
+    });
+  }
 
   let isDragging = false;
 
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
+    instance: null,
     filename: '',
     currentPage: 1,
     totalPages: 0,
@@ -58,7 +74,7 @@
 
   const debouncedUpdatePDF = debounce(updatePDF, 300);
   tocItems.subscribe(debouncedUpdatePDF);
-  showNumberedList.subscribe(debouncedUpdatePDF);
+  tocConfig.subscribe(debouncedUpdatePDF);
 
   const handleFileDrop = async (e: CustomEvent) => {
     const {acceptedFiles} = e.detail;
@@ -116,19 +132,134 @@
       <span class="text-3xl font-semibold">PDF Outliner</span>
       <Logo />
     </div>
-    <div class="border-dashed border-gray-100 rounded border-2 my-4 p-2">
-      <input
-        bind:checked={$showNumberedList}
-        type="checkbox"
-        id="show_numbered_list"
-        name="show_numbered_list"
-      />
-      <label for="show_numbered_list">with numbered list</label>
+    <div class="border-dashed border-gray-100 rounded border-2 p-2 my-4">
+      <div class="border-dashed border-gray-100 rounded border-2 my-1 p-2">
+        <input
+          bind:checked={config.showNumberedList}
+          type="checkbox"
+          id="show_numbered_list"
+          on:change={(e) => updateTocField('showNumberedList', e.target.checked)}
+        />
+        <label for="show_numbered_list">with numbered list</label>
+      </div>
+
+      <div class="border-dashed border-gray-100 rounded border-2 my-2 p-2 flex gap-6">
+        <label
+          class="whitespace-nowrap"
+          for="page_offset">Page offset</label
+        >
+        <input
+          type="number"
+          id="page_offset"
+          bind:value={config.pageOffset}
+          on:input={(e) => updateTocField('pageOffset', parseInt(e.target.value, 10) || 0)}
+          class=" w-[80%]"
+        />
+      </div>
+
+      <div class="flex">
+        <div class="w-36 inline-block mr-3">
+          <h3 class="my-4 font-bold">First Level</h3>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2 mr-2 w-32">
+            <label for="first_level_font_size">Font Size</label>
+            <input
+              type="number"
+              id="first_level_font_size"
+              bind:value={config.firstLevel.fontSize}
+              on:input={(e) => updateTocField('firstLevel.fontSize', parseInt(e.target.value, 10) || 0)}
+              class="w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2 mr-2 w-32">
+            <label for="first_level_dot_leader">Dot Leader</label>
+            <input
+              type="text"
+              id="first_level_dot_leader"
+              bind:value={config.firstLevel.dotLeader}
+              on:input={(e) => updateTocField('firstLevel.dotLeader', e.target.value)}
+              class=" w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2 mr-2 w-32">
+            <label for="first_level_color">Color</label>
+            <input
+              type="color"
+              id="first_level_color"
+              bind:value={config.firstLevel.color}
+              on:input={(e) => updateTocField('firstLevel.color', e.target.value)}
+              class=" w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2 mr-2 w-32">
+            <label for="first_level_line_spacing">Spacing</label>
+            <input
+              type="number"
+              step="0.1"
+              id="first_level_line_spacing"
+              bind:value={config.firstLevel.lineSpacing}
+              on:input={(e) => updateTocField('firstLevel.lineSpacing', parseFloat(e.target.value) || 1)}
+              class=" w-[80%]"
+            />
+          </div>
+        </div>
+        <div class="w-36 inline-block">
+          <h3 class="my-4 font-bold">Other Levels</h3>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2">
+            <label for="other_levels_font_size">Font Size</label>
+            <input
+              type="number"
+              id="other_levels_font_size"
+              bind:value={config.otherLevels.fontSize}
+              on:input={(e) => updateTocField('otherLevels.fontSize', parseInt(e.target.value, 10) || 0)}
+              class=" w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2">
+            <label for="other_levels_dot_leader">Dot Leader</label>
+            <input
+              type="text"
+              id="other_levels_dot_leader"
+              bind:value={config.otherLevels.dotLeader}
+              on:input={(e) => updateTocField('otherLevels.dotLeader', e.target.value)}
+              class=" w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2">
+            <label for="other_levels_color">Color</label>
+            <input
+              type="color"
+              id="other_levels_color"
+              bind:value={config.otherLevels.color}
+              on:input={(e) => updateTocField('otherLevels.color', e.target.value)}
+              class=" w-[80%]"
+            />
+          </div>
+
+          <div class="border-dashed border-gray-100 rounded border-2 my-3 p-2">
+            <label for="other_levels_line_spacing">Spacing</label>
+            <input
+              type="number"
+              step="0.1"
+              id="other_levels_line_spacing"
+              bind:value={config.otherLevels.lineSpacing}
+              on:input={(e) => updateTocField('otherLevels.lineSpacing', parseFloat(e.target.value) || 1)}
+              class=" w-[80%]"
+            />
+          </div>
+        </div>
+      </div>
     </div>
     <TocEditor />
   </div>
   <div class="flex flex-col flex-1">
-    <div class="relative h-fit pb-8 min-h-[85vh]">
+    <div class="h-fit pb-8 min-h-[85vh] top-5 sticky">
       <Dropzone
         containerClasses={pdfState.instance ? '' : 'h-full'}
         accept=".pdf"
