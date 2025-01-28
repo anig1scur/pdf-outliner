@@ -167,7 +167,7 @@ organize the ToCs in below to the target format, remove useless comments
 
     <textarea
       bind:value={text}
-      class="w-full h-full border myfocus leading-6 rounded p-2 text-sm"
+      class="w-full h-full border myfocus leading-6 rounded p-2 text-sm border-gray-100"
     ></textarea>
   </div>
   <div class="-ml-9">
