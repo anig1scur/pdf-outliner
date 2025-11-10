@@ -5,15 +5,16 @@
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
 
-  let text = `1 Food Categories I Love 1
-2 Fruits 2
-2.1 Strawberry 3
-2.2 Pineapple 4
-3 Vegetables 5
-3.1 Basil 6
-3.2 Pumpkin 6
-4 Junk Food 7`;
+//   let text = `1 Food Categories I Love 1
+// 2 Fruits 2
+// 2.1 Strawberry 3
+// 2.2 Pineapple 4
+// 3 Vegetables 5
+// 3.1 Basil 6
+// 3.2 Pumpkin 6
+// 4 Junk Food 7`;
 
+let text = ``;
   function parseText(text) {
     const lines = text
       .split('\n')

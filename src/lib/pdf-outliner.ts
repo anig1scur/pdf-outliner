@@ -1,5 +1,4 @@
 // from https://github.com/marp-team/marp-cli/blob/9e0eff5f9d9530577458e93769cd2b0000958a7d/src/utils/pdf.ts
-
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type {PDFDocument, PDFRef} from 'pdf-lib';
 
@@ -57,8 +56,13 @@ const getOpeningCount = (outlines: readonly PDFOutline[]) => {
   return count;
 };
 
-export const setOutline = async (doc: PDFDocument, outlines: readonly PDFOutline[]) => {
-
+// <--- MODIFIED: Added pageNumberingOffset and addedPagesCount parameters
+export const setOutline = async (
+  doc: PDFDocument,
+  outlines: readonly PDFOutline[],
+  pageNumberingOffset: number,
+  addedPagesCount: number
+) => {
   const rootRef = doc.context.nextRef();
   const refMap = new WeakMap<PDFOutline, PDFRef>();
 
@@ -78,6 +82,21 @@ export const setOutline = async (doc: PDFDocument, outlines: readonly PDFOutline
     return refs;
   })();
 
+  // <--- ADDED: Helper function to calculate the final physical page index
+  const getFinalPageIndex = (labeledPageNum: number): number => {
+    // 1. Start with the labeled page number (e.g., "1" from the ToC)
+    // 2. Add the user-confirmed offset (e.g., physical page 5 is labeled "1" -> offset is 4)
+    // 3. Add the number of new physical ToC pages we inserted at the front
+    const finalPageNum = labeledPageNum + pageNumberingOffset + addedPagesCount;
+
+    // Convert 1-based page number to 0-based index
+    const finalIndex = Math.max(0, finalPageNum - 1);
+
+    // Clamp the index to be within the valid range of the document's pages
+    return Math.min(finalIndex, pageRefs.length - 1);
+  };
+  // --->
+
   // Outlines
   const createOutline = (outlines: readonly PDFOutline[], parent: PDFRef) => {
     const {length} = outlines;
@@ -88,17 +107,29 @@ export const setOutline = async (doc: PDFDocument, outlines: readonly PDFOutline
 
       const destOrAction = (() => {
         if (typeof outline.to === 'string') {
-          // URL
+          // URL (no change)
           return {A: {S: 'URI', URI: PDFHexString.fromText(outline.to)}};
         } else if (typeof outline.to === 'number') {
-          return {Dest: [pageRefs[outline.to], 'Fit']};
+          // <--- MODIFIED: Use helper function
+          const finalIndex = getFinalPageIndex(outline.to);
+          return {Dest: [pageRefs[finalIndex], 'Fit']};
+          // --->
         } else if (Array.isArray(outline.to)) {
-          const page = doc.getPage(outline.to[0]);
+          // <--- MODIFIED: Use helper function
+          const finalIndex = getFinalPageIndex(outline.to[0]);
+          const page = doc.getPage(finalIndex); // Use correct index
+          // --->
           const width = page.getWidth();
           const height = page.getHeight();
 
           return {
-            Dest: [pageRefs[outline.to[0]], 'XYZ', width * outline.to[1], height * outline.to[2], null],
+            Dest: [
+              pageRefs[finalIndex], // <--- MODIFIED: Use correct index
+              'XYZ',
+              width * outline.to[1],
+              height * outline.to[2],
+              null,
+            ],
           };
         }
         return {};
