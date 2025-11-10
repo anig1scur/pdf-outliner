@@ -10,7 +10,7 @@
   import Logo from '../assets/logo-dark.svelte';
 
   import {setOutline} from '../lib/pdf-outliner';
-  import {PDFService, type PDFState} from '../lib/pdf-service';
+  import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {tocItems, pdfService, type TocConfig} from '../stores';
   import {debounce} from '../lib';
 
@@ -37,6 +37,7 @@
   }
 
   let isDragging = false;
+  let isAiLoading = false; // [新增] AI 加载状态
 
   let pdfState: PDFState = {
     doc: null,
@@ -53,27 +54,25 @@
   });
 
   $: {
-    $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+    if (pdfState.instance) {
+      $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+    }
   }
 
   const updatePDF = async () => {
     if (!pdfState.doc) return;
 
     try {
-      // Create new PDF with TOC
       const newDoc = await $pdfService.createTocPage(pdfState.doc, $tocItems);
 
       setOutline(newDoc, $tocItems);
-      // Convert to viewable format
       const pdfBytes = await newDoc.save();
       const loadingTask = pdfjsLib.getDocument(pdfBytes);
       pdfState.instance = await loadingTask.promise;
       pdfState.totalPages = pdfState.instance.numPages;
 
-      // Render first page
       await $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
 
-      // Store for export
       pdfState.newDoc = newDoc;
     } catch (error) {
       console.error('Error updating PDF:', error);
@@ -96,13 +95,12 @@
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
 
-        // Load PDF document
         pdfState.doc = await PDFDocument.load(uint8Array);
 
-        // Create viewable instance
         const loadingTask = pdfjsLib.getDocument(uint8Array);
         pdfState.instance = await loadingTask.promise;
         pdfState.totalPages = pdfState.instance.numPages;
+        pdfState.currentPage = 1; // 重置到第一页
 
         await updatePDF();
 
@@ -132,6 +130,95 @@
       console.error('Error exporting PDF:', error);
     }
   };
+  
+  /**
+   * [新增] AI 生成 ToC 的辅助函数
+   * 将 AI 返回的扁平列表转换为嵌套树结构
+   */
+  function buildTree(items: { title: string; level: number; page: number }[]): TocItem[] {
+    const root: TocItem[] = [];
+    const stack: { node: TocItem; level: number }[] = [];
+    let idCounter = 0;
+
+    items.forEach(item => {
+      const newItem: TocItem = {
+        id: `ai-${idCounter++}`,
+        title: item.title,
+        to: item.page,
+        children: [],
+        open: true,
+      };
+
+      const level = item.level;
+
+      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+        stack.pop();
+      }
+
+      if (stack.length === 0) {
+        root.push(newItem);
+      } else {
+        const parent = stack[stack.length - 1].node;
+        parent.children = parent.children || [];
+        parent.children.push(newItem);
+      }
+      stack.push({ node: newItem, level: level });
+    });
+    return root;
+  }
+
+  /**
+   * [新增] 触发 AI 分析当前页面
+   */
+  const generateTocFromAI = async () => {
+    if (!pdfState.instance || !$pdfService) {
+      alert('Please load a PDF first.');
+      return;
+    }
+
+    isAiLoading = true;
+    try {
+      // 1. 从 service 获取当前页的 Base64 图像
+      const imageBase64 = await $pdfService.getPageAsImage(
+        pdfState.instance,
+        pdfState.currentPage,
+        1.5 // 提高分辨率以保证 OCR 质量
+      );
+
+      // 2. 发送到 Vercel Serverless API
+      const response = await fetch('/api/process-toc', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({image: imageBase64}),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'AI processing failed.');
+      }
+
+      // 3. 获取 AI 解析的 JSON
+      const aiResult: { title: string; level: number; page: number }[] = await response.json();
+
+      if (!aiResult || aiResult.length === 0) {
+        alert('AI could not find a Table of Contents on this page.');
+        return;
+      }
+
+      // 4. 将扁平数据转换为嵌套树结构
+      const nestedTocItems = buildTree(aiResult);
+
+      // 5. 更新 store，debouncedUpdatePDF 会自动触发
+      tocItems.set(nestedTocItems);
+
+    } catch (error) {
+      console.error('Error generating ToC from AI:', error);
+      alert(`Error: ${error.message}`);
+    } finally {
+      isAiLoading = false;
+    }
+  };
+
 </script>
 
 <div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] font-mono justify-between">
@@ -285,6 +372,18 @@
       {/if}
     </div>
 
+    <button
+      class="btn w-full my-2 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
+      on:click={generateTocFromAI}
+      disabled={isAiLoading || !pdfState.instance}
+    >
+      {#if isAiLoading}
+        <span>Analyzing Page {pdfState.currentPage}...</span>
+      {:else}
+        <span>✨ Generate ToC from Current Page (AI)</span>
+      {/if}
+    </button>
+
     <TocEditor />
   </div>
   <div class="flex flex-col flex-1">
@@ -318,6 +417,7 @@
         <button
           class="absolute top-3 right-3 z-20 btn"
           on:click={exportPDF}
+          disabled={!pdfState.newDoc}
         >
           Generate Outlined PDF
         </button>

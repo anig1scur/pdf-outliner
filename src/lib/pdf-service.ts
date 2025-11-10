@@ -31,17 +31,14 @@ export class PDFService {
     const [firstPage] = sourceDoc.getPages();
     const {width, height} = firstPage.getSize();
 
-    // Copy all pages from source document
     const copiedPages = await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
 
-    // Create first TOC page
     const tocPage = newDoc.addPage([width, height]);
     const regularFont = await newDoc.embedFont(StandardFonts.TimesRoman);
     const boldFont = await newDoc.embedFont(StandardFonts.TimesRomanBold);
 
     let yOffset = (height / 3) * 2;
 
-    // Draw TOC title
     tocPage.drawText('Table of Contents', {
       x: 50,
       y: yOffset,
@@ -52,7 +49,6 @@ export class PDFService {
 
     yOffset -= 38;
 
-    // Draw TOC items
     await this.drawTocItems(newDoc, tocPage, items, copiedPages, 0, yOffset, {
       regularFont,
       boldFont,
@@ -60,7 +56,6 @@ export class PDFService {
       pageHeight: height,
     });
 
-    // Add remaining pages
     copiedPages.forEach((page) => newDoc.addPage(page));
 
     return newDoc;
@@ -91,13 +86,11 @@ export class PDFService {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      // Check if we need a new page
       if (yOffset < 60) {
         currentWorkingPage = doc.addPage([pageWidth, pageHeight]);
         yOffset = pageHeight - 60;
       }
 
-      // Fetch level-specific config
       const levelConfig = isFirstLevel ? config.firstLevel : config.otherLevels;
       const indentation = level * 20;
       const {fontSize, dotLeader, color, lineSpacing} = levelConfig;
@@ -111,12 +104,10 @@ export class PDFService {
 
       const lineHeight = fontSize * lineSpacing;
 
-      // Calculate prefix
       const snl = config.showNumberedList;
       const itemPrefix = snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
       let title = `${itemPrefix} ${item.title}`;
 
-      // Draw title
       const titleX = 50 + indentation;
       if (isFirstLevel) {
         yOffset -= 8;
@@ -131,7 +122,6 @@ export class PDFService {
         maxWidth: pageWidth - 100 - indentation,
       });
 
-      // Draw dots
       if (dotLeader) {
         const titleWidth = font.widthOfTextAtSize(title, fontSize);
         const dotsXStart = titleX + titleWidth + 10;
@@ -148,7 +138,6 @@ export class PDFService {
         }
       }
 
-      // Draw page number
       const pageNum = String(item.to);
       const pageNumWidth = font.widthOfTextAtSize(pageNum, fontSize);
 
@@ -160,7 +149,6 @@ export class PDFService {
         color: parsedColor,
       });
 
-      // Create link annotation
       this.createLinkAnnotation(doc, currentWorkingPage, {
         pageNum: item.to + config.pageOffset,
         pages,
@@ -222,21 +210,52 @@ export class PDFService {
     const page = await pdf.getPage(pageNum);
     const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
     const viewport = page.getViewport({scale});
-    if (!viewport) {
+    if (!viewport || !canvas) {
+      return;
+    }
+    const context = canvas.getContext('2d');
+    if (!context) {
       return;
     }
     canvas.height = viewport.height;
     canvas.width = viewport.width;
 
     await page.render({
-      canvasContext: canvas.getContext('2d'),
+      canvasContext: context,
       viewport,
     }).promise;
   }
+  
+  /**
+   * [新增] 渲染指定页面到隐藏的 canvas 并返回 Base64 图像
+   */
+  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5): Promise<string> {
+    if (!pdf) {
+      throw new Error('PDF instance is not available.');
+    }
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({scale});
 
-  /* Checks for each code point whether the given font supports it.
-   If not, tries to remove diacritics from said code point.
-   If that doesn't work either, replaces the unsupported character with '?'. */
+    // 创建一个离屏 canvas
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+      throw new Error('Failed to get canvas context.');
+    }
+
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    await page.render({
+      canvasContext: context,
+      viewport,
+    }).promise;
+
+    // 返回 PNG 格式的 Base64 字符串
+    return canvas.toDataURL('image/png');
+  }
+
   replaceUnsupportedCharacters(string, font) {
     const charSet = font.getCharacterSet();
     const codePoints = [];

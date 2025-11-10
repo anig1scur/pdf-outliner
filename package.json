@@ -24,6 +24,8 @@
 		"vite": "^6.0.0"
 	},
 	"dependencies": {
+		"@google/generative-ai": "^0.24.1",
+		"@sveltejs/adapter-vercel": "^6.1.1",
 		"lucide-svelte": "^0.474.0",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^4.10.38",
