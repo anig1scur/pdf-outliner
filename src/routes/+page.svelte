@@ -759,9 +759,9 @@
           <h3 class="font-bold mb-2">ToC Pages Selection</h3>
           <p class="text-sm text-gray-600 mb-3">
             {#if !isSettingStart}
-              Click on the grid to select the End Page
+              Click the grid to select the End Page
             {:else}
-              Click on the grid to select the Start Page
+              Click the grid to select the Start Page
             {/if}
           </p>
 
@@ -812,7 +812,15 @@
       </div>
     {/if}
 
-    <TocEditor on:hoveritem={handleTocItemHover} />
+    <TocEditor 
+    on:hoveritem={handleTocItemHover}
+    
+    currentPage={pdfState.currentPage}
+    isPreview={isPreviewMode}
+    pageOffset={config.pageOffset}
+    insertAtPage={config.insertAtPage}
+    tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
+  />
   </div>
 
   <div class="flex flex-col w-[70%]">
@@ -898,8 +906,11 @@
     class="fixed inset-0 bg-black bg-opacity-75 flex flex-col items-center justify-center z-50 text-white font-mono"
     transition:fade={{ duration: 200 }}
   >
-    <div class="mb-4 text-xl">
+    <div class="mb-4 text-xl text-center">
       <span>Extracting ToCs From Pages {tocStartPage} to {tocEndPage}...</span>
+      <br />
+      <br />
+      <span>This may take minutes</span>
     </div>
     <div
       class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"
@@ -929,15 +940,15 @@
       </div>
 
       <p class="my-4 text-gray-700">
-        AI found:
+        AI found
         <strong class="text-black">{firstTocItem.title}</strong>
         on
-        <strong class="text-black">Page {firstTocItem.to}</strong>.
+        <strong class="text-black">Page {firstTocItem.to}</strong>
       </p>
       <p class="mb-2 text-gray-700">
-        Please select the
+        Select the
         <strong>actual physical page</strong>
-        where this section actually begins. Use the preview to confirm.
+        where the section actually begins
       </p>
 
       <div class="flex gap-4 items-center my-4">

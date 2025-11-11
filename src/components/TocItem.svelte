@@ -1,42 +1,48 @@
 <script>
-  import {
-    ChevronRight,
-    ChevronDown,
-    Plus,
-    Trash,
-    CircleHelpIcon,
-  } from 'lucide-svelte';
+  import {ChevronRight, ChevronDown, Plus, Trash, CircleHelpIcon} from 'lucide-svelte';
   import Tooltip from '../components/Tooltip.svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
-  import { maxPage } from '../stores';
-  import { createEventDispatcher } from 'svelte';
+  import {maxPage} from '../stores';
+  import {createEventDispatcher} from 'svelte';
+
   export let item;
   export let onUpdate;
   export let onDelete;
   export let showTooltip;
+  export let currentPage = 1;
+  export let isPreview = false;
+  export let pageOffset = 0;
+  export let insertAtPage = 2;
+  export let tocPageCount = 0;
 
   const dispatch = createEventDispatcher();
-  
+
   $: editTitle = item ? item.title : '';
+
+  $: physicalContentPage = item.to + pageOffset;
+  $: targetPageInPreview =
+    physicalContentPage >= insertAtPage ? physicalContentPage + tocPageCount : physicalContentPage;
+
+  $: isActive = isPreview && currentPage === targetPageInPreview;
 
   function handleToggle() {
     item.open = !item.open;
-    onUpdate(item, { open: item.open });
+    onUpdate(item, {open: item.open});
   }
 
   function handleUpdateTitle() {
-    onUpdate(item, { title: editTitle });
+    onUpdate(item, {title: editTitle});
   }
 
   function handlePageChange(e) {
     const page = parseInt(e.target.value) || 1;
-    onUpdate(item, { to: page });
+    onUpdate(item, {to: page});
   }
 
   function handleAddChild() {
     const newChild = {
-      id: new ShortUniqueId({ length: 10 }),
+      id: new ShortUniqueId({length: 10}),
       title: 'New Item',
       to: $maxPage + 1,
       children: [],
@@ -44,31 +50,33 @@
     };
 
     const updatedChildren = [...(item.children || []), newChild];
-    onUpdate(item, { children: updatedChildren });
+    onUpdate(item, {children: updatedChildren});
   }
 
   function handleUpdateChild(childItem, updates) {
-    const updatedChildren = item.children.map((child) =>
-      child.id === childItem.id ? { ...child, ...updates } : child
-    );
-    onUpdate(item, { children: updatedChildren });
+    const updatedChildren = item.children.map((child) => (child.id === childItem.id ? {...child, ...updates} : child));
+    onUpdate(item, {children: updatedChildren});
   }
 
   function handleDeleteChild(childItem) {
     const updatedChildren = item.children.filter((c) => c.id !== childItem.id);
-    onUpdate(item, { children: updatedChildren });
+    onUpdate(item, {children: updatedChildren});
   }
 
   function handleMouseEnter() {
     if (item) {
-      dispatch('hoveritem', { to: item.to });
+      dispatch('hoveritem', {to: item.to});
     }
   }
 </script>
 
 {#if item}
   <div class="ml-1">
-    <div class="flex items-center gap-2 my-2" on:mouseenter={handleMouseEnter}>
+    <div
+      class="flex items-center gap-2 py-2"
+      on:mouseenter={handleMouseEnter}
+      class:bg-blue-100={isActive}
+    >
       {#if item.children?.length > 0}
         {#if showTooltip}
           <Tooltip
@@ -81,7 +89,10 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
             <CircleHelpIcon size={16} />
           </Tooltip>
         {/if}
-        <button on:click={handleToggle} class="p-1 hover:bg-gray-100 rounded">
+        <button
+          on:click={handleToggle}
+          class="p-1 hover:bg-gray-100 rounded"
+        >
           {#if item.open}
             <ChevronDown size={16} />
           {:else}
@@ -109,7 +120,10 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
       />
 
       <div class="flex gap-1">
-        <button on:click={handleAddChild} class="p-1 hover:bg-gray-100 rounded">
+        <button
+          on:click={handleAddChild}
+          class="p-1 hover:bg-gray-100 rounded"
+        >
           <Plus size={16} />
         </button>
         <button
