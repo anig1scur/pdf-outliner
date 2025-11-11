@@ -1,16 +1,10 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-  import {
-    ChevronLeft,
-    ChevronRight,
-    ZoomIn,
-    ZoomOut,
-    RotateCw,
-  } from 'lucide-svelte';
+  import {createEventDispatcher, onMount, onDestroy} from 'svelte';
+  import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw} from 'lucide-svelte';
 
-  import { pdfService } from '../stores';
-  import { type PDFService } from '../lib/pdf-service';
-  import type { PDFState } from '../lib/pdf-service';
+  import {pdfService} from '../stores';
+  import {type PDFService} from '../lib/pdf-service';
+  import type {PDFState} from '../lib/pdf-service';
 
   export let pdfState: PDFState;
   export let mode: 'single' | 'grid' = 'single';
@@ -19,7 +13,7 @@
 
   const dispatch = createEventDispatcher();
 
-  let gridPages: { pageNum: number; canvasId: string }[] = [];
+  let gridPages: {pageNum: number; canvasId: string}[] = [];
   let pdfServiceInstance: PDFService | null = null;
   export let isSettingStart: boolean;
   let intersectionObserver: IntersectionObserver | null = null;
@@ -29,7 +23,7 @@
 
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
-  $: ({ filename, currentPage, scale, totalPages } = pdfState);
+  $: ({filename, currentPage, scale, totalPages} = pdfState);
 
   const goToNextPage = () => {
     if (pdfState.currentPage < pdfState.totalPages) {
@@ -56,7 +50,7 @@
   };
 
   $: if (pdfState.instance && mode === 'grid') {
-    gridPages = Array.from({ length: pdfState.totalPages }, (_, i) => ({
+    gridPages = Array.from({length: pdfState.totalPages}, (_, i) => ({
       pageNum: i + 1,
       canvasId: `thumb-canvas-${i + 1}`,
     }));
@@ -64,16 +58,16 @@
 
   function handleGridClick(pageNum: number) {
     if (isSettingStart) {
-      dispatch('setstartpage', { page: pageNum });
+      dispatch('setstartpage', {page: pageNum});
       if (pageNum > tocEndPage) {
-        dispatch('setendpage', { page: pageNum });
+        dispatch('setendpage', {page: pageNum});
       }
       isSettingStart = false;
     } else {
       if (pageNum < tocStartPage) {
-        dispatch('setstartpage', { page: pageNum });
+        dispatch('setstartpage', {page: pageNum});
       } else {
-        dispatch('setendpage', { page: pageNum });
+        dispatch('setendpage', {page: pageNum});
       }
       isSettingStart = true;
     }
@@ -92,12 +86,7 @@
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
 
-              pdfServiceInstance.renderPageToCanvas(
-                pdfState.instance,
-                pageNum,
-                canvas,
-                canvasWidth * dpr
-              );
+              pdfServiceInstance.renderPageToCanvas(pdfState.instance, pageNum, canvas, canvasWidth * dpr);
 
               canvas.style.width = `${canvasWidth}px`;
               canvas.style.height = 'auto';
@@ -132,10 +121,7 @@
     };
   }
 
-  function lazyRender(
-    canvas: HTMLCanvasElement,
-    { pageNum }: { pageNum: number }
-  ) {
+  function lazyRender(canvas: HTMLCanvasElement, {pageNum}: {pageNum: number}) {
     canvas.dataset.pageNum = pageNum.toString();
 
     if (intersectionObserver) {
@@ -165,12 +151,8 @@
 >
   {#if mode === 'single'}
     <div class="flex flex-col h-full">
-      <div
-        class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white"
-      >
-        <div
-          class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto"
-        >
+      <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white border-b-2 border-black">
+        <div class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto">
           <div class="text-gray-600 font-serif flex gap-3 items-center">
             <span class="truncate max-w-xs">{filename}</span>
             <span class="text-gray-300">|</span>
@@ -206,25 +188,26 @@
         </div>
       </div>
 
-      <div
-        class="relative flex items-center justify-center w-full flex-1 overflow-auto bg-gray-50"
-      >
+      <div class="relative flex items-center justify-center w-full flex-1 overflow-auto bg-gray-50">
         <button
           on:click={goToPrevPage}
           disabled={currentPage <= 1}
-          class="absolute left-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10"
+          class="absolute left-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
         >
           <ChevronLeft size={24} />
         </button>
 
         <div class="overflow-auto max-w-full p-4">
-          <canvas class="max-w-full" id="pdf-canvas"></canvas>
+          <canvas
+            class="max-w-full"
+            id="pdf-canvas"
+          ></canvas>
         </div>
 
         <button
           on:click={goToNextPage}
           disabled={currentPage >= totalPages}
-          class="absolute right-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10"
+          class="absolute right-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
         >
           <ChevronRight size={24} />
         </button>
@@ -234,21 +217,16 @@
     <div class="grid grid-cols-3 gap-5 p-4">
       {#each gridPages as page (page.pageNum)}
         <div
-          class="rounded-md overflow-hidden shadow cursor-pointer bg-white transition-all duration-150 transform hover:scale-[1.03]"
-          class:ring-4={page.pageNum >= tocStartPage &&
-            page.pageNum <= tocEndPage}
-          class:ring-blue-500={page.pageNum >= tocStartPage &&
-            page.pageNum <= tocEndPage}
-          class:ring-offset-2={page.pageNum >= tocStartPage &&
-            page.pageNum <= tocEndPage}
-          class:border-transparent={!(page.pageNum >= tocStartPage &&
-            page.pageNum <= tocEndPage)}
+          class="rounded-lg overflow-hidden border-t-[2px] shadow-black border-black border-2 border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform"
+          class:shadow-[4px_4px_0px_rgba(0,0,0,1)]={page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
+          hover:-translate-x-1
+          hover:-translate-y-1
           on:click={() => handleGridClick(page.pageNum)}
         >
           <canvas
             id={page.canvasId}
             class="w-full border-b bg-white"
-            use:lazyRender={{ pageNum: page.pageNum }}
+            use:lazyRender={{pageNum: page.pageNum}}
           ></canvas>
 
           <div class="text-center text-xs p-2 font-mono bg-white">

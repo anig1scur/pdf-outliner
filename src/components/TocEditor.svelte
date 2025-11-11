@@ -157,9 +157,11 @@ organize the ToCs in below to the target format, remove useless comments
     <textarea
       bind:value={text}
       placeholder={`
-      Table of Contents Text
+      1 Section Title 1
+      2 Subsection Title 2
+      3.1 Sub-subsection Title 3
 `}
-      class="w-full h-full border myfocus leading-6 rounded p-2 text-sm border-gray-100"
+      class="w-full h-full border-2 border-black rounded-lg p-2 text-sm myfocus leading-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
     ></textarea>
   </div>
   <div class="-ml-9">
@@ -179,16 +181,13 @@ organize the ToCs in below to the target format, remove useless comments
         />
       {/each}
     {:else}
-      <div class="ml-9 p-4 text-center text-gray-500 border-2 border-dashed border-gray-100 rounded-lg">
-        <!-- <p class="text-sm font-medium">
-          Table of Contents Tree will appear here.
-        </p> -->
+      <div class="ml-9 p-4 text-center text-gray-500 border-2 border-black rounded-lg bg-gray-100">
         Use the AI generator or add items manually
       </div>
     {/if}
     <button
       on:click={addTocItem}
-      class="ml-9 mt-3 mb-4 btn"
+      class="ml-9 mt-3 mb-4 btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
     >
       Add New Section
     </button>

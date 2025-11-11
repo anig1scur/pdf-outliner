@@ -24,6 +24,7 @@
   $: targetPageInPreview =
     physicalContentPage >= insertAtPage ? physicalContentPage + tocPageCount : physicalContentPage;
 
+  // Neobrutalism Active State
   $: isActive = isPreview && currentPage === targetPageInPreview;
 
   function handleToggle() {
@@ -73,9 +74,10 @@
 {#if item}
   <div class="ml-1">
     <div
-      class="flex items-center gap-2 py-2"
+      class="flex items-center gap-2 py-2 rounded-md"
       on:mouseenter={handleMouseEnter}
-      class:bg-blue-100={isActive}
+      class:bg-blue-200={isActive}
+      class:font-bold={isActive}
     >
       {#if item.children?.length > 0}
         {#if showTooltip}
@@ -91,7 +93,7 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
         {/if}
         <button
           on:click={handleToggle}
-          class="p-1 hover:bg-gray-100 rounded"
+          class="p-1 hover:bg-gray-200 rounded-md"
         >
           {#if item.open}
             <ChevronDown size={16} />
@@ -108,27 +110,27 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
         bind:value={editTitle}
         on:blur={handleUpdateTitle}
         on:keypress={(e) => e.key === 'Enter' && handleUpdateTitle()}
-        class="border rounded px-2 py-1 text-sm myfocus"
+        class="border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
       <input
         type="number"
         bind:value={item.to}
         on:input={handlePageChange}
-        class="w-16 border rounded px-2 py-1 text-sm myfocus"
+        class="w-16 border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500"
         min="1"
       />
 
       <div class="flex gap-1">
         <button
           on:click={handleAddChild}
-          class="p-1 hover:bg-gray-100 rounded"
+          class="p-1 hover:bg-gray-200 rounded-md"
         >
           <Plus size={16} />
         </button>
         <button
           on:click={() => onDelete(item)}
-          class="p-1 hover:bg-gray-100 rounded text-black"
+          class="p-1 hover:bg-gray-200 rounded-md text-black"
         >
           <Trash size={16} />
         </button>
