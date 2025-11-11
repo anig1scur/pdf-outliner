@@ -30,7 +30,7 @@ export const tocConfig = writable({
   otherLevels: {
     fontSize: 9,
     dotLeader: '',
-    color: '#666666',
+    color: '#333333',
     lineSpacing: 1.5,
   },
 });

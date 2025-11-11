@@ -497,6 +497,41 @@
     }
     tocEndPage = newEndPage;
   };
+
+  // --- 🚀 新增的函数 ---
+  const jumpToTocPage = async () => {
+    if (!previewPdfInstance) {
+      toastProps = {
+        show: true,
+        message: 'Please edit the ToC first to generate a preview.',
+        type: 'error',
+      };
+      return;
+    }
+
+    // Switch to preview mode if not already in it
+    if (!isPreviewMode) {
+      isPreviewMode = true;
+      updateViewerInstance();
+      // Wait for Svelte to process the instance change
+      await tick();
+    }
+
+    // Jump to the page where the ToC starts
+    const targetPage = config.insertAtPage;
+
+    if (targetPage > 0 && targetPage <= pdfState.totalPages) {
+      pdfState.currentPage = targetPage;
+      pdfState = {...pdfState}; // Trigger reactivity
+    } else {
+      toastProps = {
+        show: true,
+        message: `Invalid ToC start page: ${targetPage}`,
+        type: 'error',
+      };
+    }
+  };
+  // --- 🚀 函数结束 ---
 </script>
 
 {#if toastProps.show}
@@ -561,7 +596,16 @@
                   class="w-20 border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                 />
-              </div>
+
+                <button
+                  on:click={jumpToTocPage}
+                  class="ml-auto px-2 py-0.5 bg-white text-black border-2 border-black rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
+                  title="Jump to ToC page in preview"
+                  disabled={!previewPdfInstance}
+                >
+                  Go
+                </button>
+                </div>
               <div class="text-xs text-gray-500 mt-1">(1-based, 1 = first page)</div>
             </div>
           {/if}
@@ -740,7 +784,7 @@
     {/if}
 
     <button
-      class="btn w-full my-2 font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+      class="btn w-full my-2 font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
       on:click={generateTocFromAI}
       disabled={isAiLoading || !originalPdfInstance}
     >
@@ -806,6 +850,10 @@
             bind:isSettingStart
             on:setstartpage={handleSetStartPage}
             on:setendpage={handleSetEndPage}
+
+            jumpToTocPage={jumpToTocPage}
+            addPhysicalTocPage={addPhysicalTocPage}
+            hasPreview={!!previewPdfInstance}
           />
 
           <input

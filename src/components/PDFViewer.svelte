@@ -1,6 +1,6 @@
 <script lang="ts">
   import {createEventDispatcher, tick} from 'svelte';
-  import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw} from 'lucide-svelte';
+  import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
 
   import {pdfService} from '../stores';
   import {type PDFService} from '../lib/pdf-service';
@@ -10,6 +10,10 @@
   export let mode: 'single' | 'grid' = 'single';
   export let tocStartPage: number;
   export let tocEndPage: number;
+
+  export let jumpToTocPage: (() => Promise<void>) | undefined = undefined;
+  export let addPhysicalTocPage: boolean = false;
+  export let hasPreview: boolean = false;
 
   const dispatch = createEventDispatcher();
 
@@ -184,13 +188,26 @@
     <div class="flex flex-col h-full">
       <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white border-b-2 border-black">
         <div class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto">
-          <div class="text-gray-600 font-serif flex gap-2 items-center text-sm md:text-base md:gap-3">
-            <span class="truncate max-w-xs">{filename}</span>
+          <div class="text-gray-600 font-serif flex gap-1 sm:gap-2 items-center text-sm md:text-base md:gap-3">
+            <span class="truncate max-w-20 md:max-w-xs">{filename}</span>
             <span class="text-gray-300">|</span>
             <span>{currentPage} / {totalPages}</span>
+
+            {#if addPhysicalTocPage && jumpToTocPage && hasPreview}
+              <button
+                on:click={jumpToTocPage}
+                class="p-1 rounded-lg hover:bg-gray-100 text-black border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                title="Jump to inserted ToC page"
+              >
+                <ListOrdered
+                  size={12}
+                  class="hidden md:inline-block"
+                /> ToC
+              </button>
+            {/if}
           </div>
 
-          <div class="flex items-center gap-1 md:gap-2">
+          <div class="flex items-center sm:gap-1 md:gap-2">
             <button
               on:click={zoomOut}
               class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
@@ -248,8 +265,8 @@
     <div class="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5">
       {#each gridPages as page (page.pageNum)}
         <div
-          class="rounded-lg overflow-hidden border-t-[2px] shadow-black border-black border-2 border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform"
-          class:shadow-[4px_4px_0px_rgba(0,0,0,1)]={page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
+          class="rounded-lg overflow-hidden border-t-[2px] shadow-blue-400 border-gray-500 border-2 border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform"
+          class:shadow-[4px_4px_0px]={page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
           hover:-translate-x-1
           hover:-translate-y-1
           on:click={() => handleGridClick(page.pageNum)}

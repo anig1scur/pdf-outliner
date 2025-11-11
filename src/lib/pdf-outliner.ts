@@ -150,7 +150,7 @@ export const setOutline = async (
       })();
 
       doc.context.assign(outlineRef, doc.context.obj({
-        Title: PDFString.of(outline.title),
+        Title: PDFHexString.fromText(outline.title),
         Parent: parent,
         ...(i > 0 ? {Prev: refMap.get(outlines[i - 1])!} : {}),
         ...(i < length - 1 ? {Next: refMap.get(outlines[i + 1])!} : {}),
