@@ -18,8 +18,6 @@
 
   const dispatch = createEventDispatcher();
   
-  // // 这可以安全地处理 'item' 为 undefined 的情况，
-  // 并在 'item' prop 真正传来时更新 'editTitle'
   $: editTitle = item ? item.title : '';
 
   function handleToggle() {

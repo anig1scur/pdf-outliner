@@ -5,47 +5,48 @@
   import Tooltip from './Tooltip.svelte';
   import { tocItems, maxPage } from '../stores';
 
-  //   let text = `1 Food Categories I Love 1
-  // 2 Fruits 2
-  // 2.1 Strawberry 3
-  // 2.2 Pineapple 4
-  // 3 Vegetables 5
-  // 3.1 Basil 6
-  // 3.2 Pumpkin 6
-  // 4 Junk Food 7`;
-
   let text = ``;
+  let isSyncing = false;
+
+  // 订阅 tocItems store
+  const unsubscribe = tocItems.subscribe((value) => {
+    if (!isSyncing) {
+      isSyncing = true;
+      text = generateText(value);
+      isSyncing = false;
+    }
+  });
+
+  // 在组件销毁时取消订阅
+  import { onDestroy } from 'svelte';
+  onDestroy(unsubscribe);
+
   function parseText(text) {
     const lines = text
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean);
+
     const items = [];
     const stack = [{ level: 0, item: { children: items } }];
 
     lines.forEach((line) => {
       const match = line.match(/^(\d+(?:\.\d+)*)\s+(.+?)\s+(\d+)$/);
       if (match) {
-        const id = new ShortUniqueId({ length: 10 });
         const [, number, title, pageStr] = match;
         const level = number.split('.').length;
         const page = parseInt(pageStr);
         const newItem = {
-          id,
-          title: title,
+          id: new ShortUniqueId({ length: 10 })(),
+          title,
           to: page,
           children: [],
           open: true,
         };
 
-        if (page > $maxPage) {
-          $maxPage = page;
-        }
+        if (page > $maxPage) $maxPage = page;
 
-        while (stack[stack.length - 1].level >= level) {
-          stack.pop();
-        }
-
+        while (stack[stack.length - 1].level >= level) stack.pop();
         stack[stack.length - 1].item.children.push(newItem);
         stack.push({ level, item: newItem });
       }
@@ -59,28 +60,24 @@
       .map((item, index) => {
         const number = prefix ? `${prefix}.${index + 1}` : `${index + 1}`;
         let text = `${number} ${item.title} ${item.to}`;
-
-        if (item.children && item.children.length > 0) {
+        if (item.children?.length)
           text += '\n' + generateText(item.children, number);
-        }
-
         return text;
       })
       .join('\n');
   }
 
-  // FIXME: currently tocItem sync to text will loop!!
-
-  $: {
-    $tocItems = parseText(text);
+  // 当用户修改 text 时 → 更新 tocItems
+  $: if (!isSyncing) {
+    isSyncing = true;
+    tocItems.set(parseText(text));
+    isSyncing = false;
   }
 
   $: firstItemWithChildrenId = (() => {
     const findFirst = (items) => {
       for (const item of items) {
-        if (item.children?.length > 0) {
-          return item.id;
-        }
+        if (item.children?.length > 0) return item.id;
         if (item.children) {
           const childResult = findFirst(item.children);
           if (childResult) return childResult;
@@ -88,7 +85,6 @@
       }
       return null;
     };
-
     return findFirst($tocItems);
   })();
 
@@ -96,56 +92,43 @@
     $tocItems = [
       ...$tocItems,
       {
-        id: new ShortUniqueId({ length: 10 }),
+        id: new ShortUniqueId({ length: 10 })(),
         title: 'New Section',
         to: $maxPage + 1,
         children: [],
         open: true,
       },
     ];
-    text = generateText($tocItems);
   };
 
   const updateTocItem = (item, updates) => {
-    const updateItemRecursive = (items) => {
-      return items.map((currentItem) => {
-        if (currentItem === item) {
-          return { ...currentItem, ...updates };
-        }
-        if (currentItem.children?.length) {
+    const updateItemRecursive = (items) =>
+      items.map((currentItem) => {
+        if (currentItem === item) return { ...currentItem, ...updates };
+        if (currentItem.children?.length)
           return {
             ...currentItem,
             children: updateItemRecursive(currentItem.children),
           };
-        }
         return currentItem;
       });
-    };
-
     $tocItems = updateItemRecursive($tocItems);
-    text = generateText($tocItems);
   };
 
   const deleteTocItem = (itemToDelete) => {
-    const deleteItemRecursive = (items) => {
-      return items.filter((item) => {
-        if (item === itemToDelete) {
-          return false;
-        }
-        if (item.children?.length) {
+    const deleteItemRecursive = (items) =>
+      items.filter((item) => {
+        if (item === itemToDelete) return false;
+        if (item.children?.length)
           item.children = deleteItemRecursive(item.children);
-        }
         return true;
       });
-    };
-
     $tocItems = deleteItemRecursive($tocItems);
-    text = generateText($tocItems);
   };
 </script>
 
-<div class="flex flex-col gap-4">
-  <div class="h-64 relative">
+<div class="flex flex-col gap-4 mt-3">
+  <div class="h-32 relative">
         <div class="absolute -left-2">
       <Tooltip
         isTextCopiable
@@ -168,6 +151,9 @@ organize the ToCs in below to the target format, remove useless comments
 
     <textarea
       bind:value={text}
+      placeholder={`
+      Table of Contents Text
+`}
       class="w-full h-full border myfocus leading-6 rounded p-2 text-sm border-gray-100"
     ></textarea>
     </div>
@@ -186,15 +172,13 @@ organize the ToCs in below to the target format, remove useless comments
       <div
         class="ml-9 p-4 text-center text-gray-500 border-2 border-dashed border-gray-100 rounded-lg"
       >
-        <p class="text-sm font-medium">
-          Your Table of Contents will appear here.
-        </p>
-        <p class="text-xs">
-          Use the AI generator or add an item manually to start.
-        </p>
+        <!-- <p class="text-sm font-medium">
+          Table of Contents Tree will appear here.
+        </p> -->
+          Use the AI generator or add items manually.
       </div>
     {/if}
-    <button on:click={addTocItem} class="ml-9 mt-2 mb-4 btn">
+    <button on:click={addTocItem} class="ml-9 mt-3 mb-4 btn">
       Add New Section
     </button>
   </div>
