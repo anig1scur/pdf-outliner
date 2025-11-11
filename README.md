@@ -2,4 +2,4 @@
 
 Add or edit PDF Table of Contents in browser based on AI
 
-[![Demo preview](./demo.gif)](https://github.com/anig1scur/tocify/blob/main/demo.webm)
+https://github.com/user-attachments/assets/98313674-670e-4afa-bf2d-887c3a5694b5

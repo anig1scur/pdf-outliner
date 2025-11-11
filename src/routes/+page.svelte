@@ -866,7 +866,7 @@
       <div class="flex flex-col md:flex-row gap-6">
         <div class="w-full md:w-1/3 flex flex-col text-xl">
           <p class="my-4 text-gray-700">
-            AI found
+            We found
             <strong class="text-black text-3xl block my-2">{firstTocItem?.title}</strong>
 
             on
@@ -874,7 +874,7 @@
             <strong class="text-black text-3xl block my-2">Page {firstTocItem?.to} </strong>
           </p>
 
-          <p class="my-4 text-gray-700">Select the actual physical page where the section actually begins</p>
+          <p class="my-4 text-gray-700">Select the physical page where this section actually begins</p>
 
           <div class="flex gap-4 items-center my-4">
             <label
@@ -918,7 +918,7 @@
             on:click={handleOffsetConfirm}
             class="btn mt-auto font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all w-full"
           >
-            Confirm Offset & Apply ToC
+          Yes! This page !
           </button>
         </div>
 
@@ -936,5 +936,5 @@
 {/if}
 
 <svelte:head>
-  <title>Tocify · Add or edit PDF Table of Contents in browser based on AI</title>
+  <title>Tocify · Add or edit PDF Table of Contents in browser</title>
 </svelte:head>
