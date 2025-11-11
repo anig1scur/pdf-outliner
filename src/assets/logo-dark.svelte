@@ -1,4 +1,4 @@
-<svg width="43" height="43" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="32" height="32" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="21.5" cy="21.5" r="21.5" fill="black"/>
 <mask id="mask0_7_33" style="mask-type:luminance" maskUnits="userSpaceOnUse" x="4" y="1" width="35" height="32">
 <path d="M38.9375 1H4V32.4203H38.9375V1Z" fill="white"/>

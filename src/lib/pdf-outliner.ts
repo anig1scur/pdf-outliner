@@ -82,7 +82,6 @@ export const setOutline = async (
     return refs;
   })();
 
-  // <--- ADDED: Helper function to calculate the final physical page index
   const getFinalPageIndex = (labeledPageNum: number): number => {
     // 1. Start with the labeled page number (e.g., "1" from the ToC)
     // 2. Add the user-confirmed offset (e.g., physical page 5 is labeled "1" ->
@@ -96,9 +95,7 @@ export const setOutline = async (
     // Clamp the index to be within the valid range of the document's pages
     return Math.min(finalIndex, pageRefs.length - 1);
   };
-  // --->
 
-  // Outlines
   const createOutline = (outlines: readonly PDFOutline[], parent: PDFRef) => {
     const {length} = outlines;
 

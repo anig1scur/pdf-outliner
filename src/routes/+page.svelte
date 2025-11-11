@@ -3,56 +3,48 @@
   import * as pdfjsLib from 'pdfjs-dist';
   import Dropzone from 'svelte-file-dropzone';
   import {PDFDocument} from 'pdf-lib';
-  import {Eye, EyeOff, X, EyeIcon, PencilIcon, Upload} from 'lucide-svelte';
+  import {Eye, EyeOff, X, EyeIcon, PencilIcon, Upload, Github, HelpCircle} from 'lucide-svelte';
   import {slide, fade, fly} from 'svelte/transition';
-
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import Logo from '../assets/logo-dark.svelte';
   import Toast from '../components/Toast.svelte';
-
   import {setOutline} from '../lib/pdf-outliner';
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {tocItems, pdfService, type TocConfig} from '../stores';
   import {debounce} from '../lib';
   import {tocConfig} from '../stores';
-
   let isTocConfigExpanded = false;
   let addPhysicalTocPage = true;
-
   // New Modal State
   let showOffsetModal = false;
   let pendingTocItems: TocItem[] = [];
   let firstTocItem: TocItem | null = null;
   let offsetPreviewPageNum = 1;
-
+  // Help Modal State
+  let showHelpModal = false;
+  const videoUrl = '/videos/demo.mp4';
   // Toast State
   let toastProps = {
     show: false,
     message: '',
     type: 'success' as 'success' | 'error',
   };
-
   // AI Error State
   let aiError: string | null = null;
   let hasShownTocHint = false;
-
   let originalPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
   let previewPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
   let tocPageCount = 0;
   let isPreviewMode = false;
-
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocEndPage + 1;
   }
-
   const toggleExpand = () => {
     isTocConfigExpanded = !isTocConfigExpanded;
   };
-
   let config: TocConfig;
   tocConfig.subscribe((value) => (config = value));
-
   function updateTocField(fieldPath, value) {
     tocConfig.update((cfg) => {
       const keys = fieldPath.split('.');
@@ -62,14 +54,12 @@
       return cfg;
     });
   }
-
   let isDragging = false;
   let isAiLoading = false;
   let isFileLoading = false;
   let tocStartPage = 1;
   let tocEndPage = 1;
   let isSettingStart = true;
-
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
@@ -79,19 +69,15 @@
     totalPages: 0,
     scale: 1.0,
   };
-
   let fileInputRef: HTMLInputElement;
-
   onMount(() => {
     $pdfService = new PDFService();
   });
-
   $: {
     if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
       $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
     }
   }
-
   const updateViewerInstance = () => {
     if (isPreviewMode && previewPdfInstance) {
       pdfState.instance = previewPdfInstance;
@@ -105,7 +91,6 @@
     }
     pdfState = {...pdfState};
   };
-
   const togglePreviewMode = () => {
     if (!previewPdfInstance) {
       toastProps = {
@@ -119,13 +104,10 @@
     pdfState.currentPage = 1;
     updateViewerInstance();
   };
-
   const updatePDF = async () => {
     if (!pdfState.doc || !$pdfService) return;
-
     try {
       const currentPageBackup = pdfState.currentPage;
-
       const {newDoc, tocPageCount: count} = await $pdfService.createTocPage(
         pdfState.doc,
         $tocItems,
@@ -133,15 +115,11 @@
         config.insertAtPage
       );
       tocPageCount = count;
-
       setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
-
       const pdfBytes = await newDoc.save();
       const loadingTask = pdfjsLib.getDocument(pdfBytes);
-
       previewPdfInstance = await loadingTask.promise;
       pdfState.newDoc = newDoc;
-
       if (isPreviewMode) {
         updateViewerInstance();
         if (currentPageBackup <= pdfState.totalPages) {
@@ -161,12 +139,9 @@
       };
     }
   };
-
   const debouncedUpdatePDF = debounce(updatePDF, 300);
-
   tocItems.subscribe((items) => {
     if (isFileLoading) return;
-
     if (!hasShownTocHint && items.length > 0) {
       toastProps = {
         show: true,
@@ -176,14 +151,12 @@
       };
       hasShownTocHint = true;
     }
-
     debouncedUpdatePDF();
   });
   tocConfig.subscribe(() => {
     if (isFileLoading) return;
     debouncedUpdatePDF();
   });
-
   let previousAddPhysicalTocPage = addPhysicalTocPage;
   $: {
     if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
@@ -191,24 +164,19 @@
       debouncedUpdatePDF();
     }
   }
-
   const loadPdfFile = async (file: File) => {
     if (!file) return;
-
     isFileLoading = true;
     hasShownTocHint = false;
     pdfState.filename = file.name;
-
     pdfState.instance = null;
     pdfState.totalPages = 0;
     originalPdfInstance = null;
     previewPdfInstance = null;
     pdfState = {...pdfState};
-
     try {
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
-
       pdfState.doc = await PDFDocument.load(uint8Array);
       const loadingTask = pdfjsLib.getDocument(uint8Array);
       originalPdfInstance = await loadingTask.promise;
@@ -218,7 +186,6 @@
       pdfState.currentPage = 1;
       tocStartPage = 1;
       tocEndPage = 1;
-
       tocItems.set([]);
       updateTocField('pageOffset', 0);
       updateTocField('insertAtPage', 2);
@@ -234,16 +201,13 @@
       updateViewerInstance();
     }
   };
-
   const handleFileDrop = async (e: CustomEvent) => {
     const {acceptedFiles} = e.detail;
     isDragging = false;
-
     if (acceptedFiles.length) {
       await loadPdfFile(acceptedFiles[0]);
     }
   };
-
   const handleFileInputChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
@@ -252,14 +216,11 @@
       target.value = '';
     }
   };
-
   const triggerFileInput = () => {
     fileInputRef?.click();
   };
-
   const exportPDF = async () => {
     await updatePDF();
-
     if (!pdfState.newDoc) {
       console.error('No new PDF document to export.');
       toastProps = {
@@ -269,12 +230,10 @@
       };
       return;
     }
-
     try {
       const pdfBytes = await pdfState.newDoc.save();
       const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
       const url = URL.createObjectURL(pdfBlob);
-
       const link = document.createElement('a');
       link.href = url;
       link.download = pdfState.filename.replace('.pdf', '_outlined.pdf');
@@ -282,7 +241,6 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-
       toastProps = {
         show: true,
         message: 'Export Successful!',
@@ -297,12 +255,10 @@
       };
     }
   };
-
   function buildTree(items: {title: string; level: number; page: number}[]): TocItem[] {
     const root: TocItem[] = [];
     const stack: {node: TocItem; level: number}[] = [];
     let idCounter = 0;
-
     items.forEach((item) => {
       const newItem: TocItem = {
         id: `ai-${idCounter++}`,
@@ -311,13 +267,10 @@
         children: [],
         open: true,
       };
-
       const level = item.level;
-
       while (stack.length > 0 && stack[stack.length - 1].level >= level) {
         stack.pop();
       }
-
       if (stack.length === 0) {
         root.push(newItem);
       } else {
@@ -329,7 +282,6 @@
     });
     return root;
   }
-
   const generateTocFromAI = async () => {
     if (!originalPdfInstance || !$pdfService) {
       toastProps = {
@@ -339,7 +291,6 @@
       };
       return;
     }
-
     if (tocEndPage < tocStartPage) {
       toastProps = {
         show: true,
@@ -348,40 +299,31 @@
       };
       return;
     }
-
     isAiLoading = true;
     aiError = null;
     try {
       const imagesBase64: string[] = [];
-
       for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
         const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum, 1.5);
         imagesBase64.push(image);
       }
-
       const response = await fetch('/api/process-toc', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({images: imagesBase64}),
       });
-
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.message || 'AI processing failed.');
       }
-
       const aiResult: {title: string; level: number; page: number}[] = await response.json();
-
       if (!aiResult || aiResult.length === 0) {
         aiError = 'AI could not find a valid ToC on these pages.';
         return;
       }
-
       const nestedTocItems = buildTree(aiResult);
-
       pendingTocItems = nestedTocItems;
       firstTocItem = nestedTocItems.length > 0 ? nestedTocItems[0] : null;
-
       if (firstTocItem) {
         offsetPreviewPageNum = firstTocItem.to;
         showOffsetModal = true;
@@ -396,38 +338,30 @@
       isAiLoading = false;
     }
   };
-
   const handleOffsetConfirm = () => {
     if (!firstTocItem) return;
-
     const labeledPage = firstTocItem.to;
     const physicalPage = offsetPreviewPageNum;
     const offset = physicalPage - labeledPage;
-
     updateTocField('pageOffset', offset);
     tocItems.set(pendingTocItems);
-
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
   };
-
   const renderOffsetPreviewPage = async (pageNum: number) => {
     if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
     const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
     if (canvas) {
       const dpr = window.devicePixelRatio || 1;
       const renderWidth = canvas.clientWidth * dpr;
-
       if (renderWidth === 0) {
         setTimeout(() => renderOffsetPreviewPage(pageNum), 100);
         return;
       }
-
       await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
     }
   };
-
   $: {
     if (
       showOffsetModal &&
@@ -442,23 +376,18 @@
       })();
     }
   }
-
   const debouncedJumpToPage = debounce((page: number) => {
     if (page > 0 && page <= pdfState.totalPages) {
       pdfState.currentPage = page;
       pdfState = {...pdfState};
     }
   }, 200);
-
   const handleTocItemHover = (e: CustomEvent) => {
     const logicalPage = e.detail.to as number;
     const physicalContentPage = logicalPage + config.pageOffset;
-
     let targetPage: number;
-
     if (isPreviewMode) {
       const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
-
       if (physicalContentPage >= config.insertAtPage) {
         targetPage = physicalContentPage + insertedPages;
       } else {
@@ -466,22 +395,17 @@
       }
     } else {
       targetPage = physicalContentPage;
-
       isPreviewMode = true;
       updateViewerInstance();
-
       setTimeout(() => {
         debouncedJumpToPage(targetPage);
       }, 50);
-
       return;
     }
-
     if (isPreviewMode) {
       debouncedJumpToPage(targetPage);
     }
   };
-
   const handleSetStartPage = (e: CustomEvent) => {
     const newStartPage = e.detail.page;
     tocStartPage = newStartPage;
@@ -489,7 +413,6 @@
       tocEndPage = newStartPage;
     }
   };
-
   const handleSetEndPage = (e: CustomEvent) => {
     const newEndPage = e.detail.page;
     if (newEndPage < tocStartPage) {
@@ -497,7 +420,6 @@
     }
     tocEndPage = newEndPage;
   };
-
   const jumpToTocPage = async () => {
     if (!previewPdfInstance) {
       toastProps = {
@@ -507,7 +429,6 @@
       };
       return;
     }
-
     // Switch to preview mode if not already in it
     if (!isPreviewMode) {
       isPreviewMode = true;
@@ -515,10 +436,8 @@
       // Wait for Svelte to process the instance change
       await tick();
     }
-
     // Jump to the page where the ToC starts
     const targetPage = config.insertAtPage;
-
     if (targetPage > 0 && targetPage <= pdfState.totalPages) {
       pdfState.currentPage = targetPage;
       pdfState = {...pdfState}; // Trigger reactivity
@@ -531,7 +450,6 @@
     }
   };
 </script>
-
 {#if toastProps.show}
   <Toast
     message={toastProps.message}
@@ -539,16 +457,37 @@
     on:close={() => (toastProps.show = false)}
   />
 {/if}
-
 <div
   class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
 >
   <div class="w-full lg:w-[30%]">
-    <div class="flex items-center gap-6">
-      <span class="text-3xl tracking-widest font-semibold">Tocify</span>
+    <div class="flex justify-between gap-4 ">
+      <div class="flex items-center gap-2">
+
       <Logo />
+      <span class="text-3xl tracking-widest font-semibold">Tocify</span>
+    </div>
+    <div class="flex items-center gap-2">
+
+    <a
+        href="https://github.com/anig1scur/tocify"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-black hover:text-gray-700 transition-colors"
+        title="View on GitHub"
+      >
+        <Github size={32} />
+      </a>
+      <button
+        on:click={() => (showHelpModal = true)}
+        class="text-black hover:text-gray-700 transition-colors"
+        title="How to Use"
+      >
+        <HelpCircle size={32} />
+      </button>
     </div>
 
+    </div>
     <div class="border-black border-2 rounded-lg p-2 my-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white">
       <div class="flex justify-between items-center">
         <h2>ToC Settings</h2>
@@ -564,7 +503,6 @@
           {/if}
         </button>
       </div>
-
       {#if isTocConfigExpanded}
         <div
           class="mt-3"
@@ -578,7 +516,6 @@
             />
             <label for="add_physical_page">Add physical ToC page</label>
           </div>
-
           {#if addPhysicalTocPage}
             <div class="border-black border-2 rounded-md my-2 p-2 w-full">
               <div class="flex gap-2 items-center">
@@ -594,7 +531,6 @@
                   class="w-20 border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min={1}
                 />
-
                 <button
                   on:click={jumpToTocPage}
                   class="ml-auto px-2 py-0.5 bg-white text-black border-2 border-black rounded-md shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
@@ -607,7 +543,6 @@
               <div class="text-xs text-gray-500 mt-1">(1-based, 1 = first page)</div>
             </div>
           {/if}
-
           <div class="border-black border-2 rounded-md my-1 p-2 w-full">
             <input
               bind:checked={config.showNumberedList}
@@ -617,7 +552,6 @@
             />
             <label for="show_numbered_list">with numbered list</label>
           </div>
-
           <div class="border-black border-2 rounded-md my-2 p-2 w-full">
             <div class="flex gap-2 items-center">
               <label
@@ -637,7 +571,6 @@
           <div class="flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-1/2">
               <h3 class="my-4 font-bold">First Level</h3>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="first_level_font_size">Font Size</label>
                 <input
@@ -648,7 +581,6 @@
                   class="w-[80%] border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="first_level_dot_leader">Dot Leader</label>
                 <input
@@ -659,7 +591,6 @@
                   class="w-[80%] border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="first_level_color">Color</label>
                 <input
@@ -670,7 +601,6 @@
                   class="w-[80%]"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="first_level_line_spacing">Spacing</label>
                 <input
@@ -683,10 +613,8 @@
                 />
               </div>
             </div>
-
             <div class="w-full md:w-1/2">
               <h3 class="my-4 font-bold">Other Levels</h3>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="other_levels_font_size">Font Size</label>
                 <input
@@ -697,7 +625,6 @@
                   class="w-[80%] border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="other_levels_dot_leader">Dot Leader</label>
                 <input
@@ -708,7 +635,6 @@
                   class="w-[80%] border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="other_levels_color">Color</label>
                 <input
@@ -719,7 +645,6 @@
                   class="w-[80%]"
                 />
               </div>
-
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
                 <label for="other_levels_line_spacing">Spacing</label>
                 <input
@@ -747,7 +672,6 @@
               Click the grid to select the Start Page including ToCs
             {/if}
           </p>
-
           <div class="flex gap-4 items-center my-2">
             <label
               for="toc_start_page"
@@ -762,7 +686,6 @@
               class="border-2 border-black rounded px-2 py-1 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div class="flex gap-4 items-center my-2">
             <label
               for="toc_end_page"
@@ -780,7 +703,6 @@
         </div>
       </div>
     {/if}
-
     <button
       class="btn w-full my-2 font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
       on:click={generateTocFromAI}
@@ -792,13 +714,11 @@
         <span>✨ Generate ToC from Pages (AI)</span>
       {/if}
     </button>
-
     {#if aiError}
       <div class="my-2 p-3 bg-red-100 border-2 border-red-700 text-red-700 rounded-lg">
         {aiError}
       </div>
     {/if}
-
     <TocEditor
       on:hoveritem={handleTocItemHover}
       currentPage={pdfState.currentPage}
@@ -808,7 +728,6 @@
       tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
     />
   </div>
-
   <div class="flex flex-col w-full lg:w-[70%]">
     <div
       class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg relative bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
@@ -837,7 +756,6 @@
           {/if}
         </div>
       </Dropzone>
-
       {#if pdfState.instance}
         <div class="relative z-10 h-full flex flex-col">
           <PDFViewer
@@ -852,7 +770,6 @@
             {addPhysicalTocPage}
             hasPreview={!!previewPdfInstance}
           />
-
           <input
             type="file"
             class="hidden"
@@ -860,7 +777,6 @@
             bind:this={fileInputRef}
             on:change={handleFileInputChange}
           />
-
           <div class="flex flex-col md:flex-row md:justify-end gap-3 md:gap-2 pt-4 relative z-10 mx-3 md:mr-3 md:mx-0">
             <button
               class="btn flex gap-2 items-center justify-center font-bold bg-white text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
@@ -870,7 +786,6 @@
               <Upload size={16} />
               Upload New
             </button>
-
             <button
               class="btn flex gap-2 items-center justify-center font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={togglePreviewMode}
@@ -887,7 +802,6 @@
                 Preview (Single View)
               {/if}
             </button>
-
             <button
               class="btn font-bold bg-green-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={exportPDF}
@@ -901,7 +815,6 @@
     </div>
   </div>
 </div>
-
 {#if isAiLoading}
   <div
     class="fixed inset-0 flex flex-col items-center justify-center z-50 font-mono bg-yellow-400"
@@ -920,7 +833,6 @@
     </div>
   </div>
 {/if}
-
 {#if showOffsetModal && firstTocItem}
   <div
     class="fixed inset-0 bg-lime-400 flex items-center justify-center z-50 p-4"
@@ -942,20 +854,15 @@
           <X size={24} />
         </button>
       </div>
-
       <div class="flex flex-col md:flex-row gap-6">
         <div class="w-full md:w-1/3 flex flex-col text-xl">
           <p class="my-4 text-gray-700">
             We found
             <strong class="text-black text-3xl block my-2">{firstTocItem?.title}</strong>
-
             on
-
             <strong class="text-black text-3xl block my-2">Page {firstTocItem?.to} </strong>
           </p>
-
           <p class="my-4 text-gray-700">Select the physical page where this section actually begins</p>
-
           <div class="flex gap-4 items-center my-4">
             <label
               for="physical_page_select"
@@ -971,7 +878,6 @@
               >
                 -
               </button>
-
               <input
                 type="number"
                 id="physical_page_select"
@@ -980,7 +886,6 @@
                 max={pdfState.totalPages}
                 class="border-2 border-black rounded px-2 py-1 w-20 h-10 text-center font-bold text-2xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-
               <button
                 class="btn p-2 h-10 w-10 font-bold bg-white text-black border-2 border-black rounded-lg shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:bg-gray-200 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
                 on:click={() => {
@@ -992,7 +897,6 @@
               </button>
             </div>
           </div>
-
           <button
             on:click={handleOffsetConfirm}
             class="btn mt-auto font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all w-full"
@@ -1000,7 +904,6 @@
             Yes! This page !
           </button>
         </div>
-
         <div class="w-full md:w-2/3">
           <div class="border-2 border-black rounded-lg overflow-hidden bg-gray-50 h-[75vh]">
             <canvas
@@ -1013,7 +916,33 @@
     </div>
   </div>
 {/if}
-
+{#if showHelpModal}
+  <div
+    class="fixed inset-0 bg-lime-400 flex items-center justify-center z-50 p-4"
+    transition:fade={{duration: 150}}
+    on:click={() => (showHelpModal = false)}
+  >
+    <div
+      class="bg-white rounded-lg p-6 max-w-5xl w-full max-h-[90vh] overflow-y-auto border-4 border-black shadow-[8px_8px_0px_rgba(0,0,0,1)]"
+      transition:fly={{y: 20, duration: 200}}
+      on:click|stopPropagation
+    >
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold">How to Use Tocify</h2>
+        <button
+          on:click={() => (showHelpModal = false)}
+          class="p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
+          aria-label="Close modal"
+        >
+          <X size={24} />
+        </button>
+      </div>
+      <div class="flex flex-col gap-6">
+        <video src={videoUrl} controls  loop autoplay muted class="w-full h-auto rounded-lg border-2 border-black "></video>
+      </div>
+    </div>
+  </div>
+{/if}
 <svelte:head>
   <title>Tocify · Add or edit PDF Table of Contents in browser</title>
 </svelte:head>
