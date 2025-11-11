@@ -62,6 +62,7 @@ export const setOutline = async (
   outlines: readonly PDFOutline[],
   pageNumberingOffset: number,
   addedPagesCount: number
+  
 ) => {
   const rootRef = doc.context.nextRef();
   const refMap = new WeakMap<PDFOutline, PDFRef>();

@@ -32,7 +32,6 @@ export class PDFService {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
   }
 
-  // 只添加metadata，不添加物理TOC页
   async addMetadataOnly(sourceDoc: PDFDocument, items: TocItem[]) {
     const newDoc = await PDFDocument.create();
     const copiedPages = await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
@@ -48,7 +47,7 @@ export class PDFService {
     sourceDoc: PDFDocument,
     items: TocItem[],
     addPhysicalPage: boolean = true,
-    insertAtPage: number = 1 // 1-based page number to insert *before*
+    insertAtPage: number = 2 // 1-based page number to insert *before*
   ): Promise<{ newDoc: PDFDocument; tocPageCount: number }> {
     
     if (!addPhysicalPage) {

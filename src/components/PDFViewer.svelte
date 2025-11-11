@@ -1,6 +1,17 @@
 <script>
+  // NEW: 导入事件派发器
+  import { createEventDispatcher } from 'svelte';
   export let pdfState;
-  import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw} from 'lucide-svelte';
+  import {
+    ChevronLeft,
+    ChevronRight,
+    ZoomIn,
+    ZoomOut,
+    RotateCw,
+  } from 'lucide-svelte';
+
+  // NEW: 实例化派发器
+  const dispatch = createEventDispatcher();
 
   const goToNextPage = () => {
     if (pdfState.currentPage < pdfState.totalPages) {
@@ -26,19 +37,55 @@
     pdfState.scale = 1.0;
   };
 
-  $: ({filename, currentPage, scale, totalPages} = pdfState);
+  $: ({ filename, currentPage, scale, totalPages } = pdfState);
+
+  // NEW: 派发事件的处理器
+  const setTocStart = () => {
+    dispatch('setstartpage', { page: currentPage });
+  };
+
+  const setTocEnd = () => {
+    dispatch('setendpage', { page: currentPage });
+  };
 </script>
 
 <div>
-  <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white">
-    <div class="flex z-10  items-center justify-start w-full max-w-full overflow-x-auto">
+  <div
+    class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white"
+  >
+    <!-- NEW: 从 'justify-start' 改为 'justify-between' 来分隔工具 -->
+    <div
+      class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto"
+    >
+      <!-- 组 1: 文件名和页码 -->
       <div class="text-gray-600 font-serif flex gap-3 items-center">
         <span class="truncate max-w-xs">{filename}</span>
         <span class="text-gray-300">|</span>
         <span>{currentPage} / {totalPages}</span>
       </div>
 
-      <div class="flex items-center gap-2 ml-3">
+      <!-- NEW: 组 2: 上下文 ToC 按钮 -->
+      <div class="flex items-center gap-2">
+        <button
+          on:click={setTocStart}
+          class="px-2 py-1 text-xs font-mono rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+          title="Set current page as Table of Contents Start"
+          disabled={!totalPages || totalPages === 0}
+        >
+          [ Set Start ]
+        </button>
+        <button
+          on:click={setTocEnd}
+          class="px-2 py-1 text-xs font-mono rounded-md border border-blue-500 text-blue-600 hover:bg-blue-50 disabled:opacity-50"
+          title="Set current page as Table of Contents End"
+          disabled={!totalPages || totalPages === 0}
+        >
+          [ Set End ]
+        </button>
+      </div>
+
+      <!-- 组 3: 缩放控件 (移除了 ml-3) -->
+      <div class="flex items-center gap-2">
         <button
           on:click={zoomOut}
           class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
@@ -66,6 +113,7 @@
       </div>
     </div>
 
+    <!-- PDF 画布区域 (无改动) -->
     <div class="relative flex items-center justify-center w-full">
       <button
         on:click={goToPrevPage}
@@ -76,10 +124,7 @@
       </button>
 
       <div class="overflow-auto max-w-full p-4">
-        <canvas
-          class="max-w-full"
-          id="pdf-canvas"
-        ></canvas>
+        <canvas class="max-w-full" id="pdf-canvas"></canvas>
       </div>
 
       <button

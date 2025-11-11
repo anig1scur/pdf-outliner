@@ -1,32 +1,32 @@
 <script>
   import ShortUniqueId from 'short-unique-id';
-  import {CircleHelpIcon} from 'lucide-svelte';
+  import { CircleHelpIcon } from 'lucide-svelte';
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
-  import {tocItems, maxPage} from '../stores';
+  import { tocItems, maxPage } from '../stores';
 
-//   let text = `1 Food Categories I Love 1
-// 2 Fruits 2
-// 2.1 Strawberry 3
-// 2.2 Pineapple 4
-// 3 Vegetables 5
-// 3.1 Basil 6
-// 3.2 Pumpkin 6
-// 4 Junk Food 7`;
+  //   let text = `1 Food Categories I Love 1
+  // 2 Fruits 2
+  // 2.1 Strawberry 3
+  // 2.2 Pineapple 4
+  // 3 Vegetables 5
+  // 3.1 Basil 6
+  // 3.2 Pumpkin 6
+  // 4 Junk Food 7`;
 
-let text = ``;
+  let text = ``;
   function parseText(text) {
     const lines = text
       .split('\n')
       .map((line) => line.trim())
       .filter(Boolean);
     const items = [];
-    const stack = [{level: 0, item: {children: items}}];
+    const stack = [{ level: 0, item: { children: items } }];
 
     lines.forEach((line) => {
       const match = line.match(/^(\d+(?:\.\d+)*)\s+(.+?)\s+(\d+)$/);
       if (match) {
-        const id = new ShortUniqueId({length: 10});
+        const id = new ShortUniqueId({ length: 10 });
         const [, number, title, pageStr] = match;
         const level = number.split('.').length;
         const page = parseInt(pageStr);
@@ -47,7 +47,7 @@ let text = ``;
         }
 
         stack[stack.length - 1].item.children.push(newItem);
-        stack.push({level, item: newItem});
+        stack.push({ level, item: newItem });
       }
     });
 
@@ -96,7 +96,7 @@ let text = ``;
     $tocItems = [
       ...$tocItems,
       {
-        id: new ShortUniqueId({length: 10}),
+        id: new ShortUniqueId({ length: 10 }),
         title: 'New Section',
         to: $maxPage + 1,
         children: [],
@@ -110,7 +110,7 @@ let text = ``;
     const updateItemRecursive = (items) => {
       return items.map((currentItem) => {
         if (currentItem === item) {
-          return {...currentItem, ...updates};
+          return { ...currentItem, ...updates };
         }
         if (currentItem.children?.length) {
           return {
@@ -146,7 +146,7 @@ let text = ``;
 
 <div class="flex flex-col gap-4">
   <div class="h-64 relative">
-    <div class="absolute -left-2">
+        <div class="absolute -left-2">
       <Tooltip
         isTextCopiable
         width="min-w-96"
@@ -170,20 +170,31 @@ organize the ToCs in below to the target format, remove useless comments
       bind:value={text}
       class="w-full h-full border myfocus leading-6 rounded p-2 text-sm border-gray-100"
     ></textarea>
-  </div>
+    </div>
   <div class="-ml-9">
-    {#each $tocItems as item (item.id)}
-      <TocItem
-        {item}
-        showTooltip={item.id === firstItemWithChildrenId}
-        onUpdate={updateTocItem}
-        onDelete={deleteTocItem}
-      />
-    {/each}
-    <button
-      on:click={addTocItem}
-      class="ml-9 mt-2 mb-4 btn"
-    >
+    {#if $tocItems.length > 0}
+      {#each $tocItems as item (item.id)}
+        <TocItem
+          {item}
+          showTooltip={item.id === firstItemWithChildrenId}
+          onUpdate={updateTocItem}
+          onDelete={deleteTocItem}
+          on:hoveritem 
+        />
+      {/each}
+    {:else}
+      <div
+        class="ml-9 p-4 text-center text-gray-500 border-2 border-dashed border-gray-100 rounded-lg"
+      >
+        <p class="text-sm font-medium">
+          Your Table of Contents will appear here.
+        </p>
+        <p class="text-xs">
+          Use the AI generator or add an item manually to start.
+        </p>
+      </div>
+    {/if}
+    <button on:click={addTocItem} class="ml-9 mt-2 mb-4 btn">
       Add New Section
     </button>
   </div>

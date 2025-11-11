@@ -1,19 +1,20 @@
 <script lang="ts">
-  import {onMount} from 'svelte';
+  import { onMount } from 'svelte';
   import * as pdfjsLib from 'pdfjs-dist';
   import Dropzone from 'svelte-file-dropzone';
-  import {PDFDocument} from 'pdf-lib';
-  import {Eye, EyeOff, X} from 'lucide-svelte';
+  import { PDFDocument } from 'pdf-lib';
+  import { Eye, EyeOff, X, EyeIcon, PencilIcon } from 'lucide-svelte';
 
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import Logo from '../assets/logo-dark.svelte';
+  import Toast from '../components/Toast.svelte';
 
-  import {setOutline} from '../lib/pdf-outliner';
-  import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
-  import {tocItems, pdfService, type TocConfig} from '../stores';
-  import {debounce} from '../lib';
-  import {tocConfig} from '../stores';
+  import { setOutline } from '../lib/pdf-outliner';
+  import { PDFService, type PDFState, type TocItem } from '../lib/pdf-service';
+  import { tocItems, pdfService, type TocConfig } from '../stores';
+  import { debounce } from '../lib';
+  import { tocConfig } from '../stores';
 
   let isTocConfigExpanded = false;
   let showPreview = false;
@@ -24,6 +25,21 @@
   let pendingTocItems: TocItem[] = [];
   let firstTocItem: TocItem | null = null;
   let offsetPreviewPageNum = 1;
+
+  // Toast State
+  let toastProps = {
+    show: false,
+    message: '',
+    type: 'success' as 'success' | 'error',
+  };
+
+  // AI Error State
+  let aiError: string | null = null;
+
+  let originalPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
+  let previewPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
+  let tocPageCount = 0;
+  let isPreviewMode = false;
 
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocEndPage + 1;
@@ -55,24 +71,53 @@
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
-    instance: null,
+    instance: null, 
     filename: '',
     currentPage: 1,
     totalPages: 0,
     scale: 1.0,
   };
 
-  // 移除 `$: tocPagesCount` 
-
+  
   onMount(() => {
     $pdfService = new PDFService();
   });
 
   $: {
     if (pdfState.instance && pdfState.currentPage && $pdfService) {
-      $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+      $pdfService.renderPage(
+        pdfState.instance,
+        pdfState.currentPage,
+        pdfState.scale
+      );
     }
   }
+
+  const updateViewerInstance = () => {
+    if (isPreviewMode && previewPdfInstance) {
+      pdfState.instance = previewPdfInstance;
+      pdfState.totalPages = previewPdfInstance.numPages;
+    } else if (originalPdfInstance) {
+      pdfState.instance = originalPdfInstance;
+      pdfState.totalPages = originalPdfInstance.numPages;
+    } else {
+      pdfState.instance = null;
+      pdfState.totalPages = 0;
+    }
+    // 强制 Svelte 重新渲染
+    pdfState = { ...pdfState };
+  };
+
+  const togglePreviewMode = () => {
+    if (!previewPdfInstance) {
+      toastProps = { show: true, message: 'Please edit the ToC first to generate a preview.', type: 'error' };
+      return;
+    }
+    isPreviewMode = !isPreviewMode;
+    pdfState.currentPage = 1; 
+    updateViewerInstance();
+  };
+
 
   const updatePDF = async () => {
     if (!pdfState.doc || !$pdfService) return;
@@ -80,39 +125,37 @@
     try {
       const currentPageBackup = pdfState.currentPage;
 
-      // 传递所有配置, 包括新的 insertAtPage
-      const { newDoc, tocPageCount } = await $pdfService.createTocPage(
+      const { newDoc, tocPageCount: count } = await $pdfService.createTocPage(
         pdfState.doc,
         $tocItems,
         addPhysicalTocPage,
-        config.insertAtPage // 新增
+        config.insertAtPage
       );
+      tocPageCount = count; 
 
-      // 你必须修改 setOutline 来接受第5个参数
-      setOutline(
-        newDoc, 
-        $tocItems, 
-        config.pageOffset, 
-        tocPageCount, 
-        config.insertAtPage // 新增
-      );
+      setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
 
       const pdfBytes = await newDoc.save();
       const loadingTask = pdfjsLib.getDocument(pdfBytes);
-      pdfState.instance = await loadingTask.promise;
-      pdfState.totalPages = pdfState.instance.numPages;
+      
+      previewPdfInstance = await loadingTask.promise;
+      pdfState.newDoc = newDoc;
 
+      updateViewerInstance();
+      
       if (currentPageBackup <= pdfState.totalPages) {
         pdfState.currentPage = currentPageBackup;
       } else {
         pdfState.currentPage = 1;
       }
 
-      await $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
-
-      pdfState.newDoc = newDoc;
     } catch (error) {
       console.error('Error updating PDF:', error);
+      toastProps = {
+        show: true,
+        message: `Error updating PDF: ${error.message}`,
+        type: 'error',
+      };
     }
   };
 
@@ -129,14 +172,18 @@
 
   let previousAddPhysicalTocPage = addPhysicalTocPage;
   $: {
-    if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
+    if (
+      pdfState.doc &&
+      previousAddPhysicalTocPage !== addPhysicalTocPage &&
+      !isFileLoading
+    ) {
       previousAddPhysicalTocPage = addPhysicalTocPage;
       debouncedUpdatePDF();
     }
   }
 
   const handleFileDrop = async (e: CustomEvent) => {
-    const {acceptedFiles} = e.detail;
+    const { acceptedFiles } = e.detail;
     isDragging = false;
 
     if (acceptedFiles.length) {
@@ -151,39 +198,52 @@
         pdfState.doc = await PDFDocument.load(uint8Array);
 
         const loadingTask = pdfjsLib.getDocument(uint8Array);
-        pdfState.instance = await loadingTask.promise;
-        pdfState.totalPages = pdfState.instance.numPages;
+        
+        originalPdfInstance = await loadingTask.promise; // 保存原始实例
+        previewPdfInstance = originalPdfInstance; // 初始预览 = 原始
+        pdfState.instance = originalPdfInstance; // 设置当前查看器实例
+        pdfState.totalPages = originalPdfInstance.numPages;
+        isPreviewMode = false; // 重置为编辑模式
+        tocPageCount = 0; // 重置页码计数
+        // --- 修复结束 ---
+
         pdfState.currentPage = 1;
         tocStartPage = 1;
         tocEndPage = 1;
 
         tocItems.set([]);
         updateTocField('pageOffset', 0);
-        updateTocField('insertAtPage', 1); // 重置插入点
-
+        updateTocField('insertAtPage', 2);
       } catch (error) {
         console.error('Error loading PDF:', error);
+        toastProps = {
+          show: true,
+          message: `Error loading PDF: ${error.message}`,
+          type: 'error',
+        };
       } finally {
         isFileLoading = false;
-        if (pdfState.instance && $pdfService) {
-           await $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
-        }
+        updateViewerInstance();
       }
     }
   };
 
   const exportPDF = async () => {
     await updatePDF();
-    
+
     if (!pdfState.newDoc) {
       console.error('No new PDF document to export.');
+      toastProps = {
+        show: true,
+        message: 'Error: No PDF document to export.',
+        type: 'error',
+      };
       return;
     }
-    console.log("Exporting PDF...");
 
     try {
       const pdfBytes = await pdfState.newDoc.save();
-      const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
+      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(pdfBlob);
 
       const link = document.createElement('a');
@@ -193,17 +253,30 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      toastProps = {
+        show: true,
+        message: 'Export Successful!',
+        type: 'success',
+      };
     } catch (error) {
       console.error('Error exporting PDF:', error);
+      toastProps = {
+        show: true,
+        message: `Error exporting PDF: ${error.message}`,
+        type: 'error',
+      };
     }
   };
 
-  function buildTree(items: { title: string; level: number; page: number }[]): TocItem[] {
+  function buildTree(
+    items: { title: string; level: number; page: number }[]
+  ): TocItem[] {
     const root: TocItem[] = [];
     const stack: { node: TocItem; level: number }[] = [];
     let idCounter = 0;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const newItem: TocItem = {
         id: `ai-${idCounter++}`,
         title: item.title,
@@ -231,23 +304,32 @@
   }
 
   const generateTocFromAI = async () => {
-    if (!pdfState.instance || !$pdfService) {
-      alert('Please load a PDF first.');
+    if (!originalPdfInstance || !$pdfService) {
+      toastProps = {
+        show: true,
+        message: 'Please load a PDF first.',
+        type: 'error',
+      };
       return;
     }
 
     if (tocEndPage < tocStartPage) {
-      alert('End page must be greater than or equal to start page.');
+      toastProps = {
+        show: true,
+        message: 'End page must be greater than or equal to start page.',
+        type: 'error',
+      };
       return;
     }
 
     isAiLoading = true;
+    aiError = null;
     try {
       const imagesBase64: string[] = [];
 
       for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
         const image = await $pdfService.getPageAsImage(
-          pdfState.instance,
+          originalPdfInstance,
           pageNum,
           1.5
         );
@@ -256,7 +338,7 @@
 
       const response = await fetch('/api/process-toc', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ images: imagesBase64 }),
       });
 
@@ -265,29 +347,29 @@
         throw new Error(err.message || 'AI processing failed.');
       }
 
-      const aiResult: { title: string; level: number; page: number }[] = await response.json();
+      const aiResult: { title: string; level: number; page: number }[] =
+        await response.json();
 
       if (!aiResult || aiResult.length === 0) {
-        alert('AI could not find a Table of Contents on these pages.');
+        aiError = 'AI could not find a valid ToC on these pages.';
         return;
       }
 
       const nestedTocItems = buildTree(aiResult);
-      
+
       pendingTocItems = nestedTocItems;
       firstTocItem = nestedTocItems.length > 0 ? nestedTocItems[0] : null;
 
       if (firstTocItem) {
-        offsetPreviewPageNum = firstTocItem.to; 
+        offsetPreviewPageNum = firstTocItem.to;
         showOffsetModal = true;
       } else {
         tocItems.set(nestedTocItems);
         pendingTocItems = [];
       }
-
     } catch (error) {
       console.error('Error generating ToC from AI:', error);
-      alert(`Error: ${error.message}`);
+      aiError = `Error: ${error.message}`;
     } finally {
       isAiLoading = false;
     }
@@ -295,13 +377,13 @@
 
   const handleOffsetConfirm = () => {
     if (!firstTocItem) return;
-    
+
     const labeledPage = firstTocItem.to;
     const physicalPage = offsetPreviewPageNum;
     const offset = physicalPage - labeledPage;
 
     updateTocField('pageOffset', offset);
-    tocItems.set(pendingTocItems); 
+    tocItems.set(pendingTocItems);
 
     showOffsetModal = false;
     pendingTocItems = [];
@@ -309,41 +391,111 @@
   };
 
   const renderOffsetPreviewPage = async (pageNum: number) => {
-    if (!pdfState.instance || !$pdfService || !showOffsetModal) return;
-    const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
+    if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
+    const canvas = document.getElementById(
+      'offset-preview-canvas'
+    ) as HTMLCanvasElement;
     if (canvas) {
-      await $pdfService.renderPageToCanvas(pdfState.instance, pageNum, canvas, 400); 
+      await $pdfService.renderPageToCanvas(
+        originalPdfInstance,
+        pageNum,
+        canvas,
+        400
+      );
     }
   };
 
   $: {
-    if (showOffsetModal && offsetPreviewPageNum > 0 && offsetPreviewPageNum <= pdfState.totalPages && pdfState.instance && $pdfService) {
+    if (
+      showOffsetModal &&
+      offsetPreviewPageNum > 0 &&
+      offsetPreviewPageNum <= (originalPdfInstance?.numPages || 0) &&
+      originalPdfInstance &&
+      $pdfService
+    ) {
       renderOffsetPreviewPage(offsetPreviewPageNum);
     }
   }
 
   const openPreview = async () => {
     showPreview = true;
-    await new Promise(resolve => setTimeout(resolve, 50)); 
+    await new Promise((resolve) => setTimeout(resolve, 50));
     renderPreviewPages();
   };
 
   const renderPreviewPages = async () => {
-    if (!pdfState.instance || !$pdfService) return;
+    if (!originalPdfInstance || !$pdfService) return;
 
     for (let i = tocStartPage; i <= tocEndPage; i++) {
-      const canvas = document.getElementById(`preview-canvas-${i}`) as HTMLCanvasElement;
+      const canvas = document.getElementById(
+        `preview-canvas-${i}`
+      ) as HTMLCanvasElement;
       if (canvas) {
-        await $pdfService.renderPageToCanvas(pdfState.instance, i, canvas, 150);
+        await $pdfService.renderPageToCanvas(originalPdfInstance, i, canvas, 150);
       }
     }
   };
 
   $: previewPages = Array.from(
-    {length: tocEndPage - tocStartPage + 1},
+    { length: tocEndPage - tocStartPage + 1 },
     (_, i) => tocStartPage + i
   );
+
+  const debouncedJumpToPage = debounce((page: number) => {
+    if (page > 0 && page <= pdfState.totalPages) {
+      pdfState.currentPage = page;
+      pdfState = { ...pdfState }; 
+    }
+  }, 200);
+
+  const handleTocItemHover = (e: CustomEvent) => {
+    const logicalPage = e.detail.to as number;
+    const physicalContentPage = logicalPage + config.pageOffset;
+    
+    let targetPage: number;
+
+    if (isPreviewMode) {
+      const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
+      
+      if (physicalContentPage >= config.insertAtPage) {
+        targetPage = physicalContentPage + insertedPages;
+      } else {
+        targetPage = physicalContentPage;
+      }
+    } else {
+      // 编辑/验证模式: 直接使用 '原始 PDF' 中的页码
+      targetPage = physicalContentPage;
+    }
+    
+    debouncedJumpToPage(targetPage);
+  };
+
+  // "上下文选择" 的事件处理器
+  const handleSetStartPage = (e: CustomEvent) => {
+    const newStartPage = e.detail.page;
+    tocStartPage = newStartPage;
+    if (tocEndPage < newStartPage) {
+      tocEndPage = newStartPage;
+    }
+  };
+
+  // "上下文选择" 的事件处理器
+  const handleSetEndPage = (e: CustomEvent) => {
+    const newEndPage = e.detail.page;
+    if (newEndPage < tocStartPage) {
+      tocStartPage = newEndPage;
+    }
+    tocEndPage = newEndPage;
+  };
 </script>
+
+{#if toastProps.show}
+  <Toast
+    message={toastProps.message}
+    type={toastProps.type}
+    on:close={() => (toastProps.show = false)}
+  />
+{/if}
 
 <div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] font-mono justify-between">
   <div>
@@ -352,6 +504,7 @@
       <Logo />
     </div>
 
+    
     <div class="border-dashed border-gray-100 rounded border-2 p-2 my-4">
       <div class="flex justify-between items-center">
         <h2>ToC Settings</h2>
@@ -388,8 +541,8 @@
               <input
                 type="number"
                 id="insert_at_page"
-                value={config.insertAtPage || 1}
-                on:input={(e) => updateTocField('insertAtPage', parseInt(e.target.value, 10) || 1)}
+                value={config.insertAtPage || 2}
+                on:input={(e) => updateTocField('insertAtPage', parseInt(e.target.value, 10) || 2)}
                 class="w-20 border rounded px-1"
                 min={1}
               />
@@ -569,8 +722,7 @@
     <button
       class="btn w-full my-2 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
       on:click={generateTocFromAI}
-      disabled={isAiLoading || !pdfState.instance}
-    >
+      disabled={isAiLoading || !originalPdfInstance} >
       {#if isAiLoading}
         <span>Analyzing Pages {tocStartPage} to {tocEndPage}...</span>
       {:else}
@@ -578,7 +730,15 @@
       {/if}
     </button>
 
-    <TocEditor />
+    {#if aiError}
+      <div
+        class="my-2 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
+      >
+        {aiError}
+      </div>
+    {/if}
+
+    <TocEditor on:hoveritem={handleTocItemHover} />
   </div>
 
   <div class="flex flex-col flex-1">
@@ -613,113 +773,136 @@
       </Dropzone>
 
       {#if pdfState.instance}
-        <button
-          class="absolute top-3 right-3 z-20 btn"
-          on:click={exportPDF}
-          disabled={!pdfState.doc}
-        >
-          Generate Outlined PDF
-        </button>
-        <PDFViewer bind:pdfState />
+        <div class="absolute top-3 right-3 z-20 flex gap-2">
+          <button
+            class="btn flex gap-2 items-center"
+            on:click={togglePreviewMode}
+            disabled={!previewPdfInstance || previewPdfInstance === originalPdfInstance}
+            title={isPreviewMode ? "Switch to Edit Mode (Show Original PDF)" : "Switch to Preview Mode (Show Generated PDF)"}
+          >
+            {#if isPreviewMode}
+              <PencilIcon size={16} />
+              Edit Mode
+            {:else}
+              <EyeIcon size={16} />
+              Preview Mode
+            {/if}
+          </button>
+          
+          <button
+            class="btn"
+            on:click={exportPDF}
+            disabled={!pdfState.doc}
+          >
+            Generate Outlined PDF
+          </button>
+        </div>
+
+        <PDFViewer
+          bind:pdfState
+          on:setstartpage={handleSetStartPage}
+          on:setendpage={handleSetEndPage}
+        />
       {/if}
     </div>
   </div>
 </div>
 
 {#if showPreview}
-  <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    on:click={() => (showPreview = false)}
-  >
-    <div
-      class="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto"
-      on:click|stopPropagation
+<div
+class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+on:click={() => (showPreview = false)}
+>
+<div
+  class="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto"
+  on:click|stopPropagation
+>
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">
+      ToC Pages Preview (Pages {tocStartPage} - {tocEndPage})
+    </h2>
+    <button
+      on:click={() => (showPreview = false)}
+      class="text-gray-500 hover:text-gray-700"
     >
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">
-          ToC Pages Preview (Pages {tocStartPage} - {tocEndPage})
-        </h2>
-        <button
-          on:click={() => (showPreview = false)}
-          class="text-gray-500 hover:text-gray-700"
-        >
-          <X size={24} />
-        </button>
-      </div>
-
-      <div class="grid grid-cols-3 gap-4">
-        {#each previewPages as pageNum}
-          <div class="border rounded p-2">
-            <div class="text-center text-sm font-semibold mb-2">
-              Page {pageNum}
-            </div>
-            <canvas
-              id="preview-canvas-{pageNum}"
-              class="border w-full"
-            ></canvas>
-          </div>
-        {/each}
-      </div>
-    </div>
+      <X size={24} />
+    </button>
   </div>
-{/if}
+
+  <div class="grid grid-cols-3 gap-4">
+    {#each previewPages as pageNum}
+      <div class="border rounded p-2">
+        <div class="text-center text-sm font-semibold mb-2">
+          Page {pageNum}
+        </div>
+        <canvas
+          id="preview-canvas-{pageNum}"
+          class="border w-full"
+        ></canvas>
+      </div>
+    {/each}
+  </div>
+</div>
+</div>
+  {/if}
 
 {#if showOffsetModal && firstTocItem}
-  <div
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-    on:click={() => (showOffsetModal = false)}
-  >
-    <div
-      class="bg-white rounded-lg p-6 max-w-lg w-full"
-      on:click|stopPropagation
+<div
+class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+on:click={() => (showOffsetModal = false)}
+>
+<div
+  class="bg-white rounded-lg p-6 max-w-lg w-full"
+  on:click|stopPropagation
+>
+  <div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-bold">Confirm Page Offset</h2>
+    <button
+      on:click={() => (showOffsetModal = false)}
+      class="text-gray-500 hover:text-gray-700"
     >
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-xl font-bold">Confirm Page Offset</h2>
-        <button
-          on:click={() => (showOffsetModal = false)}
-          class="text-gray-500 hover:text-gray-700"
-        >
-          <X size={24} />
-        </button>
-      </div>
-
-      <p class="my-4 text-gray-700">
-        AI found:
-        <strong class="text-black">'{firstTocItem.title}'</strong>
-        on
-        <strong class="text-black">Page {firstTocItem.to}</strong>.
-      </p>
-      <p class="mb-2 text-gray-700">
-        Please select the
-        <strong>actual physical page</strong>
-        where this section begins. Use the preview to confirm.
-      </p>
-
-      <div class="flex gap-4 items-center my-4">
-        <label for="physical_page_select" class="font-semibold">Physical Page:</label>
-        <input
-          type="number"
-          id="physical_page_select"
-          bind:value={offsetPreviewPageNum}
-          min={1}
-          max={pdfState.totalPages}
-          class="border rounded px-2 py-1 w-20"
-        />
-      </div>
-
-      <div class="my-4 border rounded overflow-hidden bg-gray-50">
-        <canvas id="offset-preview-canvas" class="w-full"></canvas>
-      </div>
-
-      <button
-        on:click={handleOffsetConfirm}
-        class="btn bg-blue-600 text-white w-full hover:bg-blue-700"
-      >
-        Confirm Offset & Apply ToC
-      </button>
-    </div>
+      <X size={24} />
+    </button>
   </div>
-{/if}
+
+  <p class="my-4 text-gray-700">
+    AI found:
+    <strong class="text-black">'{firstTocItem.title}'</strong>
+    on
+    <strong class="text-black">Page {firstTocItem.to}</strong>.
+  </p>
+  <p class="mb-2 text-gray-700">
+    Please select the
+    <strong>actual physical page</strong>
+    where this section begins. Use the preview to confirm.
+  </p>
+
+  <div class="flex gap-4 items-center my-4">
+    <label for="physical_page_select" class="font-semibold">Physical Page:</label>
+    <input
+      type="number"
+      id="physical_page_select"
+      bind:value={offsetPreviewPageNum}
+      min={1}
+      max={pdfState.totalPages}
+      class="border rounded px-2 py-1 w-20"
+    />
+  </div>
+
+  <div class="my-4 border rounded overflow-hidden bg-gray-50">
+    <canvas id="offset-preview-canvas" class="w-full"></canvas>
+  </div>
+
+  <button
+    on:click={handleOffsetConfirm}
+    class="btn bg-blue-600 text-white w-full hover:bg-blue-700"
+  >
+    Confirm Offset & Apply ToC
+  </button>
+</div>
+</div>
+  {/if}
+
 
 <svelte:head>
   <title>

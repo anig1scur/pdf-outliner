@@ -8,6 +8,7 @@ export type StyleConfig = {
   lineSpacing: string;
 };
 export type TocConfig = {
+  insertAtPage: number;
   showNumberedList: Boolean;
   pageOffset: number;
   firstLevel: StyleConfig;
