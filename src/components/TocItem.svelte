@@ -138,17 +138,23 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
     </div>
 
     {#if item.children && item.children.length > 0}
-      <div class="ml-2">
-        {#each item.children as child (child.id)}
-          <Self
-            item={child}
-            showTooltip={false}
-            onUpdate={handleUpdateChild}
-            onDelete={handleDeleteChild}
-            on:hoveritem
-          />
-        {/each}
-      </div>
-    {/if}
+    <div class="ml-2">
+      {#each item.children as child (child.id)}
+        <Self
+          item={child}
+          showTooltip={false}
+          onUpdate={handleUpdateChild}
+          onDelete={handleDeleteChild}
+          on:hoveritem
+          
+          {currentPage}
+          {isPreview}
+          {pageOffset}
+          {insertAtPage}
+          {tocPageCount}
+        />
+      {/each}
+    </div>
+  {/if}
   </div>
 {/if}

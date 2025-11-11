@@ -682,9 +682,9 @@
           <h3 class="font-bold mb-2">ToC Pages Selection</h3>
           <p class="text-sm text-gray-600 mb-3">
             {#if !isSettingStart}
-              Click the grid to select the End Page
+              Click the grid to select the End Page including ToCs
             {:else}
-              Click the grid to select the Start Page
+              Click the grid to select the Start Page including ToCs
             {/if}
           </p>
 
@@ -881,14 +881,37 @@
               for="physical_page_select"
               class="font-semibold">Physical Page:</label
             >
-            <input
-              type="number"
-              id="physical_page_select"
-              bind:value={offsetPreviewPageNum}
-              min={1}
-              max={pdfState.totalPages}
-              class="border-2 border-black rounded px-2 py-1 w-20 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div class="flex items-center gap-2">
+              <button
+                class="btn p-2 h-10 w-10 font-bold bg-white text-black border-2 border-black rounded-lg shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:bg-gray-200 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+                on:click={() => {
+                  if (offsetPreviewPageNum > 1) offsetPreviewPageNum--;
+                }}
+                disabled={offsetPreviewPageNum <= 1}
+              >
+                -
+              </button>
+
+              <input
+                type="number"
+                id="physical_page_select"
+                bind:value={offsetPreviewPageNum}
+                min={1}
+                max={pdfState.totalPages}
+                class="border-2 border-black rounded px-2 py-1 w-20 h-10 text-center font-bold text-2xl [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+
+              <button
+                class="btn p-2 h-10 w-10 font-bold bg-white text-black border-2 border-black rounded-lg shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:bg-gray-200 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+                on:click={() => {
+                  if (offsetPreviewPageNum < pdfState.totalPages)
+                    offsetPreviewPageNum++;
+                }}
+                disabled={offsetPreviewPageNum >= pdfState.totalPages}
+              >
+                +
+              </button>
+            </div>
           </div>
 
           <button

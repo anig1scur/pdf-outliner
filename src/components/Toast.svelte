@@ -18,7 +18,7 @@
 </script>
 
 <div
-  class="fixed bottom-5 right-5 text-black p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
+  class="fixed top-5 right-5 text-black p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
   class:bg-lime-400={type === 'success'}
   class:bg-red-500={type === 'error'}
 >
