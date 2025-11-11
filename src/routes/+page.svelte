@@ -14,6 +14,10 @@
   import {tocItems, pdfService, type TocConfig} from '../stores';
   import {debounce} from '../lib';
   import {tocConfig} from '../stores';
+  import {injectAnalytics} from '@vercel/analytics/sveltekit';
+
+  injectAnalytics();
+
   let isTocConfigExpanded = false;
   let addPhysicalTocPage = true;
   // New Modal State
@@ -450,6 +454,7 @@
     }
   };
 </script>
+
 {#if toastProps.show}
   <Toast
     message={toastProps.message}
@@ -461,32 +466,29 @@
   class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
 >
   <div class="w-full lg:w-[30%]">
-    <div class="flex justify-between gap-4 ">
+    <div class="flex justify-between gap-4">
       <div class="flex items-center gap-2">
-
-      <Logo />
-      <span class="text-3xl tracking-widest font-semibold">Tocify</span>
-    </div>
-    <div class="flex items-center gap-2">
-
-    <a
-        href="https://github.com/anig1scur/tocify"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="text-black hover:text-gray-700 transition-colors"
-        title="View on GitHub"
-      >
-        <Github size={32} />
-      </a>
-      <button
-        on:click={() => (showHelpModal = true)}
-        class="text-black hover:text-gray-700 transition-colors"
-        title="How to Use"
-      >
-        <HelpCircle size={32} />
-      </button>
-    </div>
-
+        <Logo />
+        <span class="text-3xl tracking-widest font-semibold">Tocify</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a
+          href="https://github.com/anig1scur/tocify"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-black hover:text-gray-700 transition-colors"
+          title="View on GitHub"
+        >
+          <Github size={32} />
+        </a>
+        <button
+          on:click={() => (showHelpModal = true)}
+          class="text-black hover:text-gray-700 transition-colors"
+          title="How to Use"
+        >
+          <HelpCircle size={32} />
+        </button>
+      </div>
     </div>
     <div class="border-black border-2 rounded-lg p-2 my-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white">
       <div class="flex justify-between items-center">
@@ -938,7 +940,14 @@
         </button>
       </div>
       <div class="flex flex-col gap-6">
-        <video src={videoUrl} controls  loop autoplay muted class="w-full h-auto rounded-lg border-2 border-black "></video>
+        <video
+          src={videoUrl}
+          controls
+          loop
+          autoplay
+          muted
+          class="w-full h-auto rounded-lg border-2 border-black"
+        ></video>
       </div>
     </div>
   </div>
