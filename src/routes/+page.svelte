@@ -498,7 +498,6 @@
     tocEndPage = newEndPage;
   };
 
-  // --- 🚀 新增的函数 ---
   const jumpToTocPage = async () => {
     if (!previewPdfInstance) {
       toastProps = {
@@ -531,7 +530,6 @@
       };
     }
   };
-  // --- 🚀 函数结束 ---
 </script>
 
 {#if toastProps.show}
@@ -605,7 +603,7 @@
                 >
                   Go
                 </button>
-                </div>
+              </div>
               <div class="text-xs text-gray-500 mt-1">(1-based, 1 = first page)</div>
             </div>
           {/if}
@@ -850,9 +848,8 @@
             bind:isSettingStart
             on:setstartpage={handleSetStartPage}
             on:setendpage={handleSetEndPage}
-
-            jumpToTocPage={jumpToTocPage}
-            addPhysicalTocPage={addPhysicalTocPage}
+            {jumpToTocPage}
+            {addPhysicalTocPage}
             hasPreview={!!previewPdfInstance}
           />
 
@@ -864,9 +861,7 @@
             on:change={handleFileInputChange}
           />
 
-          <div
-            class="flex flex-col md:flex-row md:justify-end gap-3 md:gap-2 pt-4 relative z-10 mx-3 md:mr-3 md:mx-0"
-          >
+          <div class="flex flex-col md:flex-row md:justify-end gap-3 md:gap-2 pt-4 relative z-10 mx-3 md:mr-3 md:mx-0">
             <button
               class="btn flex gap-2 items-center justify-center font-bold bg-white text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={triggerFileInput}
