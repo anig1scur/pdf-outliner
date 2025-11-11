@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte'; 
   import * as pdfjsLib from 'pdfjs-dist';
   import Dropzone from 'svelte-file-dropzone';
   import { PDFDocument } from 'pdf-lib';
@@ -17,7 +17,6 @@
   import { tocConfig } from '../stores';
 
   let isTocConfigExpanded = false;
-  let showPreview = false;
   let addPhysicalTocPage = true;
 
   // New Modal State
@@ -39,7 +38,7 @@
   let originalPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
   let previewPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
   let tocPageCount = 0;
-  let isPreviewMode = false;
+  let isPreviewMode = false; // false = 'grid' (编辑), true = 'single' (预览)
 
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocEndPage + 1;
@@ -67,6 +66,7 @@
   let isFileLoading = false;
   let tocStartPage = 1;
   let tocEndPage = 1;
+  let isSettingStart = true; 
 
   let pdfState: PDFState = {
     doc: null,
@@ -84,7 +84,7 @@
   });
 
   $: {
-    if (pdfState.instance && pdfState.currentPage && $pdfService) {
+    if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
       $pdfService.renderPage(
         pdfState.instance,
         pdfState.currentPage,
@@ -104,7 +104,6 @@
       pdfState.instance = null;
       pdfState.totalPages = 0;
     }
-    // 强制 Svelte 重新渲染
     pdfState = { ...pdfState };
   };
 
@@ -141,12 +140,15 @@
       previewPdfInstance = await loadingTask.promise;
       pdfState.newDoc = newDoc;
 
-      updateViewerInstance();
-      
-      if (currentPageBackup <= pdfState.totalPages) {
-        pdfState.currentPage = currentPageBackup;
+      if (isPreviewMode) {
+        updateViewerInstance();
+        if (currentPageBackup <= pdfState.totalPages) {
+          pdfState.currentPage = currentPageBackup;
+        } else {
+          pdfState.currentPage = 1;
+        }
       } else {
-        pdfState.currentPage = 1;
+        pdfState.instance = originalPdfInstance;
       }
 
     } catch (error) {
@@ -191,6 +193,12 @@
       const file = acceptedFiles[0];
       pdfState.filename = file.name;
 
+      pdfState.instance = null;
+      pdfState.totalPages = 0;
+      originalPdfInstance = null;
+      previewPdfInstance = null;
+      pdfState = { ...pdfState }; 
+
       try {
         const arrayBuffer = await file.arrayBuffer();
         const uint8Array = new Uint8Array(arrayBuffer);
@@ -199,13 +207,11 @@
 
         const loadingTask = pdfjsLib.getDocument(uint8Array);
         
-        originalPdfInstance = await loadingTask.promise; // 保存原始实例
-        previewPdfInstance = originalPdfInstance; // 初始预览 = 原始
-        pdfState.instance = originalPdfInstance; // 设置当前查看器实例
-        pdfState.totalPages = originalPdfInstance.numPages;
-        isPreviewMode = false; // 重置为编辑模式
-        tocPageCount = 0; // 重置页码计数
-        // --- 修复结束 ---
+        originalPdfInstance = await loadingTask.promise;
+        previewPdfInstance = originalPdfInstance;
+        
+        isPreviewMode = false;
+        tocPageCount = 0; 
 
         pdfState.currentPage = 1;
         tocStartPage = 1;
@@ -396,12 +402,22 @@
       'offset-preview-canvas'
     ) as HTMLCanvasElement;
     if (canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const renderWidth = canvas.clientWidth * dpr;
+
+      if (renderWidth === 0) {
+        setTimeout(() => renderOffsetPreviewPage(pageNum), 100);
+        return;
+      }
+
       await $pdfService.renderPageToCanvas(
         originalPdfInstance,
         pageNum,
         canvas,
-        400
+        renderWidth 
       );
+      canvas.style.width = "100%";
+      canvas.style.height = "auto";
     }
   };
 
@@ -413,33 +429,13 @@
       originalPdfInstance &&
       $pdfService
     ) {
-      renderOffsetPreviewPage(offsetPreviewPageNum);
+      (async () => {
+        await tick(); 
+        renderOffsetPreviewPage(offsetPreviewPageNum);
+      })();
     }
   }
 
-  const openPreview = async () => {
-    showPreview = true;
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    renderPreviewPages();
-  };
-
-  const renderPreviewPages = async () => {
-    if (!originalPdfInstance || !$pdfService) return;
-
-    for (let i = tocStartPage; i <= tocEndPage; i++) {
-      const canvas = document.getElementById(
-        `preview-canvas-${i}`
-      ) as HTMLCanvasElement;
-      if (canvas) {
-        await $pdfService.renderPageToCanvas(originalPdfInstance, i, canvas, 150);
-      }
-    }
-  };
-
-  $: previewPages = Array.from(
-    { length: tocEndPage - tocStartPage + 1 },
-    (_, i) => tocStartPage + i
-  );
 
   const debouncedJumpToPage = debounce((page: number) => {
     if (page > 0 && page <= pdfState.totalPages) {
@@ -463,14 +459,23 @@
         targetPage = physicalContentPage;
       }
     } else {
-      // 编辑/验证模式: 直接使用 '原始 PDF' 中的页码
       targetPage = physicalContentPage;
+      
+      isPreviewMode = true;
+      updateViewerInstance();
+      
+      setTimeout(() => {
+        debouncedJumpToPage(targetPage);
+      }, 50);
+      
+      return;
     }
     
-    debouncedJumpToPage(targetPage);
+    if (isPreviewMode) {
+      debouncedJumpToPage(targetPage);
+    }
   };
 
-  // "上下文选择" 的事件处理器
   const handleSetStartPage = (e: CustomEvent) => {
     const newStartPage = e.detail.page;
     tocStartPage = newStartPage;
@@ -479,7 +484,6 @@
     }
   };
 
-  // "上下文选择" 的事件处理器
   const handleSetEndPage = (e: CustomEvent) => {
     const newEndPage = e.detail.page;
     if (newEndPage < tocStartPage) {
@@ -500,7 +504,7 @@
 <div class="flex mt-8 p-4 gap-12 mx-auto w-[80%] font-mono justify-between">
   <div>
     <div class="flex items-center gap-6">
-      <span class="text-3xl font-semibold">PDF Outliner</span>
+      <span class="text-3xl font-semibold">Tocify</span>
       <Logo />
     </div>
 
@@ -548,7 +552,7 @@
               />
             </div>
             <div class="text-xs text-gray-500 mt-1">
-              (1-based, 1 = at start)
+              (1-based, 1 = first page)
             </div>
           </div>
           {/if}
@@ -685,6 +689,13 @@
 
     <div class="border-dashed border-blue-100 rounded border-2 p-3 my-4">
       <h3 class="font-bold mb-2">ToC Pages Selection</h3>
+      <p class="text-sm text-gray-600 mb-3">
+        {#if !isSettingStart}
+          Click on the grid to select the <strong>End Page</strong>...
+        {:else}
+          Click on the grid to select the <strong>Start Page</strong>...
+        {/if}
+      </p>
 
       <div class="flex gap-4 items-center my-2">
         <label for="toc_start_page" class="w-32">Start Page:</label>
@@ -710,13 +721,7 @@
         />
       </div>
 
-      <button
-        class="btn w-full my-2 bg-green-600 text-white hover:bg-green-700 text-sm"
-        on:click={openPreview}
-        disabled={!pdfState.instance}
-      >
-        👁️ Preview Selected Pages ({tocEndPage - tocStartPage + 1} pages)
-      </button>
+      <!-- REMOVED: "Preview Selected Pages" 按钮 -->
     </div>
 
     <button
@@ -742,6 +747,7 @@
   </div>
 
   <div class="flex flex-col flex-1">
+    <!-- 容器现在是粘性的 -->
     <div class="h-fit pb-8 min-h-[85vh] top-5 sticky">
       <Dropzone
         containerClasses={pdfState.instance ? '' : 'h-full'}
@@ -773,7 +779,25 @@
       </Dropzone>
 
       {#if pdfState.instance}
-        <div class="absolute top-3 right-3 z-20 flex gap-2">
+        <!-- 
+          按钮已从此位置移除
+        -->
+
+        <PDFViewer
+          bind:pdfState
+          mode={isPreviewMode ? 'single' : 'grid'}
+          tocStartPage={tocStartPage}
+          tocEndPage={tocEndPage}
+          bind:isSettingStart={isSettingStart} 
+          on:setstartpage={handleSetStartPage}
+          on:setendpage={handleSetEndPage}
+        />
+
+        <!-- 
+          按钮的新位置: 
+          位于 PDFViewer 之后, 在粘性容器的底部
+        -->
+        <div class="flex gap-2 justify-end mt-4 px-4 relative z-10">
           <button
             class="btn flex gap-2 items-center"
             on:click={togglePreviewMode}
@@ -782,69 +806,27 @@
           >
             {#if isPreviewMode}
               <PencilIcon size={16} />
-              Edit Mode
+              Edit (Grid View)
             {:else}
               <EyeIcon size={16} />
-              Preview Mode
+              Preview (Single View)
             {/if}
           </button>
           
           <button
-            class="btn"
+            class="btn bg-green-600 text-white hover:bg-green-700"
             on:click={exportPDF}
             disabled={!pdfState.doc}
           >
             Generate Outlined PDF
           </button>
         </div>
-
-        <PDFViewer
-          bind:pdfState
-          on:setstartpage={handleSetStartPage}
-          on:setendpage={handleSetEndPage}
-        />
       {/if}
     </div>
   </div>
 </div>
 
-{#if showPreview}
-<div
-class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-on:click={() => (showPreview = false)}
->
-<div
-  class="bg-white rounded-lg p-6 max-w-4xl max-h-[80vh] overflow-auto"
-  on:click|stopPropagation
->
-  <div class="flex justify-between items-center mb-4">
-    <h2 class="text-xl font-bold">
-      ToC Pages Preview (Pages {tocStartPage} - {tocEndPage})
-    </h2>
-    <button
-      on:click={() => (showPreview = false)}
-      class="text-gray-500 hover:text-gray-700"
-    >
-      <X size={24} />
-    </button>
-  </div>
-
-  <div class="grid grid-cols-3 gap-4">
-    {#each previewPages as pageNum}
-      <div class="border rounded p-2">
-        <div class="text-center text-sm font-semibold mb-2">
-          Page {pageNum}
-        </div>
-        <canvas
-          id="preview-canvas-{pageNum}"
-          class="border w-full"
-        ></canvas>
-      </div>
-    {/each}
-  </div>
-</div>
-</div>
-  {/if}
+<!-- REMOVED: showPreview 弹窗 -->
 
 {#if showOffsetModal && firstTocItem}
 <div
@@ -906,6 +888,6 @@ on:click={() => (showOffsetModal = false)}
 
 <svelte:head>
   <title>
-    PDF OUTLINER · Add or edit PDF Outlines / Table of Contents in browser
+    Tocify · Add or edit PDF Table of Contents in browser based on AI
   </title>
 </svelte:head>
