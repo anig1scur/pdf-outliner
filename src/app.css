@@ -4,5 +4,10 @@
 
 
 body {
-  @apply bg-[#f9f8f5]
+  @apply bg-[#f9f8f5];
+
+  -webkit-overflow-scrolling: touch;
+
+  touch-action: manipulation;
+
 }

@@ -146,7 +146,7 @@
       toastProps = {
         show: true,
         message: `ToC pages will be inserted at page 2.
-          This can be changed in Settings.`,
+          You can change it in Settings.`,
         type: 'success',
       };
       hasShownTocHint = true;
