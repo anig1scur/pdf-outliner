@@ -84,7 +84,7 @@
           <Tooltip
             text={`This flag determines whether a PDF outline item is expanded or collapsed.
 
-Only a few PDF viewer support it. Chrome collapses all items by default.`}
+Only a few PDF viewer support it, Chrome collapses all items by default.`}
             position="right"
             className="-ml-6"
           >
@@ -138,23 +138,22 @@ Only a few PDF viewer support it. Chrome collapses all items by default.`}
     </div>
 
     {#if item.children && item.children.length > 0}
-    <div class="ml-2">
-      {#each item.children as child (child.id)}
-        <Self
-          item={child}
-          showTooltip={false}
-          onUpdate={handleUpdateChild}
-          onDelete={handleDeleteChild}
-          on:hoveritem
-          
-          {currentPage}
-          {isPreview}
-          {pageOffset}
-          {insertAtPage}
-          {tocPageCount}
-        />
-      {/each}
-    </div>
-  {/if}
+      <div class="ml-2">
+        {#each item.children as child (child.id)}
+          <Self
+            item={child}
+            showTooltip={false}
+            onUpdate={handleUpdateChild}
+            onDelete={handleDeleteChild}
+            on:hoveritem
+            {currentPage}
+            {isPreview}
+            {pageOffset}
+            {insertAtPage}
+            {tocPageCount}
+          />
+        {/each}
+      </div>
+    {/if}
   </div>
 {/if}

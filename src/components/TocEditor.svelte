@@ -1,11 +1,11 @@
 <script>
+  import {onDestroy} from 'svelte';
   import ShortUniqueId from 'short-unique-id';
   import {CircleHelpIcon} from 'lucide-svelte';
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
 
-  
   export let currentPage = 1;
   export let isPreview = false;
   export let pageOffset = 0;
@@ -15,7 +15,6 @@
   let text = ``;
   let isSyncing = false;
 
-  // 订阅 tocItems store
   const unsubscribe = tocItems.subscribe((value) => {
     if (!isSyncing) {
       isSyncing = true;
@@ -24,8 +23,6 @@
     }
   });
 
-  // 在组件销毁时取消订阅
-  import {onDestroy} from 'svelte';
   onDestroy(unsubscribe);
 
   function parseText(text) {
@@ -73,7 +70,6 @@
       .join('\n');
   }
 
-  // 当用户修改 text 时 → 更新 tocItems
   $: if (!isSyncing) {
     isSyncing = true;
     tocItems.set(parseText(text));

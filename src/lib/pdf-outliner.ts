@@ -1,7 +1,7 @@
-// from https://github.com/marp-team/marp-cli/blob/9e0eff5f9d9530577458e93769cd2b0000958a7d/src/utils/pdf.ts
+// from
+// https://github.com/marp-team/marp-cli/blob/9e0eff5f9d9530577458e93769cd2b0000958a7d/src/utils/pdf.ts
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import type {PDFDocument, PDFRef} from 'pdf-lib';
-
 // Use pre-bundled pdf-lib to avoid circular dependency warning. pdf-lib as an
 // external dependency will make failure in the standalone binary.
 // @see https://github.com/marp-team/marp-cli/issues/373
@@ -10,8 +10,8 @@ import {PDFHexString, PDFName, PDFString} from 'pdf-lib';
 // --- Outline ---
 
 type PDFOutlineTo =
-  // | string
-  number | [pageIndex: number, xPercentage: number, yPercentage: number];
+    // | string
+    number|[pageIndex: number, xPercentage: number, yPercentage: number];
 
 export interface PDFOutlineItem {
   title: string;
@@ -26,15 +26,17 @@ export interface PDFOutlineItemWithChildren extends Omit<PDFOutlineItem, 'to'> {
   open: boolean;
 }
 
-export type PDFOutline = PDFOutlineItem | PDFOutlineItemWithChildren;
+export type PDFOutline = PDFOutlineItem|PDFOutlineItemWithChildren;
 
 const walk = (
-  outlines: readonly PDFOutline[],
-  callback: (outline: PDFOutline) => void | boolean // stop walking to children if returned false
-) => {
+    outlines: readonly PDFOutline[],
+    callback: (outline: PDFOutline) =>
+        void|boolean  // stop walking to children if returned false
+    ) => {
   for (const outline of outlines) {
     const ret = callback(outline);
-    if ('children' in outline && ret !== false) walk(outline.children, callback);
+    if ('children' in outline && ret !== false)
+      walk(outline.children, callback);
   }
 };
 
@@ -56,14 +58,11 @@ const getOpeningCount = (outlines: readonly PDFOutline[]) => {
   return count;
 };
 
-// <--- MODIFIED: Added pageNumberingOffset and addedPagesCount parameters
 export const setOutline = async (
-  doc: PDFDocument,
-  outlines: readonly PDFOutline[],
-  pageNumberingOffset: number,
-  addedPagesCount: number
-  
-) => {
+    doc: PDFDocument, outlines: readonly PDFOutline[],
+    pageNumberingOffset: number, addedPagesCount: number
+
+    ) => {
   const rootRef = doc.context.nextRef();
   const refMap = new WeakMap<PDFOutline, PDFRef>();
 
@@ -86,7 +85,8 @@ export const setOutline = async (
   // <--- ADDED: Helper function to calculate the final physical page index
   const getFinalPageIndex = (labeledPageNum: number): number => {
     // 1. Start with the labeled page number (e.g., "1" from the ToC)
-    // 2. Add the user-confirmed offset (e.g., physical page 5 is labeled "1" -> offset is 4)
+    // 2. Add the user-confirmed offset (e.g., physical page 5 is labeled "1" ->
+    // offset is 4)
     // 3. Add the number of new physical ToC pages we inserted at the front
     const finalPageNum = labeledPageNum + pageNumberingOffset + addedPagesCount;
 
@@ -118,14 +118,14 @@ export const setOutline = async (
         } else if (Array.isArray(outline.to)) {
           // <--- MODIFIED: Use helper function
           const finalIndex = getFinalPageIndex(outline.to[0]);
-          const page = doc.getPage(finalIndex); // Use correct index
+          const page = doc.getPage(finalIndex);  // Use correct index
           // --->
           const width = page.getWidth();
           const height = page.getHeight();
 
           return {
             Dest: [
-              pageRefs[finalIndex], // <--- MODIFIED: Use correct index
+              pageRefs[finalIndex],  // <--- MODIFIED: Use correct index
               'XYZ',
               width * outline.to[1],
               height * outline.to[2],
@@ -149,18 +149,15 @@ export const setOutline = async (
         return {};
       })();
 
-      doc.context.assign(
-        outlineRef,
-        doc.context.obj({
-          Title: PDFString.of(outline.title),
-          Parent: parent,
-          ...(i > 0 ? {Prev: refMap.get(outlines[i - 1])!} : {}),
-          ...(i < length - 1 ? {Next: refMap.get(outlines[i + 1])!} : {}),
-          ...childrenDict,
-          ...destOrAction,
-          F: (outline.italic ? 1 : 0) | (outline.bold ? 2 : 0),
-        })
-      );
+      doc.context.assign(outlineRef, doc.context.obj({
+        Title: PDFString.of(outline.title),
+        Parent: parent,
+        ...(i > 0 ? {Prev: refMap.get(outlines[i - 1])!} : {}),
+        ...(i < length - 1 ? {Next: refMap.get(outlines[i + 1])!} : {}),
+        ...childrenDict,
+        ...destOrAction,
+        F: (outline.italic ? 1 : 0) | (outline.bold ? 2 : 0),
+      }));
     }
   };
 
@@ -169,19 +166,15 @@ export const setOutline = async (
   // Root
   const rootCount = getOpeningCount(outlines);
 
-  doc.context.assign(
-    rootRef,
-    doc.context.obj({
-      Type: 'Outlines',
-      ...(rootCount > 0
-        ? {
-            First: refMap.get(outlines[0])!,
-            Last: refMap.get(outlines[outlines.length - 1])!,
-          }
-        : {}),
-      Count: rootCount,
-    })
-  );
+  doc.context.assign(rootRef, doc.context.obj({
+    Type: 'Outlines',
+    ...(rootCount > 0 ? {
+      First: refMap.get(outlines[0])!,
+      Last: refMap.get(outlines[outlines.length - 1])!,
+    } :
+                        {}),
+    Count: rootCount,
+  }));
 
   doc.catalog.set(doc.context.obj('Outlines'), rootRef);
 };

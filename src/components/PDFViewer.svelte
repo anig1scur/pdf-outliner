@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {createEventDispatcher, onMount, onDestroy} from 'svelte';
+  import {createEventDispatcher, tick} from 'svelte';
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw} from 'lucide-svelte';
 
   import {pdfService} from '../stores';
@@ -24,6 +24,37 @@
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
   $: ({filename, currentPage, scale, totalPages} = pdfState);
+
+  $: if (mode === 'single' && pdfState.instance && pdfState.currentPage && pdfState.scale) {
+    (async () => {
+      await tick();
+      const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
+      if (!canvas || !pdfState.instance) return;
+
+      const page = await pdfState.instance.getPage(pdfState.currentPage);
+
+      const dpr = window.devicePixelRatio || 1;
+      const viewport = page.getViewport({scale: pdfState.scale});
+
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+
+      canvas.style.width = `${Math.floor(viewport.width)}px`;
+      canvas.style.height = `${Math.floor(viewport.height)}px`;
+
+      const canvasContext = canvas.getContext('2d');
+      if (!canvasContext) return;
+
+      canvasContext.scale(dpr, dpr);
+
+      const renderContext = {
+        canvasContext,
+        viewport,
+      };
+
+      await page.render(renderContext).promise;
+    })();
+  }
 
   const goToNextPage = () => {
     if (pdfState.currentPage < pdfState.totalPages) {
@@ -143,7 +174,7 @@
 </script>
 
 <div
-  class="h-[85vh] rounded-b-lg"
+  class="h-[85vh] rounded-lg"
   class:overflow-auto={mode === 'grid'}
   use:observeViewport={mode === 'grid' ? observeViewport : undefined}
   class:overflow-hidden={mode === 'single'}
@@ -153,33 +184,33 @@
     <div class="flex flex-col h-full">
       <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white border-b-2 border-black">
         <div class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto">
-          <div class="text-gray-600 font-serif flex gap-3 items-center">
+          <div class="text-gray-600 font-serif flex gap-2 items-center text-sm md:text-base md:gap-3">
             <span class="truncate max-w-xs">{filename}</span>
             <span class="text-gray-300">|</span>
             <span>{currentPage} / {totalPages}</span>
           </div>
 
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 md:gap-2">
             <button
               on:click={zoomOut}
-              class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
               title="zoom out"
             >
               <ZoomOut size={20} />
             </button>
-            <span class="min-w-[60px] text-center text-gray-600">
+            <span class="min-w-[50px] text-center text-gray-600 text-sm md:text-base md:min-w-[60px]">
               {Math.round(scale * 100)}%
             </span>
             <button
               on:click={zoomIn}
-              class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
               title="zoom in"
             >
               <ZoomIn size={20} />
             </button>
             <button
               on:click={resetZoom}
-              class="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
               title="reset"
             >
               <RotateCw size={20} />
@@ -192,7 +223,7 @@
         <button
           on:click={goToPrevPage}
           disabled={currentPage <= 1}
-          class="absolute left-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
+          class="absolute left-2 p-1 md:left-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
         >
           <ChevronLeft size={24} />
         </button>
@@ -207,14 +238,14 @@
         <button
           on:click={goToNextPage}
           disabled={currentPage >= totalPages}
-          class="absolute right-4 p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
+          class="absolute right-2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
         >
           <ChevronRight size={24} />
         </button>
       </div>
     </div>
   {:else if mode === 'grid'}
-    <div class="grid grid-cols-3 gap-5 p-4">
+    <div class="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5">
       {#each gridPages as page (page.pageNum)}
         <div
           class="rounded-lg overflow-hidden border-t-[2px] shadow-black border-black border-2 border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform"

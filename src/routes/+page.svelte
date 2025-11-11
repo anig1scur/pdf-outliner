@@ -3,7 +3,7 @@
   import * as pdfjsLib from 'pdfjs-dist';
   import Dropzone from 'svelte-file-dropzone';
   import {PDFDocument} from 'pdf-lib';
-  import {Eye, EyeOff, X, EyeIcon, PencilIcon} from 'lucide-svelte';
+  import {Eye, EyeOff, X, EyeIcon, PencilIcon, Upload} from 'lucide-svelte';
   import {slide, fade, fly} from 'svelte/transition';
 
   import TocEditor from '../components/TocEditor.svelte';
@@ -79,6 +79,8 @@
     totalPages: 0,
     scale: 1.0,
   };
+
+  let fileInputRef: HTMLInputElement;
 
   onMount(() => {
     $pdfService = new PDFService();
@@ -190,54 +192,69 @@
     }
   }
 
+  const loadPdfFile = async (file: File) => {
+    if (!file) return;
+
+    isFileLoading = true;
+    hasShownTocHint = false;
+    pdfState.filename = file.name;
+
+    pdfState.instance = null;
+    pdfState.totalPages = 0;
+    originalPdfInstance = null;
+    previewPdfInstance = null;
+    pdfState = {...pdfState};
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      pdfState.doc = await PDFDocument.load(uint8Array);
+      const loadingTask = pdfjsLib.getDocument(uint8Array);
+      originalPdfInstance = await loadingTask.promise;
+      previewPdfInstance = originalPdfInstance;
+      isPreviewMode = false;
+      tocPageCount = 0;
+      pdfState.currentPage = 1;
+      tocStartPage = 1;
+      tocEndPage = 1;
+
+      tocItems.set([]);
+      updateTocField('pageOffset', 0);
+      updateTocField('insertAtPage', 2);
+    } catch (error) {
+      console.error('Error loading PDF:', error);
+      toastProps = {
+        show: true,
+        message: `Error loading PDF: ${error.message}`,
+        type: 'error',
+      };
+    } finally {
+      isFileLoading = false;
+      updateViewerInstance();
+    }
+  };
+
   const handleFileDrop = async (e: CustomEvent) => {
     const {acceptedFiles} = e.detail;
     isDragging = false;
 
     if (acceptedFiles.length) {
-      isFileLoading = true;
-      hasShownTocHint = false;
-      const file = acceptedFiles[0];
-      pdfState.filename = file.name;
-
-      pdfState.instance = null;
-      pdfState.totalPages = 0;
-      originalPdfInstance = null;
-      previewPdfInstance = null;
-      pdfState = {...pdfState};
-
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-
-        pdfState.doc = await PDFDocument.load(uint8Array);
-
-        const loadingTask = pdfjsLib.getDocument(uint8Array);
-
-        originalPdfInstance = await loadingTask.promise;
-        previewPdfInstance = originalPdfInstance;
-        isPreviewMode = false;
-        tocPageCount = 0;
-
-        pdfState.currentPage = 1;
-        tocStartPage = 1;
-        tocEndPage = 1;
-
-        tocItems.set([]);
-        updateTocField('pageOffset', 0);
-        updateTocField('insertAtPage', 2);
-      } catch (error) {
-        console.error('Error loading PDF:', error);
-        toastProps = {
-          show: true,
-          message: `Error loading PDF: ${error.message}`,
-          type: 'error',
-        };
-      } finally {
-        isFileLoading = false;
-        updateViewerInstance();
-      }
+      await loadPdfFile(acceptedFiles[0]);
     }
+  };
+
+  const handleFileInputChange = async (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      await loadPdfFile(target.files[0]);
+      // Reset the input value to allow re-uploading the same file
+      target.value = '';
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef?.click();
   };
 
   const exportPDF = async () => {
@@ -408,7 +425,6 @@
       }
 
       await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
-
     }
   };
 
@@ -491,8 +507,10 @@
   />
 {/if}
 
-<div class="flex mt-8 p-4 gap-8 mx-auto w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between">
-  <div class="w-[30%]">
+<div
+  class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
+>
+  <div class="w-full lg:w-[30%]">
     <div class="flex items-center gap-6">
       <span class="text-3xl tracking-widest font-semibold">Tocify</span>
       <Logo />
@@ -574,8 +592,8 @@
             </div>
             <div class="text-xs text-gray-500 mt-1">(Physical Page #) - (Labeled Page #)</div>
           </div>
-          <div class="flex gap-4">
-            <div class="w-1/2">
+          <div class="flex flex-col md:flex-row gap-4">
+            <div class="w-full md:w-1/2">
               <h3 class="my-4 font-bold">First Level</h3>
 
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
@@ -624,7 +642,7 @@
               </div>
             </div>
 
-            <div class="w-1/2">
+            <div class="w-full md:w-1/2">
               <h3 class="my-4 font-bold">Other Levels</h3>
 
               <div class="border-black border-2 rounded-md my-3 p-2 w-full">
@@ -749,7 +767,7 @@
     />
   </div>
 
-  <div class="flex flex-col w-[70%]">
+  <div class="flex flex-col w-full lg:w-[70%]">
     <div
       class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg relative bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
     >
@@ -790,9 +808,28 @@
             on:setendpage={handleSetEndPage}
           />
 
-          <div class="flex gap-2 justify-end pt-4 relative z-10 mr-3">
+          <input
+            type="file"
+            class="hidden"
+            accept=".pdf"
+            bind:this={fileInputRef}
+            on:change={handleFileInputChange}
+          />
+
+          <div
+            class="flex flex-col md:flex-row md:justify-end gap-3 md:gap-2 pt-4 relative z-10 mx-3 md:mr-3 md:mx-0"
+          >
             <button
-              class="btn flex gap-2 items-center font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+              class="btn flex gap-2 items-center justify-center font-bold bg-white text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
+              on:click={triggerFileInput}
+              title="Upload a new PDF file"
+            >
+              <Upload size={16} />
+              Upload New
+            </button>
+
+            <button
+              class="btn flex gap-2 items-center justify-center font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={togglePreviewMode}
               disabled={!previewPdfInstance || previewPdfInstance === originalPdfInstance}
               title={isPreviewMode
@@ -801,7 +838,7 @@
             >
               {#if isPreviewMode}
                 <PencilIcon size={16} />
-                Edit (Grid View)
+                Select (Grid View)
               {:else}
                 <EyeIcon size={16} />
                 Preview (Single View)
@@ -809,7 +846,7 @@
             </button>
 
             <button
-              class="btn font-bold bg-green-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+              class="btn font-bold bg-green-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={exportPDF}
               disabled={!pdfState.doc}
             >
@@ -904,8 +941,7 @@
               <button
                 class="btn p-2 h-10 w-10 font-bold bg-white text-black border-2 border-black rounded-lg shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all disabled:bg-gray-200 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
                 on:click={() => {
-                  if (offsetPreviewPageNum < pdfState.totalPages)
-                    offsetPreviewPageNum++;
+                  if (offsetPreviewPageNum < pdfState.totalPages) offsetPreviewPageNum++;
                 }}
                 disabled={offsetPreviewPageNum >= pdfState.totalPages}
               >
@@ -918,7 +954,7 @@
             on:click={handleOffsetConfirm}
             class="btn mt-auto font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all w-full"
           >
-          Yes! This page !
+            Yes! This page !
           </button>
         </div>
 
