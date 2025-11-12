@@ -41,6 +41,8 @@
   let previewPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
   let tocPageCount = 0;
   let isPreviewMode = false;
+  let isPreviewLoading = false;
+  let showNextStepHint = false;
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocEndPage + 1;
   }
@@ -95,19 +97,48 @@
     }
     pdfState = {...pdfState};
   };
-  const togglePreviewMode = () => {
-    if (!previewPdfInstance) {
-      toastProps = {
-        show: true,
-        message: 'Please edit the ToC first to generate a preview.',
-        type: 'error',
-      };
-      return;
+
+  const togglePreviewMode = async () => {
+    if (!originalPdfInstance) return; // Safeguard
+
+    if (!isPreviewMode) {
+      isPreviewLoading = true;
+      try {
+        // If no preview exists, or it's the original, generate one.
+        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
+          await updatePDF();
+        }
+
+        // After attempting to update, check again.
+        // If it's *still* the original (e.g., empty ToC, no physical page),
+        // then there's nothing to preview.
+        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
+          toastProps = {
+            show: true,
+            message: 'Add ToC items or enable "Add physical ToC page" to generate a preview.',
+            type: 'error',
+          };
+        } else {
+          isPreviewMode = true; // Successfully entered preview
+        }
+      } catch (error) {
+        console.error('Error generating preview:', error);
+        toastProps = {
+          show: true,
+          message: `Error generating preview: ${error.message}`,
+          type: 'error',
+        };
+      } finally {
+        isPreviewLoading = false;
+      }
+    } else {
+      isPreviewMode = false;
     }
-    isPreviewMode = !isPreviewMode;
+
     pdfState.currentPage = 1;
     updateViewerInstance();
   };
+
   const updatePDF = async () => {
     if (!pdfState.doc || !$pdfService) return;
     try {
@@ -132,8 +163,13 @@
           pdfState.currentPage = 1;
         }
       } else {
+        // If not in preview mode, don't auto-switch instance.
+        // Let updateViewerInstance handle the logic based on isPreviewMode.
+        // We just ensure the original instance is still available.
         pdfState.instance = originalPdfInstance;
       }
+      // Ensure viewer instance is updated *after* previewPdfInstance is set
+      updateViewerInstance();
     } catch (error) {
       console.error('Error updating PDF:', error);
       toastProps = {
@@ -145,7 +181,11 @@
   };
   const debouncedUpdatePDF = debounce(updatePDF, 300);
   tocItems.subscribe((items) => {
+    if (items.length > 0) showNextStepHint = false;
     if (isFileLoading) return;
+
+    if (!isPreviewMode) return;
+
     if (!hasShownTocHint && items.length > 0) {
       toastProps = {
         show: true,
@@ -159,18 +199,22 @@
   });
   tocConfig.subscribe(() => {
     if (isFileLoading) return;
+    if (!isPreviewMode) return;
     debouncedUpdatePDF();
   });
   let previousAddPhysicalTocPage = addPhysicalTocPage;
   $: {
     if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
       previousAddPhysicalTocPage = addPhysicalTocPage;
-      debouncedUpdatePDF();
+      if (isPreviewMode) {
+        debouncedUpdatePDF();
+      }
     }
   }
   const loadPdfFile = async (file: File) => {
     if (!file) return;
     isFileLoading = true;
+    showNextStepHint = false;
     hasShownTocHint = false;
     pdfState.filename = file.name;
     pdfState.instance = null;
@@ -201,8 +245,10 @@
         type: 'error',
       };
     } finally {
-      isFileLoading = false;
-      updateViewerInstance();
+      updateViewerInstance(); // Update instance first
+      await tick(); // Wait for Svelte to render the grid
+      isFileLoading = false; // NOW hide loading state
+      showNextStepHint = true;
     }
   };
   const handleFileDrop = async (e: CustomEvent) => {
@@ -287,6 +333,7 @@
     return root;
   }
   const generateTocFromAI = async () => {
+    showNextStepHint = false;
     if (!originalPdfInstance || !$pdfService) {
       toastProps = {
         show: true,
@@ -318,11 +365,19 @@
       });
       if (!response.ok) {
         const err = await response.json();
-        throw new Error(err.message || 'AI processing failed.');
+        let friendlyMessage = err.message || 'AI processing failed.';
+        if (
+          friendlyMessage.includes('No valid ToC') ||
+          friendlyMessage.includes('parsing error') ||
+          friendlyMessage.includes('structure')
+        ) {
+          friendlyMessage = "The selected pages don't look like a ToC. Please try adjusting the page range.";
+        }
+        throw new Error(friendlyMessage);
       }
       const aiResult: {title: string; level: number; page: number}[] = await response.json();
       if (!aiResult || aiResult.length === 0) {
-        aiError = 'AI could not find a valid ToC on these pages.';
+        aiError = 'We could not find a valid ToC on these pages.';
         return;
       }
       const nestedTocItems = buildTree(aiResult);
@@ -337,22 +392,29 @@
       }
     } catch (error) {
       console.error('Error generating ToC from AI:', error);
-      aiError = `Error: ${error.message}`;
+      aiError = error.message;
     } finally {
       isAiLoading = false;
     }
   };
-  const handleOffsetConfirm = () => {
+
+  const handleOffsetConfirm = async () => {
     if (!firstTocItem) return;
     const labeledPage = firstTocItem.to;
     const physicalPage = offsetPreviewPageNum;
     const offset = physicalPage - labeledPage;
     updateTocField('pageOffset', offset);
-    tocItems.set(pendingTocItems);
+    tocItems.set(pendingTocItems); // This will trigger debouncedUpdatePDF if in preview
+
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
+
+    if (!isPreviewMode) {
+      await togglePreviewMode();
+    }
   };
+
   const renderOffsetPreviewPage = async (pageNum: number) => {
     if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
     const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
@@ -387,28 +449,20 @@
     }
   }, 200);
   const handleTocItemHover = (e: CustomEvent) => {
+    if (!isPreviewMode) {
+      return;
+    }
     const logicalPage = e.detail.to as number;
     const physicalContentPage = logicalPage + config.pageOffset;
     let targetPage: number;
-    if (isPreviewMode) {
-      const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
-      if (physicalContentPage >= config.insertAtPage) {
-        targetPage = physicalContentPage + insertedPages;
-      } else {
-        targetPage = physicalContentPage;
-      }
+
+    const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
+    if (physicalContentPage >= config.insertAtPage) {
+      targetPage = physicalContentPage + insertedPages;
     } else {
       targetPage = physicalContentPage;
-      isPreviewMode = true;
-      updateViewerInstance();
-      setTimeout(() => {
-        debouncedJumpToPage(targetPage);
-      }, 50);
-      return;
     }
-    if (isPreviewMode) {
-      debouncedJumpToPage(targetPage);
-    }
+    debouncedJumpToPage(targetPage);
   };
   const handleSetStartPage = (e: CustomEvent) => {
     const newStartPage = e.detail.page;
@@ -435,13 +489,16 @@
     }
     // Switch to preview mode if not already in it
     if (!isPreviewMode) {
-      isPreviewMode = true;
-      updateViewerInstance();
-      // Wait for Svelte to process the instance change
-      await tick();
+      // (Req 3) Use the new toggle function to generate if needed
+      await togglePreviewMode();
+      // If togglePreviewMode failed (e.g., no ToC), it will show a toast and return.
+      // We must check if we successfully entered preview mode.
+      if (!isPreviewMode) return;
     }
+    // Wait for Svelte to process the instance change
+    await tick();
     // Jump to the page where the ToC starts
-    const targetPage = config.insertAtPage;
+    const targetPage = config.insertAtPage || 2;
     if (targetPage > 0 && targetPage <= pdfState.totalPages) {
       pdfState.currentPage = targetPage;
       pdfState = {...pdfState}; // Trigger reactivity
@@ -663,6 +720,24 @@
         </div>
       {/if}
     </div>
+
+    {#if showNextStepHint && originalPdfInstance}
+      <div
+        class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+        transition:fade={{duration: 200}}
+      >
+        <h3 class="font-bold mb-2">Next Step:</h3>
+        <p class="text-sm text-gray-800">
+          1. Select the pages <strong class="text-black">range on the right</strong> containing your PDF's ToCs.
+        </p>
+        <p class="text-sm text-gray-800 mt-1">
+          2. Click the <strong class="text-black"> Generate ToC</strong> button.
+        </p>
+        <p class="text-sm text-gray-800 mt-2">
+          Or, you can <strong class="text-black">manually add items</strong> in the editor below.
+        </p>
+      </div>
+    {/if}
     {#if originalPdfInstance}
       <div transition:fade={{duration: 200}}>
         <div class="border-black border-2 rounded-lg p-3 my-4 bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
@@ -734,30 +809,54 @@
     <div
       class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg relative bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
     >
-      <Dropzone
-        containerClasses="absolute inset-0 w-full h-full"
-        accept=".pdf"
-        disableDefaultStyles
-        on:drop={handleFileDrop}
-        on:dragenter={() => (isDragging = true)}
-        on:dragleave={() => (isDragging = false)}
-      >
+      {#if isFileLoading}
         <div
-          class="w-full h-full rounded-lg text-center cursor-pointer transition-colors duration-200
-            {pdfState.instance ? 'pointer-events-none' : ''} "
-          class:pointer-events-auto={isDragging}
-          class:bg-blue-200={isDragging}
-          class:bg-opacity-80={isDragging}
+          class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-lg"
+          transition:fade={{duration: 100}}
         >
-          {#if !pdfState.instance || isDragging}
-            <div class="absolute text-stone-500 inset-0 flex items-center justify-center">
-              <p class="px-2">
-                {isDragging ? 'Drop your PDF file here...' : 'Drag and drop your PDF file here, or click to select'}
-              </p>
-            </div>
-          {/if}
+          <div class="flex flex-col items-center gap-4">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
+            <span class="text-xl font-bold">Loading & Rendering PDF...</span>
+          </div>
         </div>
-      </Dropzone>
+      {:else}
+        <Dropzone
+          containerClasses="absolute inset-0 w-full h-full"
+          accept=".pdf"
+          disableDefaultStyles
+          on:drop={handleFileDrop}
+          on:dragenter={() => (isDragging = true)}
+          on:dragleave={() => (isDragging = false)}
+        >
+          <div
+            class="w-full h-full rounded-lg text-center cursor-pointer transition-colors duration-200
+            {pdfState.instance ? 'pointer-events-none' : ''} "
+            class:pointer-events-auto={isDragging}
+            class:bg-blue-200={isDragging}
+            class:bg-opacity-80={isDragging}
+          >
+            {#if !pdfState.instance || isDragging}
+              <div class="absolute text-stone-500 inset-0 flex flex-col items-center justify-center p-4">
+                {#if isDragging}
+                  <p class="text-2xl font-bold">Drop your PDF file here...</p>
+                {:else}
+                  <Upload
+                    size={64}
+                    class="mb-4 text-blue-500"
+                  />
+                  <h3 class="text-2xl font-bold text-black mb-5">Upload Your PDF</h3>
+                  <p class="text-lg">Drag & drop a file here, or</p>
+                  <button
+                    class="btn mt-4 font-bold bg-blue-400 text-black border-2 border-black rounded-lg px-6 py-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
+                  >
+                    Click to Select File
+                  </button>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </Dropzone>
+      {/if}
       {#if pdfState.instance}
         <div class="relative z-10 h-full flex flex-col">
           <PDFViewer
@@ -791,17 +890,20 @@
             <button
               class="btn flex gap-2 items-center justify-center font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 w-full md:w-auto"
               on:click={togglePreviewMode}
-              disabled={!previewPdfInstance || previewPdfInstance === originalPdfInstance}
+              disabled={!originalPdfInstance || isPreviewLoading}
               title={isPreviewMode
                 ? 'Switch to Edit Mode (Show Original PDF)'
                 : 'Switch to Preview Mode (Show Generated PDF)'}
             >
-              {#if isPreviewMode}
+              {#if isPreviewLoading}
+                <div class="animate-spin rounded-full h-4 w-4 border-2 border-black border-t-transparent"></div>
+                Loading...
+              {:else if isPreviewMode}
                 <PencilIcon size={16} />
-                Select (Grid View)
+                Select (Grid)
               {:else}
                 <EyeIcon size={16} />
-                Preview (Single View)
+                Preview
               {/if}
             </button>
             <button

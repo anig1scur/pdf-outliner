@@ -152,11 +152,7 @@ organize the ToCs in below to the target format, remove useless comments
 
     <textarea
       bind:value={text}
-      placeholder={`
-      1 Section Title 1
-      2 Subsection Title 2
-      3.1 Sub-subsection Title 3
-`}
+   
       class="w-full h-full border-2 border-black rounded-lg p-2 text-sm myfocus leading-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
     ></textarea>
   </div>
