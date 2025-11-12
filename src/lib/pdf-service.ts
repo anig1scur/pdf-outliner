@@ -5,8 +5,8 @@ import {get} from 'svelte/store';
 import {tocConfig} from '../stores';
 
 export interface PDFState {
-  doc: PDFDocument|null;
-  newDoc: PDFDocument|null;
+  doc: PDFDocument | null;
+  newDoc: PDFDocument | null;
   filename: string;
   instance: any;
   currentPage: number;
@@ -15,15 +15,17 @@ export interface PDFState {
 }
 
 export interface TocItem {
-  id: number|string;
+  id: number | string;
   title: string;
-  to: number; // 1-based page number in source doc
+  to: number;
   children?: TocItem[];
   open?: boolean;
 }
 
 type PendingAnnot = {
-  tocPage: PDFPage; rect: number[]; targetPageNum: number;
+  tocPage: PDFPage;
+  rect: number[];
+  targetPageNum: number;
 };
 
 export class PDFService {
@@ -41,8 +43,8 @@ export class PDFService {
     const boldFontUrl = '/fonts/NotoSerifSC-Bold.ttf';
 
     const [regBytes, boldBytes] = await Promise.all([
-      fetch(fontUrl).then(res => res.arrayBuffer()),
-      fetch(boldFontUrl).then(res => res.arrayBuffer())
+      fetch(fontUrl).then((res) => res.arrayBuffer()),
+      fetch(boldFontUrl).then((res) => res.arrayBuffer()),
     ]);
 
     this.regularFontBytes = regBytes;
@@ -51,20 +53,17 @@ export class PDFService {
 
   async addMetadataOnly(sourceDoc: PDFDocument, items: TocItem[]) {
     const newDoc = await PDFDocument.create();
-    const copiedPages =
-        await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
+    const copiedPages = await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
     copiedPages.forEach((page) => newDoc.addPage(page));
     return newDoc;
   }
 
-  /**
-   * Generates a new PDF document, inserting TOC pages at a specific location
-   * and then appending the source pages, split by the insertion index.
-   */
   async createTocPage(
-      sourceDoc: PDFDocument, items: TocItem[], addPhysicalPage: boolean = true,
-      insertAtPage: number = 2 // 1-based page number to insert *before*
-      ): Promise<{newDoc: PDFDocument; tocPageCount: number}> {
+    sourceDoc: PDFDocument,
+    items: TocItem[],
+    addPhysicalPage: boolean = true,
+    insertAtPage: number = 2
+  ): Promise<{newDoc: PDFDocument; tocPageCount: number}> {
     if (!addPhysicalPage) {
       const newDoc = await this.addMetadataOnly(sourceDoc, items);
       return {newDoc, tocPageCount: 0};
@@ -79,18 +78,14 @@ export class PDFService {
     const notoBoldFont = await newDoc.embedFont(this.boldFontBytes!, {subset: false});
 
     const sourceIndices = sourceDoc.getPageIndices();
-    // 1-based page number to 0-based index
-    const insertIndex =
-        Math.max(0, Math.min(insertAtPage - 1, sourceIndices.length));
+    const insertIndex = Math.max(0, Math.min(insertAtPage - 1, sourceIndices.length));
 
-    // 1. Copy pages *before* the insertion point
     const indicesBefore = sourceIndices.slice(0, insertIndex);
     if (indicesBefore.length > 0) {
       const copiedPages = await newDoc.copyPages(sourceDoc, indicesBefore);
       copiedPages.forEach((page) => newDoc.addPage(page));
     }
 
-    // 2. Create and add TOC pages
     const [firstPage] = sourceDoc.getPages();
     const {width, height} = firstPage.getSize();
     const tocPage = newDoc.addPage([width, height]);
@@ -112,40 +107,35 @@ export class PDFService {
       pendingAnnots,
     });
 
-    // Get the *actual* number of TOC pages that were created
     const tocPageCount = newDoc.getPageCount() - indicesBefore.length;
 
-    // 3. Copy pages *after* the insertion point
     const indicesAfter = sourceIndices.slice(insertIndex);
     if (indicesAfter.length > 0) {
       const copiedPages = await newDoc.copyPages(sourceDoc, indicesAfter);
       copiedPages.forEach((page) => newDoc.addPage(page));
     }
 
-    // 4. Process all pending annotations
     const allPages = newDoc.getPages();
     for (const pa of pendingAnnots) {
-      // 1-based physical page number from source doc
       const physicalPageNum = pa.targetPageNum;
-      // 0-based index in *source* doc
       const targetIndexInSourceDoc = physicalPageNum - 1;
-      // Find its new index in the final document
       let targetIndexInNewDoc;
       if (targetIndexInSourceDoc < insertIndex) {
         targetIndexInNewDoc = targetIndexInSourceDoc;
       } else {
         targetIndexInNewDoc = targetIndexInSourceDoc + tocPageCount;
       }
-      const boundedIndex =
-          Math.min(Math.max(0, targetIndexInNewDoc), allPages.length - 1);
+      const boundedIndex = Math.min(Math.max(0, targetIndexInNewDoc), allPages.length - 1);
       const targetPage = allPages[boundedIndex];
-      const ref = newDoc.context.register(newDoc.context.obj({
-        Type: 'Annot',
-        Subtype: 'Link',
-        Rect: pa.rect,
-        Border: [0, 0, 0],
-        Dest: [targetPage.ref, 'Fit'],
-      }));
+      const ref = newDoc.context.register(
+        newDoc.context.obj({
+          Type: 'Annot',
+          Subtype: 'Link',
+          Rect: pa.rect,
+          Border: [0, 0, 0],
+          Dest: [targetPage.ref, 'Fit'],
+        })
+      );
       const existingAnnots = pa.tocPage.node.get(PDFName.of('Annots'));
       if (existingAnnots) {
         existingAnnots.push(ref);
@@ -157,28 +147,25 @@ export class PDFService {
     return {newDoc, tocPageCount};
   }
 
-  /**
-   * drawTocItems: Recursively draws TOC text and collects annotation data.
-   */
   private async drawTocItems(
-      doc: PDFDocument, currentPage: PDFPage, items: TocItem[], level: number,
-      startY: number, options: {
-        regularFont: PDFFont;
-        boldFont: PDFFont;
-        pageWidth: number;
-        pageHeight: number;
-        prefix?: string;
-        pendingAnnots?: PendingAnnot[];
-      }) {
+    doc: PDFDocument,
+    currentPage: PDFPage,
+    items: TocItem[],
+    level: number,
+    startY: number,
+    options: {
+      regularFont: PDFFont;
+      boldFont: PDFFont;
+      pageWidth: number;
+      pageHeight: number;
+      prefix?: string;
+      pendingAnnots?: PendingAnnot[];
+    }
+  ) {
     let yOffset = startY;
     const config = get(tocConfig);
     const isFirstLevel = level === 0;
-    const {
-      regularFont,
-      boldFont,
-      pageWidth,
-      pageHeight
-    } = options;
+    const {regularFont, boldFont, pageWidth, pageHeight} = options;
     let {prefix} = options;
     let currentWorkingPage = currentPage;
     const pendingAnnots = options.pendingAnnots ?? [];
@@ -193,14 +180,14 @@ export class PDFService {
       const levelConfig = isFirstLevel ? config.firstLevel : config.otherLevels;
       const indentation = level * 20;
       const {fontSize, dotLeader, color, lineSpacing} = levelConfig;
-      const parsedColor =
-          rgb(parseInt(color.slice(1, 3), 16) / 255,
-              parseInt(color.slice(3, 5), 16) / 255,
-              parseInt(color.slice(5, 7), 16) / 255);
+      const parsedColor = rgb(
+        parseInt(color.slice(1, 3), 16) / 255,
+        parseInt(color.slice(3, 5), 16) / 255,
+        parseInt(color.slice(5, 7), 16) / 255
+      );
       const lineHeight = fontSize * lineSpacing;
       const snl = config.showNumberedList;
-      const itemPrefix =
-          snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
+      const itemPrefix = snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
       let title = `${itemPrefix} ${item.title}`.trim();
       const titleX = 50 + indentation;
       if (isFirstLevel) {
@@ -242,8 +229,7 @@ export class PDFService {
         color: parsedColor,
       });
 
-      const annotRect =
-          [titleX, yOffset - 2, pageWidth - 50, yOffset + fontSize];
+      const annotRect = [titleX, yOffset - 2, pageWidth - 50, yOffset + fontSize];
       pendingAnnots.push({
         tocPage: currentWorkingPage,
         rect: annotRect,
@@ -254,10 +240,16 @@ export class PDFService {
 
       if (item.children?.length) {
         const childResult = await this.drawTocItems(
-            doc, currentWorkingPage, item.children, level + 1, yOffset, {
-              ...options,
-              prefix: itemPrefix,
-            });
+          doc,
+          currentWorkingPage,
+          item.children,
+          level + 1,
+          yOffset,
+          {
+            ...options,
+            prefix: itemPrefix,
+          }
+        );
         currentWorkingPage = childResult.currentPage;
         yOffset = childResult.yOffset;
       }
@@ -281,16 +273,19 @@ export class PDFService {
     const context = canvas.getContext('2d');
     if (!context) return;
     await page
-        .render({
-          canvasContext: context,
-          viewport,
-        })
-        .promise;
+      .render({
+        canvasContext: context,
+        viewport,
+      })
+      .promise;
   }
 
   async renderPageToCanvas(
-      pdf: any, pageNum: number, canvas: HTMLCanvasElement,
-      maxWidth: number = 150) {
+    pdf: any,
+    pageNum: number,
+    canvas: HTMLCanvasElement,
+    maxWidth: number = 150
+  ) {
     if (!pdf || !canvas) return;
     try {
       const page = await pdf.getPage(pageNum);
@@ -321,8 +316,7 @@ export class PDFService {
     for (const ch of string) {
       const codePoint = ch.codePointAt(0) ?? 0;
       if (!charSet.includes(codePoint)) {
-        const withoutDiacriticsStr =
-            ch.normalize('NFD').replace(/\p{Diacritic}/gu, '');
+        const withoutDiacriticsStr = ch.normalize('NFD').replace(/\p{Diacritic}/gu, '');
         const withoutDiacritics = withoutDiacriticsStr.charCodeAt(0);
         if (charSet.includes(withoutDiacritics)) {
           codePoints.push(withoutDiacritics);
@@ -336,22 +330,20 @@ export class PDFService {
     return String.fromCodePoint(...codePoints);
   }
 
-  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5):
-      Promise<string> {
+  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5): Promise<string> {
     const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({scale});
     const canvas = document.createElement('canvas');
     canvas.height = viewport.height;
     canvas.width = viewport.width;
     const context = canvas.getContext('2d');
-    if (!context)
-      throw new Error('Could not create 2D context for image generation');
+    if (!context) throw new Error('Could not create 2D context for image generation');
     await page
-        .render({
-          canvasContext: context,
-          viewport,
-        })
-        .promise;
+      .render({
+        canvasContext: context,
+        viewport,
+      })
+      .promise;
     return canvas.toDataURL('image/png');
   }
 }
