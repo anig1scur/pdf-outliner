@@ -65,7 +65,6 @@
   let isFileLoading = false;
   let tocStartPage = 1;
   let tocEndPage = 1;
-  let isSettingStart = true;
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
@@ -580,7 +579,7 @@
               <div class="flex gap-2 items-center">
                 <label
                   class="whitespace-nowrap text-sm"
-                  for="insert_at_page">Insert Before Page #</label
+                  for="insert_at_page">Insert At Page #</label
                 >
                 <input
                   type="number"
@@ -615,7 +614,7 @@
             <div class="flex gap-2 items-center">
               <label
                 class="whitespace-nowrap text-sm"
-                for="page_offset">Page Numbering Offset</label
+                for="page_offset">Page Number Offset</label
               >
               <input
                 type="number"
@@ -625,7 +624,7 @@
                 class="w-20 border-2 border-black rounded px-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            <div class="text-xs text-gray-500 mt-1">(Physical Page #) - (Labeled Page #)</div>
+            <div class="text-xs text-gray-500 mt-1">(Physical Num #) - (Labeled Num #)</div>
           </div>
           <div class="flex flex-col md:flex-row gap-4">
             <div class="w-full md:w-1/2">
@@ -742,13 +741,6 @@
       <div transition:fade={{duration: 200}}>
         <div class="border-black border-2 rounded-lg p-3 my-4 bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
           <h3 class="font-bold mb-2">ToC Pages Selection</h3>
-          <p class="text-sm text-gray-600 mb-3">
-            {#if !isSettingStart}
-              Click the grid to select the End Page including ToCs
-            {:else}
-              Click the grid to select the Start Page including ToCs
-            {/if}
-          </p>
           <div class="flex gap-4 items-center my-2">
             <label
               for="toc_start_page"
@@ -781,7 +773,7 @@
       </div>
     {/if}
     <button
-      class="btn w-full my-2 font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+      class="btn w-full my-2 font-bold bg-blue-400 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
       on:click={generateTocFromAI}
       disabled={isAiLoading || !originalPdfInstance}
     >
@@ -864,7 +856,6 @@
             mode={isPreviewMode ? 'single' : 'grid'}
             {tocStartPage}
             {tocEndPage}
-            bind:isSettingStart
             on:setstartpage={handleSetStartPage}
             on:setendpage={handleSetEndPage}
             {jumpToTocPage}
@@ -1003,7 +994,7 @@
           </div>
           <button
             on:click={handleOffsetConfirm}
-            class="btn mt-auto font-bold bg-blue-500 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all w-full"
+            class="btn mt-auto font-bold bg-blue-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all w-full"
           >
             Yes! This page !
           </button>

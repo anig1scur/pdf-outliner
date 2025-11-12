@@ -19,11 +19,14 @@
 
   let gridPages: {pageNum: number; canvasId: string}[] = [];
   let pdfServiceInstance: PDFService | null = null;
-  export let isSettingStart: boolean;
   let intersectionObserver: IntersectionObserver | null = null;
   let scrollContainer: HTMLElement;
 
   let canvasesToObserve: HTMLCanvasElement[] = [];
+
+  let isSelecting = false;
+  let selectionStartPage = 0;
+  // +++++++++++++++++++++++++
 
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
@@ -91,22 +94,45 @@
     }));
   }
 
-  function handleGridClick(pageNum: number) {
-    if (isSettingStart) {
-      dispatch('setstartpage', {page: pageNum});
-      if (pageNum > tocEndPage) {
-        dispatch('setendpage', {page: pageNum});
-      }
-      isSettingStart = false;
-    } else {
-      if (pageNum < tocStartPage) {
-        dispatch('setstartpage', {page: pageNum});
-      } else {
-        dispatch('setendpage', {page: pageNum});
-      }
-      isSettingStart = true;
+  /**
+   * 按下鼠标：开始选择，并将当前页设为起点和终点
+   */
+  function handleMouseDown(pageNum: number) {
+    isSelecting = true;
+    selectionStartPage = pageNum;
+    dispatch('setstartpage', {page: pageNum});
+    dispatch('setendpage', {page: pageNum});
+  }
+
+  /**
+   * 拖动中 (鼠标进入)：如果正在选择，则动态更新范围
+   */
+  function handleMouseEnter(pageNum: number) {
+    if (!isSelecting) return;
+
+    const newStart = Math.min(selectionStartPage, pageNum);
+    const newEnd = Math.max(selectionStartPage, pageNum);
+
+    // 只有在范围真的改变时才 dispatch，避免不必要的重渲染
+    if (newStart !== tocStartPage) {
+      dispatch('setstartpage', {page: newStart});
+    }
+    if (newEnd !== tocEndPage) {
+      dispatch('setendpage', {page: newEnd});
     }
   }
+
+  /**
+   * 松开鼠标：停止选择
+   */
+  function handleMouseUp() {
+    isSelecting = false;
+    selectionStartPage = 0;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* Intersection Observer (保持不变)                             */
+  /* -------------------------------------------------------------------------- */
   function observeViewport(node: HTMLElement) {
     scrollContainer = node;
 
@@ -262,15 +288,42 @@
       </div>
     </div>
   {:else if mode === 'grid'}
-    <div class="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5">
+    <div
+      class="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
+      class:cursor-grabbing={isSelecting}
+      on:mouseup={handleMouseUp}
+      on:mouseleave={handleMouseUp}
+    >
       {#each gridPages as page (page.pageNum)}
+        {@const isSelected = page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
         <div
-          class="rounded-lg overflow-hidden border-t-[2px] shadow-blue-400 border-gray-500 border-2 border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform"
-          class:shadow-[4px_4px_0px]={page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
-          hover:-translate-x-1
-          hover:-translate-y-1
-          on:click={() => handleGridClick(page.pageNum)}
+          class="relative rounded-lg overflow-hidden border-t-[2px] border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform border-2"
+          class:shadow-[4px_4px_0px]={isSelected}
+          class:shadow-blue-400={isSelected}
+          class:border-blue-500={isSelected}
+          class:border-gray-500={!isSelected}
+          class:scale-105={isSelected}
+          on:mousedown={() => handleMouseDown(page.pageNum)}
+          on:mouseenter={() => handleMouseEnter(page.pageNum)}
+          on:dragstart|preventDefault
+          class:cursor-grabbing={isSelecting}
         >
+          {#if page.pageNum === tocStartPage}
+            <span
+              class="absolute -top-2.5 -left-2.5 z-10 rounded-full bg-blue-600 pr-2 pl-3 pt-3 text-xs font-bold text-white shadow-lg"
+            >
+              START
+            </span>
+          {/if}
+
+          {#if page.pageNum === tocEndPage}
+            <span
+              class="absolute -bottom-2.5 -right-2.5 z-10 rounded-full bg-blue-600 pl-2 pr-3 pb-[10px] pt-[2px] text-xs font-bold text-white shadow-lg"
+            >
+              END
+            </span>
+          {/if}
+
           <canvas
             id={page.canvasId}
             class="w-full border-b bg-white"
