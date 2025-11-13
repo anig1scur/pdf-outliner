@@ -667,4 +667,28 @@
 />
 <svelte:head>
   <title>Tocify · Add or edit PDF Table of Contents in browser</title>
+
+  <meta 
+    name="description" 
+    content="A free, in-browser tool to add, edit, or generate a Table of Contents (ToC) for PDFs. Use the manual editor or the AI-powered feature to create a PDF outline fast." 
+  />
+  
+  <link rel="canonical" href="https://tocify.vercel.app/" />
+
+  <meta property="og:title" content="Tocify · Add or edit PDF Table of Contents in browser powered by AI" />
+  <meta property="og:description" content="A free, in-browser tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://tocify.vercel.app/" />
+  
+  <meta property="og:image" content="/og-image.png" /> 
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="700" />
+
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Tocify · Add or edit PDF Table of Contents in browser powered by AI" />
+  <meta name="twitter:description" content="A free, in-browser tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction." />
+  <meta name="twitter:image" content="/og-image.png" />
+
+  <link rel="icon" href="/favicon.svg" type="image/png" />
+
 </svelte:head>

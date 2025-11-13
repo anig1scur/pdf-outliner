@@ -6,12 +6,18 @@
   const dispatch = createEventDispatcher();
 </script>
 
-<div class="flex justify-between gap-4">
-  <div class="flex items-center gap-2">
-    <Logo />
-    <span class="text-3xl tracking-widest font-semibold">Tocify</span>
+<div class="flex justify-between items-start gap-4">
+  <div>
+    <div class="flex items-center gap-2">
+      <Logo />
+      <h1 class="text-3xl tracking-widest font-semibold">Tocify</h1>
+    </div>
+    <p class="text-xs text-gray-600 mt-1 pl-1">
+      PDF Table of Contents Editor
+    </p>
   </div>
-  <div class="flex items-center gap-2">
+
+  <div class="flex items-center gap-2 pt-2">
     <a
       href="https://github.com/anig1scur/tocify"
       target="_blank"
