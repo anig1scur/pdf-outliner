@@ -1,7 +1,7 @@
 <script lang="ts">
   import {createEventDispatcher} from 'svelte';
   import {Github, HelpCircle} from 'lucide-svelte';
-  import Logo from '../assets/logo-dark.svelte';
+  import Logo from '../assets/logo.svelte';
 
   const dispatch = createEventDispatcher();
 </script>
@@ -12,7 +12,7 @@
       <Logo />
       <h1 class="text-3xl tracking-widest font-semibold">Tocify</h1>
     </div>
-    <p class="text-xs text-gray-600 mt-1 pl-1">PDF Table of Contents Editor</p>
+    <p class="text-xs text-gray-700 mt-1 pl-1">PDF ToC Editor powered by AI</p>
   </div>
 
   <div class="flex items-center gap-2 pt-2">

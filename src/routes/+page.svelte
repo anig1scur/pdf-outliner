@@ -742,6 +742,6 @@
   <meta name="twitter:description" content="A free, in-browser tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction." />
   <meta name="twitter:image" content="/og-image.png" />
 
-  <link rel="icon" href="/favicon.svg" type="image/png" />
+  <link rel="icon" href="/favicon.svg" type="image/svg" />
 
 </svelte:head>
