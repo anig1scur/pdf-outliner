@@ -12,9 +12,7 @@
       <Logo />
       <h1 class="text-3xl tracking-widest font-semibold">Tocify</h1>
     </div>
-    <p class="text-xs text-gray-600 mt-1 pl-1">
-      PDF Table of Contents Editor
-    </p>
+    <p class="text-xs text-gray-600 mt-1 pl-1">PDF Table of Contents Editor</p>
   </div>
 
   <div class="flex items-center gap-2 pt-2">
@@ -24,6 +22,7 @@
       rel="noopener noreferrer"
       class="text-black hover:text-gray-700 transition-colors"
       title="View on GitHub"
+      aria-label="View project on GitHub"
     >
       <Github size={32} />
     </a>
@@ -31,6 +30,7 @@
       on:click={() => dispatch('openhelp')}
       class="text-black hover:text-gray-700 transition-colors"
       title="How to Use"
+      aria-label="How to Use ?"
     >
       <HelpCircle size={32} />
     </button>

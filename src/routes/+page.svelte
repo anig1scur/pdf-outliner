@@ -1,8 +1,6 @@
 <script lang="ts">
   import {onMount, tick} from 'svelte';
-  import * as pdfjsLib from 'pdfjs-dist';
   import Dropzone from 'svelte-file-dropzone';
-  import {PDFDocument} from 'pdf-lib';
   import {slide, fade, fly} from 'svelte/transition';
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
@@ -14,6 +12,9 @@
   import {tocConfig} from '../stores';
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
 
+  import type * as PdfjsLibTypes from 'pdfjs-dist';
+  import type { PDFDocument as PDFLibDocument } from 'pdf-lib';
+
   import Header from '../components/Header.svelte';
   import TocSettings from '../components/TocSetting.svelte';
   import AiPageSelector from '../components/PageSelector.svelte';
@@ -24,6 +25,9 @@
   import HelpModal from '../components/modals/HelpModal.svelte';
 
   injectAnalytics();
+
+  let pdfjs: typeof PdfjsLibTypes | null = null;
+  let PdfLib: typeof import('pdf-lib') | null = null;
 
   let isTocConfigExpanded = false;
   let addPhysicalTocPage = true;
@@ -40,8 +44,10 @@
   };
   let aiError: string | null = null;
   let hasShownTocHint = false;
-  let originalPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
-  let previewPdfInstance: pdfjsLib.PDFDocumentProxy | null = null;
+  
+  let originalPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
+  let previewPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
+
   let tocPageCount = 0;
   let isPreviewMode = false;
   let isPreviewLoading = false;
@@ -78,6 +84,30 @@
   onMount(() => {
     $pdfService = new PDFService();
   });
+
+  const loadPdfLibraries = async () => {
+    if (pdfjs && PdfLib) {
+      return;
+    }
+  
+    try {
+      const [pdfjsModule, PdfLibModule] = await Promise.all([
+        import('pdfjs-dist'),
+        import('pdf-lib')
+      ]);
+      pdfjs = pdfjsModule;
+      PdfLib = PdfLibModule;
+    } catch (error) {
+      console.error("Failed to load PDF libraries:", error);
+      toastProps = {
+        show: true,
+        message: 'Failed to load core components. Please refresh and try again.',
+        type: 'error',
+      };
+      throw new Error('Failed to load PDF libraries', { cause: error });
+    }
+  };
+
   $: {
     if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
       $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
@@ -141,6 +171,17 @@
 
   const updatePDF = async () => {
     if (!pdfState.doc || !$pdfService) return;
+
+    if (!pdfjs || !PdfLib) {
+      console.error('PDF libraries not loaded. Cannot update PDF.');
+      toastProps = {
+        show: true,
+        message: 'Components not loaded. Please re-upload your file.',
+        type: 'error',
+      };
+      return;
+    }
+
     try {
       const currentPageBackup = pdfState.currentPage;
       const {newDoc, tocPageCount: count} = await $pdfService.createTocPage(
@@ -152,7 +193,8 @@
       tocPageCount = count;
       setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
       const pdfBytes = await newDoc.save();
-      const loadingTask = pdfjsLib.getDocument(pdfBytes);
+
+      const loadingTask = pdfjs.getDocument(pdfBytes);
       previewPdfInstance = await loadingTask.promise;
       pdfState.newDoc = newDoc;
       if (isPreviewMode) {
@@ -219,11 +261,22 @@
     previewPdfInstance = null;
     pdfState = {...pdfState};
     try {
+      await loadPdfLibraries();
+
+      if (!pdfjs || !PdfLib) {
+        return; 
+      }
+
+      const { PDFDocument } = PdfLib;
+
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
+
       pdfState.doc = await PDFDocument.load(uint8Array);
-      const loadingTask = pdfjsLib.getDocument(uint8Array);
+      
+      const loadingTask = pdfjs.getDocument(uint8Array);
       originalPdfInstance = await loadingTask.promise;
+      
       previewPdfInstance = originalPdfInstance;
       isPreviewMode = false;
       tocPageCount = 0;
@@ -587,7 +640,7 @@
     out:fade
   >
     <div
-      class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg relative bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+      class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
     >
       {#if isFileLoading}
         <div
