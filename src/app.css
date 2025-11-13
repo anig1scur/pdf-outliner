@@ -11,3 +11,7 @@ body {
   touch-action: manipulation;
 
 }
+
+button {
+  @apply select-none;
+}

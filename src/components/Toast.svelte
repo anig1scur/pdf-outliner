@@ -1,11 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { createEventDispatcher } from 'svelte';
-  import { X, CheckCircle, AlertTriangle } from 'lucide-svelte';
+  import {onMount} from 'svelte';
+  import {createEventDispatcher} from 'svelte';
+  import {X, CheckCircle, AlertTriangle, InfoIcon} from 'lucide-svelte';
+  import {fly} from 'svelte/transition'; // [!code --]
+  import {slide} from 'svelte/transition'; // [!code ++]
 
   export let message = 'Success!';
   export let duration = 3000;
-  export let type: 'success' | 'error' = 'success';
+  export let type: 'success' | 'error' | 'info' = 'info';
 
   const dispatch = createEventDispatcher();
 
@@ -18,14 +20,26 @@
 </script>
 
 <div
-  class="fixed top-5 right-5 text-black p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
+  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90%] md:w-fit transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
   class:bg-lime-400={type === 'success'}
   class:bg-red-500={type === 'error'}
->
+  class:bg-yellow-400={type === 'info'}
+  transition:fly={{ y: -50, x: 0, duration: 300, opacity: 0.5, scale: 0.9 }}>
   {#if type === 'success'}
-    <CheckCircle size={20} class="mr-3 flex-shrink-0" />
+    <CheckCircle
+      size={20}
+      class="mr-3 flex-shrink-0"
+    />
+  {:else if type === 'error'}
+    <AlertTriangle
+      size={20}
+      class="mr-3 flex-shrink-0"
+    />
   {:else}
-    <AlertTriangle size={20} class="mr-3 flex-shrink-0" />
+    <InfoIcon
+      size={20}
+      class="mr-3 flex-shrink-0"
+    />
   {/if}
 
   <span class="font-semibold">{message}</span>

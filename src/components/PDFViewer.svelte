@@ -26,22 +26,37 @@
 
   let isSelecting = false;
   let selectionStartPage = 0;
-  // +++++++++++++++++++++++++
+
+  let pressTimer: number | null = null;
+  let loadedFilename: string = '';
+
+  let autoScrollSpeed = 0;
+  let autoScrollFrameId: number | null = null;
 
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
-  $: ({filename, currentPage, scale, totalPages} = pdfState);
+  $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
 
-  $: if (mode === 'single' && pdfState.instance && pdfState.currentPage && pdfState.scale) {
+  $: if (instance && filename && filename !== loadedFilename) {
+    loadedFilename = filename;
+    tick().then(() => {
+      dispatch('fileloaded', {
+        message: `Pdf loaded, long press and drag to select ToC pages!`,
+        type: 'success',
+      });
+    });
+  }
+
+  $: if (mode === 'single' && instance && currentPage && scale) {
     (async () => {
       await tick();
       const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
-      if (!canvas || !pdfState.instance) return;
+      if (!canvas || !instance) return;
 
-      const page = await pdfState.instance.getPage(pdfState.currentPage);
+      const page = await instance.getPage(currentPage);
 
       const dpr = window.devicePixelRatio || 1;
-      const viewport = page.getViewport({scale: pdfState.scale});
+      const viewport = page.getViewport({scale: scale});
 
       canvas.width = Math.floor(viewport.width * dpr);
       canvas.height = Math.floor(viewport.height * dpr);
@@ -64,39 +79,73 @@
   }
 
   const goToNextPage = () => {
-    if (pdfState.currentPage < pdfState.totalPages) {
+    if (currentPage < totalPages) {
       pdfState.currentPage += 1;
     }
   };
 
   const goToPrevPage = () => {
-    if (pdfState.currentPage > 1) {
+    if (currentPage > 1) {
       pdfState.currentPage -= 1;
     }
   };
 
   const zoomIn = () => {
-    pdfState.scale = Math.min(pdfState.scale + 0.15, 2.0);
+    pdfState.scale = Math.min(scale + 0.15, 2.0);
   };
 
   const zoomOut = () => {
-    pdfState.scale = Math.max(pdfState.scale - 0.15, 0.5);
+    pdfState.scale = Math.max(scale - 0.15, 0.5);
   };
 
   const resetZoom = () => {
     pdfState.scale = 1.0;
   };
 
-  $: if (pdfState.instance && mode === 'grid') {
-    gridPages = Array.from({length: pdfState.totalPages}, (_, i) => ({
+  $: if (instance && mode === 'grid') {
+    gridPages = Array.from({length: totalPages}, (_, i) => ({
       pageNum: i + 1,
       canvasId: `thumb-canvas-${i + 1}`,
     }));
   }
 
-  /**
-   * 按下鼠标：开始选择，并将当前页设为起点和终点
-   */
+  function scrollLoop() {
+    if (autoScrollSpeed === 0 || !scrollContainer) {
+      autoScrollFrameId = null;
+      return;
+    }
+    scrollContainer.scrollTop += autoScrollSpeed;
+    autoScrollFrameId = requestAnimationFrame(scrollLoop);
+  }
+
+  function stopAutoScroll() {
+    autoScrollSpeed = 0;
+    if (autoScrollFrameId) {
+      cancelAnimationFrame(autoScrollFrameId);
+      autoScrollFrameId = null;
+    }
+  }
+
+  function checkAutoScroll(clientY: number) {
+    if (!isSelecting || !scrollContainer) {
+      stopAutoScroll();
+      return;
+    }
+    const rect = scrollContainer.getBoundingClientRect();
+    const hotZoneSize = 80; // 80px 热区
+
+    if (clientY < rect.top + hotZoneSize) {
+      autoScrollSpeed = -10; // 向上滚动的速度
+      if (!autoScrollFrameId) autoScrollFrameId = requestAnimationFrame(scrollLoop);
+    } else if (clientY > rect.bottom - hotZoneSize) {
+      autoScrollSpeed = 10; // 向下滚动的速度
+      if (!autoScrollFrameId) autoScrollFrameId = requestAnimationFrame(scrollLoop);
+    } else {
+      stopAutoScroll();
+    }
+  }
+  // +++++++++++++++++++++++++++++++++++++++++++++++++++
+
   function handleMouseDown(pageNum: number) {
     isSelecting = true;
     selectionStartPage = pageNum;
@@ -104,16 +153,12 @@
     dispatch('setendpage', {page: pageNum});
   }
 
-  /**
-   * 拖动中 (鼠标进入)：如果正在选择，则动态更新范围
-   */
   function handleMouseEnter(pageNum: number) {
     if (!isSelecting) return;
 
     const newStart = Math.min(selectionStartPage, pageNum);
     const newEnd = Math.max(selectionStartPage, pageNum);
 
-    // 只有在范围真的改变时才 dispatch，避免不必要的重渲染
     if (newStart !== tocStartPage) {
       dispatch('setstartpage', {page: newStart});
     }
@@ -122,19 +167,68 @@
     }
   }
 
-  /**
-   * 松开鼠标：停止选择
-   */
   function handleMouseUp() {
+    stopAutoScroll(); // [!code ++]
     isSelecting = false;
     selectionStartPage = 0;
   }
 
-  /* -------------------------------------------------------------------------- */
-  /* Intersection Observer (保持不变)                             */
-  /* -------------------------------------------------------------------------- */
+  function handleGridMouseMove(e: MouseEvent) { // [!code ++]
+    if (!isSelecting) return; // [!code ++]
+    checkAutoScroll(e.clientY); // [!code ++]
+  } // [!code ++]
+
+  function handleTouchStart(pageNum: number) {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+    }
+    pressTimer = window.setTimeout(() => {
+      handleMouseDown(pageNum);
+      pressTimer = null;
+    }, 300);
+  }
+
+  function handleTouchMove(e: TouchEvent) {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+
+    if (!isSelecting) return;
+
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    checkAutoScroll(touch.clientY); // [!code ++]
+
+    const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (!targetElement) return;
+
+    const pageItem = targetElement.closest('[data-page-num]') as HTMLElement;
+
+    if (pageItem && pageItem.dataset.pageNum) {
+      const pageNum = parseInt(pageItem.dataset.pageNum, 10);
+      if (!isNaN(pageNum)) {
+        handleMouseEnter(pageNum);
+      }
+    }
+  }
+
+  function handleTouchEnd() {
+    stopAutoScroll(); // [!code ++]
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+    if (isSelecting) {
+      handleMouseUp();
+    }
+  }
+
   function observeViewport(node: HTMLElement) {
-    scrollContainer = node;
+    scrollContainer = node; // scrollContainer 在这里被赋值
 
     intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -143,11 +237,11 @@
             const canvas = entry.target as HTMLCanvasElement;
             const pageNum = parseInt(canvas.dataset.pageNum || '0', 10);
 
-            if (pageNum > 0 && pdfState.instance && pdfServiceInstance) {
+            if (pageNum > 0 && instance && pdfServiceInstance) {
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
 
-              pdfServiceInstance.renderPageToCanvas(pdfState.instance, pageNum, canvas, canvasWidth * dpr);
+              pdfServiceInstance.renderPageToCanvas(instance, pageNum, canvas, canvasWidth * dpr);
 
               canvas.style.width = `${canvasWidth}px`;
               canvas.style.height = 'auto';
@@ -289,24 +383,28 @@
     </div>
   {:else if mode === 'grid'}
     <div
-      class="grid grid-cols-2 gap-3 p-3 md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
+      class="grid grid-cols-2 gap-3 p-3 select-none md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
       class:cursor-grabbing={isSelecting}
       on:mouseup={handleMouseUp}
       on:mouseleave={handleMouseUp}
-    >
+      on:touchmove={handleTouchMove}
+      on:touchend={handleTouchEnd}
+      on:touchcancel={handleTouchEnd}
+      on:mousemove={handleGridMouseMove} >
       {#each gridPages as page (page.pageNum)}
         {@const isSelected = page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
         <div
+          data-page-num={page.pageNum}
           class="relative rounded-lg overflow-hidden border-t-[2px] border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform border-2"
           class:shadow-[4px_4px_0px]={isSelected}
           class:shadow-blue-400={isSelected}
           class:border-blue-500={isSelected}
           class:border-gray-500={!isSelected}
-          class:scale-105={isSelected}
+          class:scale-[1.02]={isSelected}
           on:mousedown={() => handleMouseDown(page.pageNum)}
+          on:touchstart={() => handleTouchStart(page.pageNum)}
           on:mouseenter={() => handleMouseEnter(page.pageNum)}
           on:dragstart|preventDefault
-          class:cursor-grabbing={isSelecting}
         >
           {#if page.pageNum === tocStartPage}
             <span
@@ -326,6 +424,7 @@
 
           <canvas
             id={page.canvasId}
+            class:cursor-grabbing={isSelecting}
             class="w-full border-b bg-white"
             use:lazyRender={{pageNum: page.pageNum}}
           ></canvas>

@@ -36,7 +36,7 @@
   let toastProps = {
     show: false,
     message: '',
-    type: 'success' as 'success' | 'error',
+    type: 'success' as 'success' | 'error' | 'info',
   };
   let aiError: string | null = null;
   let hasShownTocHint = false;
@@ -131,6 +131,14 @@
     updateViewerInstance();
   };
 
+  const handleFileLoaded = (event: CustomEvent<{message: string; type: 'success' | 'error' | 'info'}>) => {
+    toastProps = {
+      show: true,
+      message: event.detail.message,
+      type: event.detail.type,
+    };
+  };
+
   const updatePDF = async () => {
     if (!pdfState.doc || !$pdfService) return;
     try {
@@ -171,16 +179,18 @@
   tocItems.subscribe((items) => {
     if (items.length > 0) showNextStepHint = false;
     if (isFileLoading) return;
-    if (!isPreviewMode) return;
     if (!hasShownTocHint && items.length > 0) {
       toastProps = {
         show: true,
         message: `ToC pages will be inserted at page 2.
           You can change it in Settings.`,
-        type: 'success',
+        type: 'info',
       };
-      hasShownTocHint = true;
+      setTimeout(() => {
+        hasShownTocHint = true;
+      }, 3000);
     }
+    if (!isPreviewMode) return;
     debouncedUpdatePDF();
   });
   tocConfig.subscribe(() => {
@@ -544,7 +554,11 @@
     <button
       class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
       on:click={generateTocFromAI}
-      title={isAiLoading ? 'AI is generating ToC...' : !originalPdfInstance ? 'Load a PDF first' : 'Generate ToC from selected pages using AI'}
+      title={isAiLoading
+        ? 'AI is generating ToC...'
+        : !originalPdfInstance
+          ? 'Load a PDF first'
+          : 'Generate ToC from selected pages using AI'}
       disabled={isAiLoading || !originalPdfInstance}
     >
       {#if isAiLoading}
@@ -604,6 +618,7 @@
         <div class="relative z-10 h-full flex flex-col">
           <PDFViewer
             bind:pdfState
+            on:fileloaded={handleFileLoaded}
             mode={isPreviewMode ? 'single' : 'grid'}
             {tocStartPage}
             {tocEndPage}
