@@ -743,5 +743,6 @@
   <meta name="twitter:image" content="/og-image.png" />
 
   <link rel="icon" href="/favicon.svg" type="image/svg" />
+  <link rel="icon" href="/favicon.png" sizes="any">
 
 </svelte:head>
