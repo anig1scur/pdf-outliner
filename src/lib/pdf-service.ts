@@ -2,11 +2,36 @@ import fontkit from '@pdf-lib/fontkit';
 import {PDFDocument, PDFFont, PDFName, PDFPage, rgb} from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import {get} from 'svelte/store';
+
 import {tocConfig} from '../stores';
 
+const TOC_LAYOUT = {
+  PAGE: {
+    MARGIN_X: 50,       // 左右边距
+    MARGIN_BOTTOM: 60,  // 下边距
+  },
+  TITLE: {
+    FONT_SIZE: 23,
+    Y_START_RATIO: 2 / 3,  // 标题起始位置占页面高度的比例
+    MARGIN_BOTTOM: 38,     // 标题与第一项的间距
+  },
+  ITEM: {
+    INDENT_PER_LEVEL: 20,   // 每级缩进宽度
+    LINE_HEIGHT_ADJUST: 8,  // 第一级标题特殊的Y轴微调
+    DOT_LEADER: {
+      SIZE_RATIO: 0.6,    // 虚线点相对于字号的大小
+      SPACING_STEP: 5,    // 虚线点的密度步长
+      GAP_TITLE: 10,      // 标题文字与虚线开始的间距
+      RIGHT_PADDING: 15,  // 虚线结束位置距离右边距的距离
+    },
+    PAGE_NUM_WIDTH_PAD: 50,
+    ANNOT_Y_PADDING: 2,
+  },
+};
+
 export interface PDFState {
-  doc: PDFDocument | null;
-  newDoc: PDFDocument | null;
+  doc: PDFDocument|null;
+  newDoc: PDFDocument|null;
   filename: string;
   instance: any;
   currentPage: number;
@@ -15,7 +40,7 @@ export interface PDFState {
 }
 
 export interface TocItem {
-  id: number | string;
+  id: number|string;
   title: string;
   to: number;
   children?: TocItem[];
@@ -23,47 +48,59 @@ export interface TocItem {
 }
 
 type PendingAnnot = {
-  tocPage: PDFPage;
-  rect: number[];
-  targetPageNum: number;
+  tocPage: PDFPage; rect: number[]; targetPageNum: number;
 };
 
+interface TocRenderContext {
+  doc: PDFDocument;
+  regularFont: PDFFont;
+  boldFont: PDFFont;
+  pageWidth: number;
+  pageHeight: number;
+  config: any;
+  pendingAnnots: PendingAnnot[];
+}
+
 export class PDFService {
-  private regularFontBytes?: ArrayBuffer;
-  private boldFontBytes?: ArrayBuffer;
+  private static regularFontBytes?: ArrayBuffer;
+  private static boldFontBytes?: ArrayBuffer;
 
   constructor() {
     pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
   }
 
   private async loadFonts(): Promise<void> {
-    if (this.regularFontBytes && this.boldFontBytes) return;
+    if (PDFService.regularFontBytes && PDFService.boldFontBytes) return;
 
     const fontUrl = '/fonts/NotoSerifSC-Regular.ttf';
     const boldFontUrl = '/fonts/NotoSerifSC-Bold.ttf';
 
-    const [regBytes, boldBytes] = await Promise.all([
-      fetch(fontUrl).then((res) => res.arrayBuffer()),
-      fetch(boldFontUrl).then((res) => res.arrayBuffer()),
-    ]);
+    try {
+      const [regBytes, boldBytes] = await Promise.all([
+        fetch(fontUrl).then((res) => res.arrayBuffer()),
+        fetch(boldFontUrl).then((res) => res.arrayBuffer()),
+      ]);
 
-    this.regularFontBytes = regBytes;
-    this.boldFontBytes = boldBytes;
+      PDFService.regularFontBytes = regBytes;
+      PDFService.boldFontBytes = boldBytes;
+    } catch (error) {
+      console.error('Failed to load fonts:', error);
+      throw new Error('Fonts could not be loaded');
+    }
   }
 
   async addMetadataOnly(sourceDoc: PDFDocument, items: TocItem[]) {
     const newDoc = await PDFDocument.create();
-    const copiedPages = await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
+    const copiedPages =
+        await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
     copiedPages.forEach((page) => newDoc.addPage(page));
     return newDoc;
   }
 
   async createTocPage(
-    sourceDoc: PDFDocument,
-    items: TocItem[],
-    addPhysicalPage: boolean = true,
-    insertAtPage: number = 2
-  ): Promise<{newDoc: PDFDocument; tocPageCount: number}> {
+      sourceDoc: PDFDocument, items: TocItem[], addPhysicalPage: boolean = true,
+      insertAtPage: number = 2):
+      Promise<{newDoc: PDFDocument; tocPageCount: number}> {
     if (!addPhysicalPage) {
       const newDoc = await this.addMetadataOnly(sourceDoc, items);
       return {newDoc, tocPageCount: 0};
@@ -74,11 +111,14 @@ export class PDFService {
     const newDoc = await PDFDocument.create();
     newDoc.registerFontkit(fontkit);
 
-    const notoRegularFont = await newDoc.embedFont(this.regularFontBytes!, {subset: false});
-    const notoBoldFont = await newDoc.embedFont(this.boldFontBytes!, {subset: false});
+    const notoRegularFont =
+        await newDoc.embedFont(PDFService.regularFontBytes!, {subset: false});
+    const notoBoldFont =
+        await newDoc.embedFont(PDFService.boldFontBytes!, {subset: false});
 
     const sourceIndices = sourceDoc.getPageIndices();
-    const insertIndex = Math.max(0, Math.min(insertAtPage - 1, sourceIndices.length));
+    const insertIndex =
+        Math.max(0, Math.min(insertAtPage - 1, sourceIndices.length));
 
     const indicesBefore = sourceIndices.slice(0, insertIndex);
     if (indicesBefore.length > 0) {
@@ -89,23 +129,32 @@ export class PDFService {
     const [firstPage] = sourceDoc.getPages();
     const {width, height} = firstPage.getSize();
     const tocPage = newDoc.addPage([width, height]);
-    let yOffset = (height / 3) * 2;
+
+    let yOffset = height * TOC_LAYOUT.TITLE.Y_START_RATIO;
+
     tocPage.drawText('Table of Contents', {
-      x: 50,
+      x: TOC_LAYOUT.PAGE.MARGIN_X,
       y: yOffset,
-      size: 23,
+      size: TOC_LAYOUT.TITLE.FONT_SIZE,
       font: notoBoldFont,
       color: rgb(0, 0, 0),
     });
-    yOffset -= 38;
+
+    yOffset -= TOC_LAYOUT.TITLE.MARGIN_BOTTOM;
+
     const pendingAnnots: PendingAnnot[] = [];
-    await this.drawTocItems(newDoc, tocPage, items, 0, yOffset, {
+
+    const renderContext: TocRenderContext = {
+      doc: newDoc,
       regularFont: notoRegularFont,
       boldFont: notoBoldFont,
       pageWidth: width,
       pageHeight: height,
+      config: get(tocConfig),
       pendingAnnots,
-    });
+    };
+
+    await this.drawTocItems(tocPage, items, 0, yOffset, renderContext);
 
     const tocPageCount = newDoc.getPageCount() - indicesBefore.length;
 
@@ -119,23 +168,26 @@ export class PDFService {
     for (const pa of pendingAnnots) {
       const physicalPageNum = pa.targetPageNum;
       const targetIndexInSourceDoc = physicalPageNum - 1;
+
       let targetIndexInNewDoc;
       if (targetIndexInSourceDoc < insertIndex) {
         targetIndexInNewDoc = targetIndexInSourceDoc;
       } else {
         targetIndexInNewDoc = targetIndexInSourceDoc + tocPageCount;
       }
-      const boundedIndex = Math.min(Math.max(0, targetIndexInNewDoc), allPages.length - 1);
+
+      const boundedIndex =
+          Math.min(Math.max(0, targetIndexInNewDoc), allPages.length - 1);
       const targetPage = allPages[boundedIndex];
-      const ref = newDoc.context.register(
-        newDoc.context.obj({
-          Type: 'Annot',
-          Subtype: 'Link',
-          Rect: pa.rect,
-          Border: [0, 0, 0],
-          Dest: [targetPage.ref, 'Fit'],
-        })
-      );
+
+      const ref = newDoc.context.register(newDoc.context.obj({
+        Type: 'Annot',
+        Subtype: 'Link',
+        Rect: pa.rect,
+        Border: [0, 0, 0],
+        Dest: [targetPage.ref, 'Fit'],
+      }));
+
       const existingAnnots = pa.tocPage.node.get(PDFName.of('Annots'));
       if (existingAnnots) {
         existingAnnots.push(ref);
@@ -148,70 +200,77 @@ export class PDFService {
   }
 
   private async drawTocItems(
-    doc: PDFDocument,
-    currentPage: PDFPage,
-    items: TocItem[],
-    level: number,
-    startY: number,
-    options: {
-      regularFont: PDFFont;
-      boldFont: PDFFont;
-      pageWidth: number;
-      pageHeight: number;
-      prefix?: string;
-      pendingAnnots?: PendingAnnot[];
-    }
-  ) {
+      currentPage: PDFPage, items: TocItem[], level: number, startY: number,
+      ctx: TocRenderContext, options: {prefix?: string} = {}) {
     let yOffset = startY;
-    const config = get(tocConfig);
-    const isFirstLevel = level === 0;
-    const {regularFont, boldFont, pageWidth, pageHeight} = options;
-    let {prefix} = options;
     let currentWorkingPage = currentPage;
-    const pendingAnnots = options.pendingAnnots ?? [];
+    const {prefix} = options;
+    const {
+      doc,
+      regularFont,
+      boldFont,
+      pageWidth,
+      pageHeight,
+      config,
+      pendingAnnots
+    } = ctx;
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (yOffset < 60) {
+
+      // 检查是否需要换页
+      if (yOffset < TOC_LAYOUT.PAGE.MARGIN_BOTTOM) {
         currentWorkingPage = doc.addPage([pageWidth, pageHeight]);
-        yOffset = pageHeight - 60;
+        yOffset = pageHeight - TOC_LAYOUT.PAGE.MARGIN_BOTTOM;
       }
 
+      const isFirstLevel = level === 0;
       const levelConfig = isFirstLevel ? config.firstLevel : config.otherLevels;
-      const indentation = level * 20;
+
       const {fontSize, dotLeader, color, lineSpacing} = levelConfig;
-      const parsedColor = rgb(
-        parseInt(color.slice(1, 3), 16) / 255,
-        parseInt(color.slice(3, 5), 16) / 255,
-        parseInt(color.slice(5, 7), 16) / 255
-      );
+      const parsedColor =
+          rgb(parseInt(color.slice(1, 3), 16) / 255,
+              parseInt(color.slice(3, 5), 16) / 255,
+              parseInt(color.slice(5, 7), 16) / 255);
+
+      const indentation = level * TOC_LAYOUT.ITEM.INDENT_PER_LEVEL;
       const lineHeight = fontSize * lineSpacing;
+
       const snl = config.showNumberedList;
-      const itemPrefix = snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
-      let title = `${itemPrefix} ${item.title}`.trim();
-      const titleX = 50 + indentation;
+      const itemPrefix =
+          snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
+      const title = `${itemPrefix} ${item.title}`.trim();
+
+      const titleX = TOC_LAYOUT.PAGE.MARGIN_X + indentation;
+
       if (isFirstLevel) {
-        yOffset -= 8;
+        yOffset -= TOC_LAYOUT.ITEM.LINE_HEIGHT_ADJUST;
       }
-      const titleFont = isFirstLevel ? boldFont : regularFont;
+
+      const currentFont = isFirstLevel ? boldFont : regularFont;
+
       currentWorkingPage.drawText(title, {
         x: titleX,
         y: yOffset,
         size: fontSize,
-        font: titleFont,
+        font: currentFont,
         color: parsedColor,
         maxWidth: pageWidth - 100 - indentation,
       });
 
       if (dotLeader) {
-        const titleWidth = titleFont.widthOfTextAtSize(title, fontSize);
-        const dotsXStart = titleX + titleWidth + 10;
-        const dotsXEnd = pageWidth - 65;
-        for (let x = dotsXStart; x < dotsXEnd; x += 5) {
+        const titleWidth = currentFont.widthOfTextAtSize(title, fontSize);
+        const dotsXStart =
+            titleX + titleWidth + TOC_LAYOUT.ITEM.DOT_LEADER.GAP_TITLE;
+        const dotsXEnd = pageWidth - TOC_LAYOUT.PAGE.MARGIN_X -
+            TOC_LAYOUT.ITEM.DOT_LEADER.RIGHT_PADDING;
+
+        for (let x = dotsXStart; x < dotsXEnd;
+             x += TOC_LAYOUT.ITEM.DOT_LEADER.SPACING_STEP) {
           currentWorkingPage.drawText(dotLeader, {
             x,
             y: yOffset,
-            size: fontSize * 0.6,
+            size: fontSize * TOC_LAYOUT.ITEM.DOT_LEADER.SIZE_RATIO,
             font: regularFont,
             color: parsedColor,
           });
@@ -219,17 +278,19 @@ export class PDFService {
       }
 
       const pageNumText = String(item.to);
-      const pageNumFont = isFirstLevel ? boldFont : regularFont;
-      const pageNumWidth = pageNumFont.widthOfTextAtSize(pageNumText, fontSize);
+      const pageNumWidth = currentFont.widthOfTextAtSize(pageNumText, fontSize);
       currentWorkingPage.drawText(pageNumText, {
-        x: pageWidth - 50 - pageNumWidth,
+        x: pageWidth - TOC_LAYOUT.ITEM.PAGE_NUM_WIDTH_PAD - pageNumWidth,
         y: yOffset,
         size: fontSize,
-        font: pageNumFont,
+        font: currentFont,
         color: parsedColor,
       });
 
-      const annotRect = [titleX, yOffset - 2, pageWidth - 50, yOffset + fontSize];
+      const annotRect = [
+        titleX, yOffset - TOC_LAYOUT.ITEM.ANNOT_Y_PADDING,
+        pageWidth - TOC_LAYOUT.PAGE.MARGIN_X, yOffset + fontSize
+      ];
       pendingAnnots.push({
         tocPage: currentWorkingPage,
         rect: annotRect,
@@ -240,16 +301,8 @@ export class PDFService {
 
       if (item.children?.length) {
         const childResult = await this.drawTocItems(
-          doc,
-          currentWorkingPage,
-          item.children,
-          level + 1,
-          yOffset,
-          {
-            ...options,
-            prefix: itemPrefix,
-          }
-        );
+            currentWorkingPage, item.children, level + 1, yOffset, ctx,
+            {prefix: itemPrefix});
         currentWorkingPage = childResult.currentPage;
         yOffset = childResult.yOffset;
       }
@@ -263,87 +316,83 @@ export class PDFService {
 
   async renderPage(pdf: any, pageNum: number, scale: number) {
     if (!pdf) return;
-    const page = await pdf.getPage(pageNum);
     const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
-    if (!canvas) return;
-    const viewport = page.getViewport({scale});
-    if (!viewport) return;
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    const context = canvas.getContext('2d');
-    if (!context) return;
-    await page
-      .render({
-        canvasContext: context,
-        viewport,
-      })
-      .promise;
+    if (!canvas) {
+      console.warn('PDF Canvas element not found');
+      return;
+    }
+
+    try {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({scale});
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      const context = canvas.getContext('2d');
+      if (!context) return;
+
+      await page
+          .render({
+            canvasContext: context,
+            viewport,
+          })
+          .promise;
+    } catch (e) {
+      console.error(`Error rendering page ${pageNum}:`, e);
+    }
   }
 
   async renderPageToCanvas(
-    pdf: any,
-    pageNum: number,
-    canvas: HTMLCanvasElement,
-    maxWidth: number = 150
-  ) {
+      pdf: any, pageNum: number, canvas: HTMLCanvasElement,
+      maxWidth: number = 150) {
     if (!pdf || !canvas) return;
     try {
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({scale: 1});
       const scale = maxWidth / viewport.width;
       const scaledViewport = page.getViewport({scale});
+
       canvas.height = scaledViewport.height;
       canvas.width = scaledViewport.width;
+
       const context = canvas.getContext('2d');
       if (!context) return;
+
       context.clearRect(0, 0, canvas.width, canvas.height);
-      const renderContext = {
-        canvasContext: context,
-        viewport: scaledViewport,
-      };
-      const renderTask = page.render(renderContext);
-      await renderTask.promise;
-    } catch (error) {
+
+      await page
+          .render({
+            canvasContext: context,
+            viewport: scaledViewport,
+          })
+          .promise;
+    } catch (error: any) {
       if (!error.message?.includes('multiple render')) {
-        console.error(`Error rendering page ${pageNum}:`, error);
+        console.error(`Error rendering page ${pageNum} to canvas:`, error);
       }
     }
   }
 
-  replaceUnsupportedCharacters(string: string, font: PDFFont) {
-    const charSet = font.getCharacterSet();
-    const codePoints: number[] = [];
-    for (const ch of string) {
-      const codePoint = ch.codePointAt(0) ?? 0;
-      if (!charSet.includes(codePoint)) {
-        const withoutDiacriticsStr = ch.normalize('NFD').replace(/\p{Diacritic}/gu, '');
-        const withoutDiacritics = withoutDiacriticsStr.charCodeAt(0);
-        if (charSet.includes(withoutDiacritics)) {
-          codePoints.push(withoutDiacritics);
-        } else {
-          codePoints.push('?'.codePointAt(0) ?? 63);
-        }
-      } else {
-        codePoints.push(codePoint);
-      }
-    }
-    return String.fromCodePoint(...codePoints);
-  }
-
-  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5): Promise<string> {
+  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5):
+      Promise<string> {
     const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({scale});
     const canvas = document.createElement('canvas');
     canvas.height = viewport.height;
     canvas.width = viewport.width;
+
     const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not create 2D context for image generation');
+    if (!context)
+      throw new Error('Could not create 2D context for image generation');
+
     await page
-      .render({
-        canvasContext: context,
-        viewport,
-      })
-      .promise;
+        .render({
+          canvasContext: context,
+          viewport,
+        })
+        .promise;
+
     return canvas.toDataURL('image/png');
   }
 }

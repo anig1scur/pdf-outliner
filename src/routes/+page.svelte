@@ -13,7 +13,6 @@
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
 
   import type * as PdfjsLibTypes from 'pdfjs-dist';
-  import type { PDFDocument as PDFLibDocument } from 'pdf-lib';
 
   import Header from '../components/Header.svelte';
   import TocSettings from '../components/TocSetting.svelte';
@@ -44,7 +43,7 @@
   };
   let aiError: string | null = null;
   let hasShownTocHint = false;
-  
+
   let originalPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
   let previewPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
 
@@ -89,22 +88,19 @@
     if (pdfjs && PdfLib) {
       return;
     }
-  
+
     try {
-      const [pdfjsModule, PdfLibModule] = await Promise.all([
-        import('pdfjs-dist'),
-        import('pdf-lib')
-      ]);
+      const [pdfjsModule, PdfLibModule] = await Promise.all([import('pdfjs-dist'), import('pdf-lib')]);
       pdfjs = pdfjsModule;
       PdfLib = PdfLibModule;
     } catch (error) {
-      console.error("Failed to load PDF libraries:", error);
+      console.error('Failed to load PDF libraries:', error);
       toastProps = {
         show: true,
         message: 'Failed to load core components. Please refresh and try again.',
         type: 'error',
       };
-      throw new Error('Failed to load PDF libraries', { cause: error });
+      throw new Error('Failed to load PDF libraries', {cause: error});
     }
   };
 
@@ -264,19 +260,19 @@
       await loadPdfLibraries();
 
       if (!pdfjs || !PdfLib) {
-        return; 
+        return;
       }
 
-      const { PDFDocument } = PdfLib;
+      const {PDFDocument} = PdfLib;
 
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
       pdfState.doc = await PDFDocument.load(uint8Array);
-      
+
       const loadingTask = pdfjs.getDocument(uint8Array);
       originalPdfInstance = await loadingTask.promise;
-      
+
       previewPdfInstance = originalPdfInstance;
       isPreviewMode = false;
       tocPageCount = 0;
@@ -721,28 +717,71 @@
 <svelte:head>
   <title>Tocify · Add or edit PDF Table of Contents online</title>
 
-  <meta 
-    name="description" 
-    content="A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs. Use the manual editor or the AI-powered feature to create a PDF outline fast." 
+  <meta
+    name="description"
+    content="A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs. Use the manual editor or the AI-powered feature to create a PDF outline fast."
   />
-  
-  <link rel="canonical" href="https://tocify.vercel.app/" />
 
-  <meta property="og:title" content="Tocify · Add or edit PDF Table of Contents in browser powered by AI" />
-  <meta property="og:description" content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://tocify.vercel.app/" />
-  
-  <meta property="og:image" content="/og-image.png" /> 
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="700" />
+  <link
+    rel="canonical"
+    href="https://tocify.vercel.app/"
+  />
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Tocify · Add or edit PDF Table of Contents in browser powered by AI" />
-  <meta name="twitter:description" content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction." />
-  <meta name="twitter:image" content="/og-image.png" />
+  <meta
+    property="og:title"
+    content="Tocify · Add or edit PDF Table of Contents in browser powered by AI"
+  />
+  <meta
+    property="og:description"
+    content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction."
+  />
+  <meta
+    property="og:type"
+    content="website"
+  />
+  <meta
+    property="og:url"
+    content="https://tocify.vercel.app/"
+  />
 
-  <link rel="icon" href="/favicon.svg" type="image/svg" />
-  <link rel="icon" href="/favicon.png" sizes="any">
+  <meta
+    property="og:image"
+    content="/og-image.png"
+  />
+  <meta
+    property="og:image:width"
+    content="1200"
+  />
+  <meta
+    property="og:image:height"
+    content="700"
+  />
 
+  <meta
+    name="twitter:card"
+    content="summary_large_image"
+  />
+  <meta
+    name="twitter:title"
+    content="Tocify · Add or edit PDF Table of Contents in browser powered by AI"
+  />
+  <meta
+    name="twitter:description"
+    content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction."
+  />
+  <meta
+    name="twitter:image"
+    content="/og-image.png"
+  />
+
+  <link
+    rel="icon"
+    href="/favicon.svg"
+    type="image/svg"
+  />
+  <link
+    rel="icon"
+    href="/favicon.png"
+    sizes="any"
+  />
 </svelte:head>
