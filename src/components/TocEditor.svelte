@@ -35,11 +35,14 @@
     const stack = [{level: 0, item: {children: items}}];
 
     lines.forEach((line) => {
-      const match = line.match(/^(\d+(?:\.\d+)*)\s+(.+?)\s+(\d+)$/);
+      const match = line.match(/^(\d+(?:\.\d+)*)\s+(.+?)\s+(-?\d+)$/);
+      
       if (match) {
         const [, number, title, pageStr] = match;
         const level = number.split('.').length;
+        
         const page = parseInt(pageStr);
+        
         const newItem = {
           id: new ShortUniqueId({length: 10}),
           title,

@@ -1,10 +1,22 @@
 <script lang="ts">
   import {fade, fly} from 'svelte/transition';
-  import {X} from 'lucide-svelte';
+  import {X, Copy, Check} from 'lucide-svelte';
 
   export let showHelpModal: boolean;
   export let videoUrl: string;
 
+  const email = 'anigiscur@gmail.com';
+  let copied = false;
+
+  const copyEmail = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+      copied = true;
+      setTimeout(() => (copied = false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
 </script>
 
 {#if showHelpModal}
@@ -18,16 +30,34 @@
       transition:fly={{y: 20, duration: 200}}
       on:click|stopPropagation
     >
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-bold">How to Use Tocify</h2>
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+        <div class="flex flex-wrap items-center gap-3">
+          <h2 class="text-2xl font-bold">How to Use Tocify</h2>
+
+          <button
+            on:click={copyEmail}
+            class="group flex items-center gap-1.5 px-2 py-1 text-xs font-bold border-2 border-black rounded shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all active:bg-black active:text-white
+                {copied ? 'bg-green-400' : 'bg-white hover:bg-yellow-200'}"
+            title="Click to copy email"
+          >
+            📮
+            {#if copied}
+              <span>Copied!</span>
+            {:else}
+              <span class="font-mono">{email}</span>
+            {/if}
+          </button>
+        </div>
+
         <button
           on:click={() => (showHelpModal = false)}
-          class="p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
+          class="absolute top-4 right-4 md:relative md:top-auto md:right-auto p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
           aria-label="Close modal"
         >
           <X size={24} />
         </button>
       </div>
+
       <div class="flex flex-col gap-6">
         <video
           src={videoUrl}

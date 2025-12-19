@@ -3,8 +3,7 @@
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
 
   import {pdfService} from '../stores';
-  import {type PDFService} from '../lib/pdf-service';
-  import type {PDFState} from '../lib/pdf-service';
+  import {type PDFService, type PDFState} from '../lib/pdf-service';
 
   export let pdfState: PDFState;
   export let mode: 'single' | 'grid' = 'single';
@@ -144,7 +143,6 @@
       stopAutoScroll();
     }
   }
-  // +++++++++++++++++++++++++++++++++++++++++++++++++++
 
   function handleMouseDown(pageNum: number) {
     isSelecting = true;
@@ -228,7 +226,7 @@
   }
 
   function observeViewport(node: HTMLElement) {
-    scrollContainer = node; // scrollContainer 在这里被赋值
+    scrollContainer = node;
 
     intersectionObserver = new IntersectionObserver(
       (entries) => {

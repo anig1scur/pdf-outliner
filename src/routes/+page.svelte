@@ -29,7 +29,7 @@
   let PdfLib: typeof import('pdf-lib') | null = null;
 
   let isTocConfigExpanded = false;
-  let addPhysicalTocPage = true;
+  let addPhysicalTocPage = false;
   let showOffsetModal = false;
   let pendingTocItems: TocItem[] = [];
   let firstTocItem: TocItem | null = null;
@@ -444,14 +444,39 @@
 
   const handleOffsetConfirm = async () => {
     if (!firstTocItem) return;
+
     const labeledPage = firstTocItem.to;
     const physicalPage = offsetPreviewPageNum;
     const offset = physicalPage - labeledPage;
     updateTocField('pageOffset', offset);
+
+    const hasChinese = pendingTocItems.some((item) => /[\u4e00-\u9fa5]/.test(item.title));
+    const rootTitle = hasChinese ? '目录' : 'Contents';
+
+    const firstTitleNormalized = pendingTocItems[0]?.title?.trim().toLowerCase();
+    const isDuplicate =
+      firstTitleNormalized === '目录' ||
+      firstTitleNormalized === 'contents' ||
+      firstTitleNormalized === 'table of contents';
+
+    if (!isDuplicate) {
+      const rootNode: TocItem = {
+        id: `root-${Date.now()}`,
+        title: rootTitle,
+        to: tocStartPage - offset,
+        children: [],
+        open: true,
+      };
+
+      pendingTocItems.unshift(rootNode);
+    }
+
     tocItems.set(pendingTocItems);
+
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
+
     if (!isPreviewMode) {
       await togglePreviewMode();
     }
