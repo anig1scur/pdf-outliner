@@ -1,4 +1,4 @@
-import {AI_PROVIDER, DASHSCOPE_API_KEY, GOOGLE_API_KEY} from '$env/static/private';
+import {env} from '$env/dynamic/private';
 import {GoogleGenerativeAI} from '@google/generative-ai';
 import {error, json} from '@sveltejs/kit';
 import OpenAI from 'openai';
@@ -30,7 +30,7 @@ function determineProvider(request: Request): string {
     return 'qwen';
   }
 
-  return (AI_PROVIDER || 'gemini').toLowerCase();
+  return (env.AI_PROVIDER || 'gemini').toLowerCase();
 }
 
 export async function POST({request}) {
@@ -81,11 +81,11 @@ export async function POST({request}) {
 }
 
 async function processWithGemini(images: string[]): Promise<string> {
-  if (!GOOGLE_API_KEY) {
+  if (!env.GOOGLE_API_KEY) {
     throw new Error('GOOGLE_API_KEY is not set.');
   }
 
-  const genAI = new GoogleGenerativeAI(GOOGLE_API_KEY);
+  const genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY);
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
@@ -104,14 +104,13 @@ async function processWithGemini(images: string[]): Promise<string> {
   return result.response.text();
 }
 
-// Qwen 处理逻辑保持不变
 async function processWithQwen(images: string[]): Promise<string> {
-  if (!DASHSCOPE_API_KEY) {
+  if (!env.DASHSCOPE_API_KEY) {
     throw new Error('DASHSCOPE_API_KEY is not set.');
   }
 
   const client = new OpenAI({
-    apiKey: DASHSCOPE_API_KEY,
+    apiKey: env.DASHSCOPE_API_KEY,
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
   });
 
