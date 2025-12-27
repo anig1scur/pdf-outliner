@@ -2,6 +2,9 @@
   import {onMount, tick} from 'svelte';
   import Dropzone from 'svelte-file-dropzone';
   import {slide, fade, fly} from 'svelte/transition';
+  import {t, isLoading} from 'svelte-i18n';
+  import '../lib/i18n';
+
   import TocEditor from '../components/TocEditor.svelte';
   import PDFViewer from '../components/PDFViewer.svelte';
   import Toast from '../components/Toast.svelte';
@@ -22,6 +25,7 @@
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
+  import LanguageSwitch from '../components/LanguageSwitch.svelte'; // [新增] 引入组件
 
   injectAnalytics();
 
@@ -55,6 +59,7 @@
     offsetPreviewPageNum = tocEndPage + 1;
   }
   let config: TocConfig;
+
   tocConfig.subscribe((value) => (config = value));
   function updateTocField(fieldPath, value) {
     tocConfig.update((cfg) => {
@@ -579,220 +584,191 @@
     on:close={() => (toastProps.show = false)}
   />
 {/if}
-<div
-  class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
->
-  <div
-    class="w-full lg:w-[30%]"
-    in:fly={{y: 20, duration: 300, delay: 100}}
-    out:fade
-  >
-    <Header on:openhelp={() => (showHelpModal = true)} />
 
-    <TocSettings
-      bind:isTocConfigExpanded
-      bind:addPhysicalTocPage
-      {config}
-      {previewPdfInstance}
-      on:toggleExpand={() => (isTocConfigExpanded = !isTocConfigExpanded)}
-      on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
-      on:jumpToTocPage={jumpToTocPage}
-    />
-
-    {#if showNextStepHint && originalPdfInstance}
-      <div
-        class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
-        transition:fade={{duration: 200}}
-      >
-        <h3 class="font-bold mb-2">Next Step:</h3>
-        <p class="text-sm text-gray-800">
-          1. Select the pages <strong class="text-black">range on the right</strong> containing your PDF's ToCs.
-        </p>
-        <p class="text-sm text-gray-800 mt-1">
-          2. Click the <strong class="text-black"> Generate ToC</strong> button.
-        </p>
-        <p class="text-sm text-gray-800 mt-2">
-          Or, you can <strong class="text-black">manually add items</strong> in the editor below.
-        </p>
-      </div>
-    {/if}
-    {#if originalPdfInstance}
-      <div transition:fade={{duration: 200}}>
-        <AiPageSelector
-          bind:tocStartPage
-          bind:tocEndPage
-          totalPages={pdfState.totalPages}
-        />
-      </div>
-    {/if}
-    <button
-      class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
-      on:click={generateTocFromAI}
-      title={isAiLoading
-        ? 'AI is generating ToC...'
-        : !originalPdfInstance
-          ? 'Load a PDF first'
-          : 'Generate ToC from selected pages using AI'}
-      disabled={isAiLoading || !originalPdfInstance}
-    >
-      {#if isAiLoading}
-        <span>Generating...</span>
-      {:else}
-        <span>✨ Generate ToC from Pages (AI)</span>
-      {/if}
-    </button>
-    {#if aiError}
-      <div class="my-2 p-3 bg-red-100 border-2 border-red-700 text-red-700 rounded-lg">
-        {aiError}
-      </div>
-    {/if}
-    <TocEditor
-      on:hoveritem={handleTocItemHover}
-      currentPage={pdfState.currentPage}
-      isPreview={isPreviewMode}
-      pageOffset={config.pageOffset}
-      insertAtPage={config.insertAtPage}
-      tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
-    />
+{#if $isLoading}
+  <div class="fixed inset-0 bg-white flex items-center justify-center z-50">
+    <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
   </div>
+{:else}
   <div
-    class="flex flex-col w-full lg:w-[70%]"
-    in:fly={{y: 20, duration: 300, delay: 200}}
-    out:fade
+    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
   >
     <div
-      class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+      class="w-full lg:w-[35%]"
+      in:fly={{y: 20, duration: 300, delay: 100}}
+      out:fade
     >
-      {#if isFileLoading}
+      <Header on:openhelp={() => (showHelpModal = true)} />
+
+      <TocSettings
+        bind:isTocConfigExpanded
+        bind:addPhysicalTocPage
+        {config}
+        {previewPdfInstance}
+        on:toggleExpand={() => (isTocConfigExpanded = !isTocConfigExpanded)}
+        on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
+        on:jumpToTocPage={jumpToTocPage}
+      />
+
+      {#if showNextStepHint && originalPdfInstance}
         <div
-          class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-lg"
-          transition:fade={{duration: 100}}
+          class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          transition:fade={{duration: 200}}
         >
-          <div class="flex flex-col items-center gap-4">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
-            <span class="text-xl font-bold">Loading & Rendering PDF...</span>
+          <h3 class="font-bold mb-2">{$t('hint.next_step_title')}:</h3>
+          <p class="text-sm text-gray-800">
+            1. {$t('hint.step_1_text')} <strong class="text-black">{$t('hint.step_1_bold')}</strong>
+          </p>
+          <p class="text-sm text-gray-800 mt-1">
+            2. {$t('hint.step_2_text')} <strong class="text-black"> {$t('hint.step_2_bold')}</strong>
+          </p>
+          <p class="text-sm text-gray-800 mt-2">
+            {$t('hint.or_text')} <strong class="text-black">{$t('hint.manual_add_bold')}</strong>
+            {$t('hint.manual_add_text')}
+          </p>
+        </div>
+      {/if}
+      {#if originalPdfInstance}
+        <div transition:fade={{duration: 200}}>
+          <AiPageSelector
+            bind:tocStartPage
+            bind:tocEndPage
+            totalPages={pdfState.totalPages}
+          />
+        </div>
+      {/if}
+      <button
+        class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+        on:click={generateTocFromAI}
+        title={isAiLoading
+          ? $t('status.generating')
+          : !originalPdfInstance
+            ? $t('status.load_pdf_first')
+            : $t('tooltip.generate_ai')}
+        disabled={isAiLoading || !originalPdfInstance}
+      >
+        {#if isAiLoading}
+          <span>{$t('btn.generating')}</span>
+        {:else}
+          <span>✨ {$t('btn.generate_toc_ai')}</span>
+        {/if}
+      </button>
+      {#if aiError}
+        <div class="my-2 p-3 bg-red-100 border-2 border-red-700 text-red-700 rounded-lg">
+          {aiError}
+        </div>
+      {/if}
+      <TocEditor
+        on:hoveritem={handleTocItemHover}
+        currentPage={pdfState.currentPage}
+        isPreview={isPreviewMode}
+        pageOffset={config.pageOffset}
+        insertAtPage={config.insertAtPage}
+        tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
+      />
+    </div>
+    <div
+      class="flex flex-col w-full lg:w-[70%]"
+      in:fly={{y: 20, duration: 300, delay: 200}}
+      out:fade
+    >
+      <div
+        class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+      >
+        {#if isFileLoading}
+          <div
+            class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-lg"
+            transition:fade={{duration: 100}}
+          >
+            <div class="flex flex-col items-center gap-4">
+              <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
+              <span class="text-xl font-bold">{$t('status.loading_rendering')}</span>
+            </div>
           </div>
-        </div>
-      {:else}
-        <Dropzone
-          containerClasses="absolute inset-0 w-full h-full"
-          accept=".pdf"
-          disableDefaultStyles
-          on:drop={handleFileDrop}
-          on:dragenter={() => (isDragging = true)}
-          on:dragleave={() => (isDragging = false)}
-        >
-          <DropzoneView
-            {isDragging}
-            hasInstance={!!pdfState.instance}
-          />
-        </Dropzone>
-      {/if}
-      {#if pdfState.instance}
-        <div class="relative z-10 h-full flex flex-col">
-          <PDFViewer
-            bind:pdfState
-            on:fileloaded={handleFileLoaded}
-            mode={isPreviewMode ? 'single' : 'grid'}
-            {tocStartPage}
-            {tocEndPage}
-            on:setstartpage={handleSetStartPage}
-            on:setendpage={handleSetEndPage}
-            {jumpToTocPage}
-            {addPhysicalTocPage}
-            hasPreview={!!previewPdfInstance}
-          />
-          <input
-            type="file"
-            class="hidden"
+        {:else}
+          <Dropzone
+            containerClasses="absolute inset-0 w-full h-full"
             accept=".pdf"
-            bind:this={fileInputRef}
-            on:change={handleFileInputChange}
-          />
-          <PdfControls
-            {isPreviewLoading}
-            {isPreviewMode}
-            {originalPdfInstance}
-            doc={pdfState.doc}
-            on:triggerUpload={triggerFileInput}
-            on:togglePreview={togglePreviewMode}
-            on:export={exportPDF}
-          />
-        </div>
-      {/if}
+            disableDefaultStyles
+            on:drop={handleFileDrop}
+            on:dragenter={() => (isDragging = true)}
+            on:dragleave={() => (isDragging = false)}
+          >
+            <DropzoneView
+              {isDragging}
+              hasInstance={!!pdfState.instance}
+            />
+          </Dropzone>
+        {/if}
+        {#if pdfState.instance}
+          <div class="relative z-10 h-full flex flex-col">
+            <PDFViewer
+              bind:pdfState
+              on:fileloaded={handleFileLoaded}
+              mode={isPreviewMode ? 'single' : 'grid'}
+              {tocStartPage}
+              {tocEndPage}
+              on:setstartpage={handleSetStartPage}
+              on:setendpage={handleSetEndPage}
+              {jumpToTocPage}
+              {addPhysicalTocPage}
+              hasPreview={!!previewPdfInstance}
+            />
+            <input
+              type="file"
+              class="hidden"
+              accept=".pdf"
+              bind:this={fileInputRef}
+              on:change={handleFileInputChange}
+            />
+            <PdfControls
+              {isPreviewLoading}
+              {isPreviewMode}
+              {originalPdfInstance}
+              doc={pdfState.doc}
+              on:triggerUpload={triggerFileInput}
+              on:togglePreview={togglePreviewMode}
+              on:export={exportPDF}
+            />
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
-</div>
-<AiLoadingModal
-  {isAiLoading}
-  {tocStartPage}
-  {tocEndPage}
-/>
-<OffsetModal
-  bind:showOffsetModal
-  bind:offsetPreviewPageNum
-  {firstTocItem}
-  totalPages={pdfState.totalPages}
-  on:confirm={handleOffsetConfirm}
-/>
-<HelpModal
-  bind:showHelpModal
-  {videoUrl}
-/>
+  <AiLoadingModal
+    {isAiLoading}
+    {tocStartPage}
+    {tocEndPage}
+  />
+  <OffsetModal
+    bind:showOffsetModal
+    bind:offsetPreviewPageNum
+    {firstTocItem}
+    totalPages={pdfState.totalPages}
+    on:confirm={handleOffsetConfirm}
+  />
+  <HelpModal
+    bind:showHelpModal
+    {videoUrl}
+  />
+{/if}
+
 <svelte:head>
-  <title>Tocify · Add or edit PDF Table of Contents online</title>
+  <title>{$t('meta.title') || 'Tocify · Add or edit PDF Table of Contents online'}</title>
 
   <meta
     name="description"
-    content="A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs. Use the manual editor or the AI-powered feature to create a PDF outline fast."
+    content={$t('meta.description') ||
+      'A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs.'}
   />
 
   <link
     rel="canonical"
     href="https://tocify.vercel.app/"
   />
-
-  <meta
-    property="og:title"
-    content="Tocify · Add or edit PDF Table of Contents in browser powered by AI"
-  />
-  <meta
-    property="og:description"
-    content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction."
-  />
-  <meta
-    property="og:type"
-    content="website"
-  />
-  <meta
-    property="og:url"
-    content="https://tocify.vercel.app/"
-  />
-
-  <meta
-    property="og:image"
-    content="/og-image.png"
-  />
-  <meta
-    property="og:image:width"
-    content="1200"
-  />
-  <meta
-    property="og:image:height"
-    content="700"
-  />
-
   <meta
     name="twitter:card"
     content="summary_large_image"
-  />
-  <meta
-    name="twitter:title"
-    content="Tocify · Add or edit PDF Table of Contents in browser powered by AI"
-  />
-  <meta
-    name="twitter:description"
-    content="A free, online tool to add, edit, or generate a PDF Table of Contents. Supports manual editing and AI-powered extraction."
   />
   <meta
     name="twitter:image"

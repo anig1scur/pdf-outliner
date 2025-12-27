@@ -32,6 +32,7 @@
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^4.10.38",
 		"short-unique-id": "^5.2.0",
-		"svelte-file-dropzone": "^2.0.9"
+		"svelte-file-dropzone": "^2.0.9",
+		"svelte-i18n": "^4.0.1"
 	}
 }

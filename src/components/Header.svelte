@@ -2,6 +2,7 @@
   import {createEventDispatcher} from 'svelte';
   import {Github, HelpCircle} from 'lucide-svelte';
   import Logo from '../assets/logo.svelte';
+  import LanguageSwitch from '../components/LanguageSwitch.svelte';
 
   const dispatch = createEventDispatcher();
 </script>
@@ -24,7 +25,7 @@
       title="View on GitHub"
       aria-label="View project on GitHub"
     >
-      <Github size={32} />
+      <Github size={30} />
     </a>
     <button
       on:click={() => dispatch('openhelp')}
@@ -32,7 +33,8 @@
       title="How to Use"
       aria-label="How to Use ?"
     >
-      <HelpCircle size={32} />
+      <HelpCircle size={30} />
     </button>
+    <LanguageSwitch />
   </div>
 </div>

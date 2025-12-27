@@ -1,0 +1,71 @@
+{
+  "settings": {
+    "title": "目录设置",
+    "toggle_expand": "展开 / 折叠切换",
+    "add_physical_page": "添加实体目录页",
+    "insert_at_page": "插入到页码 #",
+    "insert_at_page_hint": "（从 1 开始，1 = 第一页）",
+    "with_numbered_list": "添加编号列表",
+    "page_offset": "页码偏移量",
+    "offset_hint": "（物理页码 #）-（标注页码 #）",
+    "first_level": "一级目录",
+    "other_levels": "其他层级",
+    "font_size": "字体大小",
+    "dot_leader": "引导点线",
+    "color": "颜色",
+    "spacing": "间距"
+  },
+  "msg": {
+    "pdf_loaded": "PDF 已加载，长按并拖动以选择目录页面"
+  },
+  "label": {
+    "start": "开始",
+    "end": "结束"
+  },
+  "toc": {
+    "prompt_intro": "用于获取目标格式的提示词",
+    "prompt_instruction": "将下方的目录整理为目标格式，并移除无用的注释",
+    "new_section_default": "新章节"
+  },
+  "btn": {
+    "generate_toc_ai": "从所选页面生成目录",
+    "generating": "正在生成...",
+    "go": "跳转",
+    "add_section": "添加新章节",
+    "upload_new": "上传新文件",
+    "loading": "加载中...",
+    "select_grid": "选择",
+    "preview": "预览",
+    "generate_pdf": "导出带目录的 PDF"
+  },
+  "status": {
+    "loading_rendering": "正在加载并渲染 PDF...",
+    "load_pdf_first": "请先加载 PDF 文件",
+    "generating": "AI 正在生成目录..."
+  },
+  "hint": {
+    "next_step_title": "下一步",
+    "step_1_text": "在右侧选择目录页面所在",
+    "step_1_bold": "范围",
+    "step_2_text": "点击下方",
+    "step_2_bold": "生成目录按钮",
+    "or_text": "或者你也可以在下方的编辑器中",
+    "manual_add_bold": "手动添加章节",
+    "manual_add_text": " "
+  },
+  "tooltip": {
+    "jump_toc": "跳转到插入的目录页",
+    "zoom_in": "放大",
+    "zoom_out": "缩小",
+    "reset": "重置缩放",
+    "upload_new": "上传新的 PDF 文件",
+    "switch_edit": "切换到编辑模式（显示原始 PDF）",
+    "switch_preview": "切换到预览模式（显示生成的 PDF）"
+  },
+  "dropzone": {
+    "drop_here": "将 PDF 文件拖放到此处...",
+    "title": "上传你的 PDF",
+    "subtitle": "将文件拖拽到此处或",
+    "btn_select": "点击选择文件"
+  }
+}

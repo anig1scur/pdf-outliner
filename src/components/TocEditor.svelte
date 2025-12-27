@@ -2,6 +2,7 @@
   import {onDestroy} from 'svelte';
   import ShortUniqueId from 'short-unique-id';
   import {CircleHelpIcon} from 'lucide-svelte';
+  import { t } from 'svelte-i18n'; 
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
@@ -98,7 +99,7 @@
       ...$tocItems,
       {
         id: new ShortUniqueId({length: 10}),
-        title: 'New Section',
+        title: $t('toc.new_section_default'),
         to: $maxPage + 1,
         children: [],
         open: true,
@@ -129,6 +130,17 @@
       });
     $tocItems = deleteItemRecursive($tocItems);
   };
+
+  $: promptTooltipText = `${$t('toc.prompt_intro')}:
+
+1 Food Categories I Love 1
+2 Fruits 2
+2.1 Strawberry 3
+
+${$t('toc.prompt_instruction')}
+
+\${YOUR_TOCS_COPY_FROM_ANYWHERE}`;
+
 </script>
 
 <div class="flex flex-col gap-4 mt-3">
@@ -137,15 +149,7 @@
       <Tooltip
         isTextCopiable
         width="min-w-96"
-        text={`Prompt to get the target format:
-
-1 Food Categories I Love 1
-2 Fruits 2
-2.1 Strawberry 3
-
-organize the ToCs in below to the target format, remove useless comments
-
-\${YOUR_TOCS_COPY_FROM_ANYWHERE}`}
+        text={promptTooltipText}
         position="right"
         className="-ml-6"
       >
@@ -155,7 +159,6 @@ organize the ToCs in below to the target format, remove useless comments
 
     <textarea
       bind:value={text}
-   
       class="w-full h-full border-2 border-black rounded-lg p-2 text-sm myfocus leading-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
     ></textarea>
   </div>
@@ -175,16 +178,12 @@ organize the ToCs in below to the target format, remove useless comments
           {tocPageCount}
         />
       {/each}
-    {:else}
-      <div class="ml-9 p-4 text-center text-gray-500 border-2 border-black rounded-lg bg-gray-100">
-        Use the AI generator or add items manually
-      </div>
     {/if}
     <button
       on:click={addTocItem}
       class="ml-9 mt-3 mb-4 btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
     >
-      Add New Section
+      {$t('btn.add_section')}
     </button>
   </div>
 </div>

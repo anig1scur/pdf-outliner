@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "title": "Tocify · Add or edit PDF Table of Contents online",
+    "description": "A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs."
+  },
+  "settings": {
+    "title": "ToC Settings",
+    "toggle_expand": "Toggle Expand/Collapse",
+    "add_physical_page": "Add physical ToC page",
+    "insert_at_page": "Insert At Page #",
+    "insert_at_page_hint": "(1-based, 1 = first page)",
+    "with_numbered_list": "with numbered list",
+    "page_offset": "Page Number Offset",
+    "offset_hint": "(Physical Num #) - (Labeled Num #)",
+    "first_level": "First Level",
+    "other_levels": "Other Levels",
+    "font_size": "Font Size",
+    "dot_leader": "Dot Leader",
+    "color": "Color",
+    "spacing": "Spacing"
+  },
+  "msg": {
+    "pdf_loaded": "Pdf loaded, long press and drag to select ToC pages"
+  },
+  "label": {
+    "start": "START",
+    "end": "END"
+  },
+  "toc": {
+    "prompt_intro": "Prompt to get the target format",
+    "prompt_instruction": "organize the ToCs in below to the target format, remove useless comments",
+    "new_section_default": "New Section"
+  },
+  "btn": {
+    "generate_toc_ai": "Generate ToC from Pages (AI)",
+    "generating": "Generating...",
+    "go": "Go",
+    "add_section": "Add New Section",
+    "upload_new": "Upload New",
+    "loading": "Loading...",
+    "select_grid": "Select (Grid)",
+    "preview": "Preview",
+    "generate_pdf": "Generate Outlined PDF"
+  },
+  "status": {
+    "loading_rendering": "Loading & Rendering PDF...",
+    "load_pdf_first": "Load a PDF first",
+    "generating": "AI is generating ToC..."
+  },
+  "hint": {
+    "next_step_title": "Next Step",
+    "step_1_text": "Select the pages",
+    "step_1_bold": "range on the right",
+    "step_2_text": "Click the",
+    "step_2_bold": "Generate ToC button",
+    "or_text": "Or, you can",
+    "manual_add_bold": "manually add items",
+    "manual_add_text": "in the editor below"
+  },
+  "tooltip": {
+    "jump_toc": "Jump to inserted ToC page",
+    "zoom_in": "Zoom in",
+    "zoom_out": "Zoom out",
+    "reset": "Reset zoom",
+    "upload_new": "Upload a new PDF file",
+    "switch_edit": "Switch to Edit Mode (Show Original PDF)",
+    "switch_preview": "Switch to Preview Mode (Show Generated PDF)"
+  },
+  "dropzone": {
+    "drop_here": "Drop your PDF file here...",
+    "title": "Upload Your PDF",
+    "subtitle": "Drag & drop a file here, or",
+    "btn_select": "Click to Select File"
+  }
+}

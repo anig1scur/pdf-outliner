@@ -1,6 +1,7 @@
 <script lang="ts">
   import {createEventDispatcher, tick} from 'svelte';
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
+  import { t } from 'svelte-i18n';
 
   import {pdfService} from '../stores';
   import {type PDFService, type PDFState} from '../lib/pdf-service';
@@ -39,8 +40,9 @@
   $: if (instance && filename && filename !== loadedFilename) {
     loadedFilename = filename;
     tick().then(() => {
+      // [修改] 使用 $t() 翻译消息，因为这里是 reactive 语句，直接调用 store value 是没问题的
       dispatch('fileloaded', {
-        message: `Pdf loaded, long press and drag to select ToC pages!`,
+        message: $t('msg.pdf_loaded'),
         type: 'success',
       });
     });
@@ -131,13 +133,13 @@
       return;
     }
     const rect = scrollContainer.getBoundingClientRect();
-    const hotZoneSize = 80; // 80px 热区
+    const hotZoneSize = 80;
 
     if (clientY < rect.top + hotZoneSize) {
-      autoScrollSpeed = -10; // 向上滚动的速度
+      autoScrollSpeed = -10;
       if (!autoScrollFrameId) autoScrollFrameId = requestAnimationFrame(scrollLoop);
     } else if (clientY > rect.bottom - hotZoneSize) {
-      autoScrollSpeed = 10; // 向下滚动的速度
+      autoScrollSpeed = 10;
       if (!autoScrollFrameId) autoScrollFrameId = requestAnimationFrame(scrollLoop);
     } else {
       stopAutoScroll();
@@ -166,15 +168,15 @@
   }
 
   function handleMouseUp() {
-    stopAutoScroll(); // [!code ++]
+    stopAutoScroll();
     isSelecting = false;
     selectionStartPage = 0;
   }
 
-  function handleGridMouseMove(e: MouseEvent) { // [!code ++]
-    if (!isSelecting) return; // [!code ++]
-    checkAutoScroll(e.clientY); // [!code ++]
-  } // [!code ++]
+  function handleGridMouseMove(e: MouseEvent) {
+    if (!isSelecting) return;
+    checkAutoScroll(e.clientY);
+  }
 
   function handleTouchStart(pageNum: number) {
     if (pressTimer) {
@@ -199,7 +201,7 @@
     const touch = e.touches[0];
     if (!touch) return;
 
-    checkAutoScroll(touch.clientY); // [!code ++]
+    checkAutoScroll(touch.clientY);
 
     const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
     if (!targetElement) return;
@@ -215,7 +217,7 @@
   }
 
   function handleTouchEnd() {
-    stopAutoScroll(); // [!code ++]
+    stopAutoScroll();
     if (pressTimer) {
       clearTimeout(pressTimer);
       pressTimer = null;
@@ -315,7 +317,7 @@
               <button
                 on:click={jumpToTocPage}
                 class="p-1 rounded-lg hover:bg-gray-100 text-black border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                title="Jump to inserted ToC page"
+                title={$t('tooltip.jump_toc')}
               >
                 <ListOrdered
                   size={12}
@@ -329,7 +331,7 @@
             <button
               on:click={zoomOut}
               class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title="zoom out"
+              title={$t('tooltip.zoom_out')}
             >
               <ZoomOut size={20} />
             </button>
@@ -339,14 +341,14 @@
             <button
               on:click={zoomIn}
               class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title="zoom in"
+              title={$t('tooltip.zoom_in')}
             >
               <ZoomIn size={20} />
             </button>
             <button
               on:click={resetZoom}
               class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title="reset"
+              title={$t('tooltip.reset')}
             >
               <RotateCw size={20} />
             </button>
@@ -408,7 +410,7 @@
             <span
               class="absolute -top-2.5 -left-2.5 z-10 rounded-full bg-blue-600 pr-2 pl-3 pt-3 text-xs font-bold text-white shadow-lg"
             >
-              START
+              {$t('label.start')}
             </span>
           {/if}
 
@@ -416,7 +418,7 @@
             <span
               class="absolute -bottom-2.5 -right-2.5 z-10 rounded-full bg-blue-600 pl-2 pr-3 pb-[10px] pt-[2px] text-xs font-bold text-white shadow-lg"
             >
-              END
+              {$t('label.end')}
             </span>
           {/if}
 

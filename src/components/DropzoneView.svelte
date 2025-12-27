@@ -1,5 +1,7 @@
 <script lang="ts">
   import {Upload} from 'lucide-svelte';
+  import {t} from 'svelte-i18n'; // [新增]
+
   export let isDragging: boolean;
   export let hasInstance: boolean;
 </script>
@@ -14,18 +16,18 @@
   {#if !hasInstance || isDragging}
     <div class="absolute text-stone-500 inset-0 flex flex-col items-center justify-center p-4">
       {#if isDragging}
-        <p class="text-2xl font-bold">Drop your PDF file here...</p>
+        <p class="text-2xl font-bold">{$t('dropzone.drop_here')}</p>
       {:else}
         <Upload
           size={64}
           class="mb-4 text-blue-500"
         />
-        <h3 class="text-2xl font-bold text-black mb-5">Upload Your PDF</h3>
-        <p class="text-lg">Drag & drop a file here, or</p>
+        <h3 class="text-2xl font-bold text-black mb-5">{$t('dropzone.title')}</h3>
+        <p class="text-lg">{$t('dropzone.subtitle')}</p>
         <button
           class="btn mt-4 font-bold bg-blue-400 text-black border-2 border-black rounded-lg px-6 py-3 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
         >
-          Click to Select File
+          {$t('dropzone.btn_select')}
         </button>
       {/if}
     </div>
