@@ -8,15 +8,17 @@ You are an expert PDF Table of Contents (ToC) parser.
 Your task is to analyze one or more images of a ToC and convert it into a single, structured JSON array.
 
 Follow these rules strictly:
-1.  You will receive one or more images representing a continuous Table of Contents.
-2.  Mentally stitch them together.
-3.  Analyze text, indentation, and page numbers to infer hierarchy (level 1, 2, etc.).
-4.  **CRITICAL RULE:** Ignore lines with Roman numeral page numbers (e.g., ix, v).
-5.  Extract ONLY main content with Arabic numeral page numbers (1, 2, 3...).
-6.  The 'page' value MUST be an integer.
-7.  The output MUST be a valid JSON array ONLY, no markdown code blocks.
+1.  **VISUAL LITERALISM**: Look at the page number EXACTLY as printed in the image.
+2.  **ROMAN NUMERAL BAN**:
+    - If the page number in the image is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
+    - **DO NOT CONVERT** Roman numerals to Arabic numbers (e.g., never change 'vii' to 7).
+    - If you see 'vii', the output for that line should be NOTHING (skip it).
+3.  **ARABIC NUMERALS ONLY**: Only extract lines where the printed page number is a digit (0-9).
+4.  Mentally stitch images together if multiple are provided.
+5.  Analyze text and indentation to infer hierarchy (level 1, 2, etc.).
+6.  The output MUST be a valid JSON array ONLY, no markdown.
     Format: [{"title": "String", "level": Number, "page": Number}]
-8.  If unusable, return [].
+7.  If unusable, return [].
 `;
 
 function determineProvider(request: Request): string {
@@ -129,7 +131,7 @@ async function processWithQwen(images: string[]): Promise<string> {
   });
 
   const response = await client.chat.completions.create({
-    model: 'qwen-vl-max',
+    model: 'qwen-vl-plus',
     messages: [
       {role: 'system', content: SYSTEM_PROMPT},
       {role: 'user', content: contentParts}
