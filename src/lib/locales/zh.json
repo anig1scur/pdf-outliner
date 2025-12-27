@@ -36,7 +36,8 @@
     "loading": "加载中...",
     "select_grid": "选择",
     "preview": "预览",
-    "generate_pdf": "导出带目录的 PDF"
+    "generate_pdf": "导出带目录的 PDF",
+    "yes_this_page": "是的！就是这一页！"
   },
   "status": {
     "loading_rendering": "正在加载并渲染 PDF...",
@@ -67,5 +68,17 @@
     "title": "上传你的 PDF",
     "subtitle": "将文件拖拽到此处或",
     "btn_select": "点击选择文件"
+  },
+  "offset": {
+    "title": "通过首个目录项校准页码偏移",
+    "found_prefix": "我们发现了",
+    "found_on_prefix": "位于",
+    "page_n": "第 {n} 页",
+    "instruction": "请选择该章节实际对应的物理页码",
+    "physical_page_label": "物理页码："
+  },
+  "loading": {
+    "extracting_range": "正在从第 {start} 页到第 {end} 页提取目录...",
+    "take_minutes": "这可能需要几分钟"
   }
 }

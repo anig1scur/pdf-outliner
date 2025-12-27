@@ -40,7 +40,8 @@
     "loading": "Loading...",
     "select_grid": "Select (Grid)",
     "preview": "Preview",
-    "generate_pdf": "Generate Outlined PDF"
+    "generate_pdf": "Generate Outlined PDF",
+    "yes_this_page": "Yes! This page !"
   },
   "status": {
     "loading_rendering": "Loading & Rendering PDF...",
@@ -71,5 +72,17 @@
     "title": "Upload Your PDF",
     "subtitle": "Drag & drop a file here, or",
     "btn_select": "Click to Select File"
+  },
+  "offset": {
+    "title": "Confirm Page Offset By The First ToC Item",
+    "found_prefix": "We found",
+    "found_on_prefix": "on",
+    "page_n": "Page {n}",
+    "instruction": "Select the physical page where this section actually begins",
+    "physical_page_label": "Physical Page:"
+  },
+  "loading": {
+    "extracting_range": "Extracting ToCs From Pages {start} to {end}...",
+    "take_minutes": "This may take minutes"
   }
 }
