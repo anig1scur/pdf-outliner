@@ -59,6 +59,7 @@
     "manual_add_text": "in the editor below"
   },
   "tooltip": {
+    "generate_ai": "Generate ToC from selected pages using AI",
     "jump_toc": "Jump to inserted ToC page",
     "zoom_in": "Zoom in",
     "zoom_out": "Zoom out",

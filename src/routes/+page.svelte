@@ -759,12 +759,24 @@
   <meta
     name="description"
     content={$t('meta.description') ||
-      'A free, online tool to add, edit, or generate a Table of Contents (ToC) for PDFs.'}
+      'A free, online tool to automatically generate Table of Contents (bookmarks) for PDFs.'}
   />
 
   <link
     rel="canonical"
     href="https://tocify.vercel.app/"
+  />
+  <meta
+    name="keywords"
+    content="PDF Table of Contents, PDF Bookmarks, Scanned PDF outline, PDF 目录生成, PDF 加书签, 扫描版 PDF 目录, AI PDF 工具"
+  />
+  <meta
+    property="og:title"
+    content="Tocify - 给 PDF 自动生成目录"
+  />
+  <meta
+    property="og:description"
+    content="一个免费为 PDF 添加目录（书签）的在线工具"
   />
   <meta
     name="twitter:card"

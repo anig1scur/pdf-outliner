@@ -55,6 +55,7 @@
     "manual_add_text": " "
   },
   "tooltip": {
+    "generate_ai": "从所选页面智能生成目录",
     "jump_toc": "跳转到插入的目录页",
     "zoom_in": "放大",
     "zoom_out": "缩小",
