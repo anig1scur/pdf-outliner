@@ -121,14 +121,13 @@
   }
 
   const debouncedUpdatePDF = debounce(updatePDF, 300);
-
   tocItems.subscribe((items) => {
     if (items.length > 0) showNextStepHint = false;
     if (isFileLoading) return;
-    if (!hasShownTocHint && items.length > 0) {
+    if (!hasShownTocHint && addPhysicalTocPage && items.length > 0) {
       toastProps = {
         show: true,
-        message: `ToC pages will be inserted at page 2. You can change it in Settings.`,
+        message: `ToC pages will be inserted at page ${config.insertAtPage || 2}. You can change it in Settings.`,
         type: 'info',
       };
       setTimeout(() => {

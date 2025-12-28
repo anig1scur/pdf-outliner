@@ -49,7 +49,7 @@
     "saved": "Saved"
   },
   "status": {
-    "loading_rendering": "Loading & Rendering PDF...",
+    "loading_rendering": "Loading PDF...",
     "load_pdf_first": "Load a PDF first",
     "generating": "AI is generating ToC..."
   },

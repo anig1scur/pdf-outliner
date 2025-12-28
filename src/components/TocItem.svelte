@@ -83,9 +83,9 @@
       {#if item.children?.length > 0}
         {#if showTooltip}
           <Tooltip
-            text={`This flag determines whether a PDF outline item is expanded or collapsed.
+            text={`The arrow flag determines whether a PDF outline item is expanded or collapsed.
 
-Only a few PDF viewer support it, Chrome collapses all items by default.`}
+Only a few PDF viewer support it (eg. Adobe Acrobat), Chrome collapses all items by default.`}
             position="right"
             className="-ml-6"
           >
