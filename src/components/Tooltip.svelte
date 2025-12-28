@@ -29,7 +29,7 @@
   };
 </script>
 
-<div class={'relative inline-block ' + className}>
+<div class={'relative inline-block font-normal ' + className}>
   <button
     class="cursor-pointer"
     on:mouseenter={setVisible}

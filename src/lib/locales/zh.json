@@ -13,7 +13,9 @@
     "font_size": "字体大小",
     "dot_leader": "引导点线",
     "color": "颜色",
-    "spacing": "间距"
+    "spacing": "间距",
+    "api_settings_title": "API 设置",
+    "api_key_hint": "仅存储在本地，不会上传到服务器"
   },
   "msg": {
     "pdf_loaded": "PDF 已加载，长按并拖动以选择目录页面"
@@ -25,7 +27,8 @@
   "toc": {
     "prompt_intro": "用于获取目标格式的提示词",
     "prompt_instruction": "将下方的目录整理为目标格式，并移除无用的注释",
-    "new_section_default": "新章节"
+    "new_section_default": "新章节",
+    "new_item_default": "新条目"
   },
   "btn": {
     "generate_toc_ai": "从所选页面生成目录",
@@ -37,7 +40,9 @@
     "select_grid": "选择",
     "preview": "预览",
     "generate_pdf": "导出带目录的 PDF",
-    "yes_this_page": "是的！就是这一页！"
+    "yes_this_page": "是的！就是这一页！",
+    "save": "保存",
+    "saved": "已保存"
   },
   "status": {
     "loading_rendering": "正在加载并渲染 PDF...",

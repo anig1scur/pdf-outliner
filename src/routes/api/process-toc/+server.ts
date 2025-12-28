@@ -21,7 +21,12 @@ Follow these rules strictly:
 7.  If unusable, return [].
 `;
 
-function determineProvider(request: Request): string {
+
+function determineProvider(request: Request, userProvider?: string): string {
+  if (userProvider && userProvider !== 'auto') {
+    return userProvider;
+  }
+
   const country = request.headers.get('x-vercel-ip-country') ||
       request.headers.get('cf-ipcountry') ||
       request.headers.get('x-country-code');
@@ -34,8 +39,18 @@ function determineProvider(request: Request): string {
 }
 
 export async function POST({request}) {
+  const origin = request.headers.get('origin');
+  const allowedOrigins = [
+    'https://tocify.aeriszhu.com', 'https://tocify.vercel.app',
+    'http://localhost:5173', 'http://127.0.0.1:5173'
+  ];
+
+  if (origin && !allowedOrigins.includes(origin)) {
+    return new Response('Forbidden: Invalid Origin', {status: 403});
+  }
+
   try {
-    const {images} = await request.json();
+    const {images, apiKey, provider} = await request.json();
 
     if (!images || !Array.isArray(images) || images.length === 0) {
       throw error(
@@ -43,23 +58,21 @@ export async function POST({request}) {
           'Invalid request. Must be a JSON object with a non-empty "images" array.');
     }
 
-    const currentProvider = determineProvider(request);
+    const currentProvider = determineProvider(request, provider);
 
-    console.log(`[ToC Parser] User Country Header detected: ${
-        request.headers.get('x-vercel-ip-country') || 'Unknown'}`);
-    console.log(`[ToC Parser] Using provider: ${currentProvider}`);
+    console.log(`[ToC Parser] Using provider: ${
+        currentProvider} (User specified: ${provider || 'No'})`);
 
     let jsonText = '';
 
     if (currentProvider === 'qwen') {
-      jsonText = await processWithQwen(images);
+      jsonText = await processWithQwen(images, apiKey);
     } else {
-      jsonText = await processWithGemini(images);
+      jsonText = await processWithGemini(images, apiKey);
     }
 
     const cleanedJsonText = jsonText.replace(/```json\n?|```/g, '').trim();
     let tocData;
-
     try {
       tocData = JSON.parse(cleanedJsonText);
     } catch (e) {
@@ -71,7 +84,6 @@ export async function POST({request}) {
         throw error(500, 'AI returned invalid JSON structure.');
       }
     }
-
     return json(tocData);
 
   } catch (err: any) {
@@ -80,12 +92,16 @@ export async function POST({request}) {
   }
 }
 
-async function processWithGemini(images: string[]): Promise<string> {
-  if (!env.GOOGLE_API_KEY) {
-    throw new Error('GOOGLE_API_KEY is not set.');
+async function processWithGemini(
+    images: string[], userKey?: string): Promise<string> {
+  const apiKey = userKey || env.GOOGLE_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+        '[Gemini] API Key is missing (Server env not set and no user key provided).');
   }
 
-  const genAI = new GoogleGenerativeAI(env.GOOGLE_API_KEY);
+  const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
     systemInstruction: SYSTEM_PROMPT,
@@ -94,7 +110,6 @@ async function processWithGemini(images: string[]): Promise<string> {
   const imageParts = images.map((img) => {
     const base64Data = img.includes('base64,') ? img.split(',')[1] : img;
     const mimeType = img.match(/data:(.*?);/)?.[1] || 'image/png';
-
     return {inlineData: {data: base64Data, mimeType: mimeType}};
   });
 
@@ -104,13 +119,17 @@ async function processWithGemini(images: string[]): Promise<string> {
   return result.response.text();
 }
 
-async function processWithQwen(images: string[]): Promise<string> {
-  if (!env.DASHSCOPE_API_KEY) {
-    throw new Error('DASHSCOPE_API_KEY is not set.');
+async function processWithQwen(
+    images: string[], userKey?: string): Promise<string> {
+  const apiKey = userKey || env.DASHSCOPE_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+        '[Qwen] API Key is missing (Server env not set and no user key provided).');
   }
 
   const client = new OpenAI({
-    apiKey: env.DASHSCOPE_API_KEY,
+    apiKey: apiKey,
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
   });
 
@@ -125,7 +144,6 @@ async function processWithQwen(images: string[]): Promise<string> {
     if (!img.startsWith('data:image/')) {
       imageUrl = `data:image/png;base64,${img}`;
     }
-
     contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
   });
 

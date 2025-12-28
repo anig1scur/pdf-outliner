@@ -5,6 +5,7 @@
   import Self from './TocItem.svelte';
   import {maxPage} from '../stores';
   import {createEventDispatcher} from 'svelte';
+  import { t } from 'svelte-i18n';
 
   export let item;
   export let onUpdate;
@@ -44,7 +45,7 @@
   function handleAddChild() {
     const newChild = {
       id: new ShortUniqueId({length: 10}),
-      title: 'New Item',
+      title: $t('toc.new_item_default') || 'New Item',
       to: $maxPage + 1,
       children: [],
       open: true,

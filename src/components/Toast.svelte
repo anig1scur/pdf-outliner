@@ -2,8 +2,7 @@
   import {onMount} from 'svelte';
   import {createEventDispatcher} from 'svelte';
   import {X, CheckCircle, AlertTriangle, InfoIcon} from 'lucide-svelte';
-  import {fly} from 'svelte/transition'; // [!code --]
-  import {slide} from 'svelte/transition'; // [!code ++]
+  import {fly} from 'svelte/transition';
 
   export let message = 'Success!';
   export let duration = 3000;

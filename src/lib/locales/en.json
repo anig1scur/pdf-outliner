@@ -17,7 +17,9 @@
     "font_size": "Font Size",
     "dot_leader": "Dot Leader",
     "color": "Color",
-    "spacing": "Spacing"
+    "spacing": "Spacing",
+    "api_settings_title": "API Settings",
+    "api_key_hint": "Stored locally only"
   },
   "msg": {
     "pdf_loaded": "Pdf loaded, long press and drag to select ToC pages"
@@ -29,10 +31,11 @@
   "toc": {
     "prompt_intro": "Prompt to get the target format",
     "prompt_instruction": "organize the ToCs in below to the target format, remove useless comments",
-    "new_section_default": "New Section"
+    "new_section_default": "New Section",
+    "new_item_default": "New Item"
   },
   "btn": {
-    "generate_toc_ai": "Generate ToC from Pages (AI)",
+    "generate_toc_ai": "Generate ToC from Pages",
     "generating": "Generating...",
     "go": "Go",
     "add_section": "Add New Section",
@@ -41,7 +44,9 @@
     "select_grid": "Select (Grid)",
     "preview": "Preview",
     "generate_pdf": "Generate Outlined PDF",
-    "yes_this_page": "Yes! This page !"
+    "yes_this_page": "Yes! This page !",
+    "save": "Save",
+    "saved": "Saved"
   },
   "status": {
     "loading_rendering": "Loading & Rendering PDF...",

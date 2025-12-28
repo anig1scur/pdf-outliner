@@ -1,80 +1,58 @@
 <script lang="ts">
   import {onMount, tick} from 'svelte';
-  import Dropzone from 'svelte-file-dropzone';
   import {slide, fade, fly} from 'svelte/transition';
   import {t, isLoading} from 'svelte-i18n';
-  import '../lib/i18n';
-
-  import TocEditor from '../components/TocEditor.svelte';
-  import PDFViewer from '../components/PDFViewer.svelte';
-  import Toast from '../components/Toast.svelte';
-  import {setOutline} from '../lib/pdf-outliner';
-  import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
-  import {tocItems, pdfService, type TocConfig} from '../stores';
-  import {debounce} from '../lib';
-  import {tocConfig} from '../stores';
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
-
+  import Dropzone from 'svelte-file-dropzone';
   import type * as PdfjsLibTypes from 'pdfjs-dist';
 
+  import '../lib/i18n';
+  import {pdfService, tocItems, tocConfig, type TocConfig} from '../stores';
+  import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
+  import {setOutline} from '../lib/pdf-outliner';
+  import {debounce} from '../lib';
+
   import Header from '../components/Header.svelte';
-  import TocSettings from '../components/TocSetting.svelte';
-  import AiPageSelector from '../components/PageSelector.svelte';
+  import Toast from '../components/Toast.svelte';
   import DropzoneView from '../components/DropzoneView.svelte';
+
+  import PDFViewer from '../components/PDFViewer.svelte';
   import PdfControls from '../components/PdfControls.svelte';
+  import TocEditor from '../components/TocEditor.svelte';
+  import TocSettings from '../components/TocSetting.svelte';
+  import ApiSetting from '../components/ApiSetting.svelte';
+  import AiPageSelector from '../components/PageSelector.svelte';
+
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
-  import LanguageSwitch from '../components/LanguageSwitch.svelte'; // [新增] 引入组件
 
   injectAnalytics();
 
   let pdfjs: typeof PdfjsLibTypes | null = null;
   let PdfLib: typeof import('pdf-lib') | null = null;
+  let fileInputRef: HTMLInputElement;
 
+  let isDragging = false;
+  let isFileLoading = false;
+  let isAiLoading = false;
+  let isPreviewLoading = false;
   let isTocConfigExpanded = false;
-  let addPhysicalTocPage = false;
+  let showNextStepHint = false;
+  let hasShownTocHint = false;
+
   let showOffsetModal = false;
-  let pendingTocItems: TocItem[] = [];
-  let firstTocItem: TocItem | null = null;
-  let offsetPreviewPageNum = 1;
   let showHelpModal = false;
+  let offsetPreviewPageNum = 1;
   const videoUrl = '/videos/demo.mp4';
   let toastProps = {
     show: false,
     message: '',
     type: 'success' as 'success' | 'error' | 'info',
   };
-  let aiError: string | null = null;
-  let hasShownTocHint = false;
 
   let originalPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
   let previewPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
-
-  let tocPageCount = 0;
-  let isPreviewMode = false;
-  let isPreviewLoading = false;
-  let showNextStepHint = false;
-  $: if (showOffsetModal) {
-    offsetPreviewPageNum = tocEndPage + 1;
-  }
-  let config: TocConfig;
-
-  tocConfig.subscribe((value) => (config = value));
-  function updateTocField(fieldPath, value) {
-    tocConfig.update((cfg) => {
-      const keys = fieldPath.split('.');
-      let target = cfg;
-      keys.slice(0, -1).forEach((key) => (target = target[key]));
-      target[keys[keys.length - 1]] = value;
-      return cfg;
-    });
-  }
-  let isDragging = false;
-  let isAiLoading = false;
-  let isFileLoading = false;
-  let tocStartPage = 1;
-  let tocEndPage = 1;
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
@@ -84,16 +62,90 @@
     totalPages: 0,
     scale: 1.0,
   };
-  let fileInputRef: HTMLInputElement;
+
+  let tocStartPage = 1;
+  let tocEndPage = 1;
+  let tocPageCount = 0;
+  let addPhysicalTocPage = false;
+  let isPreviewMode = false;
+  let pendingTocItems: TocItem[] = [];
+  let firstTocItem: TocItem | null = null;
+  let aiError: string | null = null;
+  let config: TocConfig;
+
+  let customApiConfig = {
+    provider: 'auto', // 'auto', 'gemini', 'qwen'
+    apiKey: '',
+  };
+
   onMount(() => {
     $pdfService = new PDFService();
   });
 
-  const loadPdfLibraries = async () => {
-    if (pdfjs && PdfLib) {
-      return;
-    }
+  tocConfig.subscribe((value) => (config = value));
 
+  $: {
+    if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
+      $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
+    }
+  }
+
+  $: if (showOffsetModal) {
+    offsetPreviewPageNum = tocEndPage + 1;
+  }
+
+  let previousAddPhysicalTocPage = addPhysicalTocPage;
+  $: {
+    if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
+      previousAddPhysicalTocPage = addPhysicalTocPage;
+      if (isPreviewMode) {
+        debouncedUpdatePDF();
+      }
+    }
+  }
+
+  $: {
+    if (
+      showOffsetModal &&
+      offsetPreviewPageNum > 0 &&
+      offsetPreviewPageNum <= (originalPdfInstance?.numPages || 0) &&
+      originalPdfInstance &&
+      $pdfService
+    ) {
+      (async () => {
+        await tick();
+        renderOffsetPreviewPage(offsetPreviewPageNum);
+      })();
+    }
+  }
+
+  const debouncedUpdatePDF = debounce(updatePDF, 300);
+
+  tocItems.subscribe((items) => {
+    if (items.length > 0) showNextStepHint = false;
+    if (isFileLoading) return;
+    if (!hasShownTocHint && items.length > 0) {
+      toastProps = {
+        show: true,
+        message: `ToC pages will be inserted at page 2. You can change it in Settings.`,
+        type: 'info',
+      };
+      setTimeout(() => {
+        hasShownTocHint = true;
+      }, 3000);
+    }
+    if (!isPreviewMode) return;
+    debouncedUpdatePDF();
+  });
+
+  tocConfig.subscribe(() => {
+    if (isFileLoading) return;
+    if (!isPreviewMode) return;
+    debouncedUpdatePDF();
+  });
+
+  const loadPdfLibraries = async () => {
+    if (pdfjs && PdfLib) return;
     try {
       const [pdfjsModule, PdfLibModule] = await Promise.all([import('pdfjs-dist'), import('pdf-lib')]);
       pdfjs = pdfjsModule;
@@ -109,11 +161,44 @@
     }
   };
 
-  $: {
-    if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
-      $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
-    }
+  function updateTocField(fieldPath, value) {
+    tocConfig.update((cfg) => {
+      const keys = fieldPath.split('.');
+      let target = cfg;
+      keys.slice(0, -1).forEach((key) => (target = target[key]));
+      target[keys[keys.length - 1]] = value;
+      return cfg;
+    });
   }
+
+  function buildTree(items: {title: string; level: number; page: number}[]): TocItem[] {
+    const root: TocItem[] = [];
+    const stack: {node: TocItem; level: number}[] = [];
+    let idCounter = 0;
+    items.forEach((item) => {
+      const newItem: TocItem = {
+        id: `item-${idCounter++}`,
+        title: item.title,
+        to: item.page,
+        children: [],
+        open: true,
+      };
+      const level = item.level;
+      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+        stack.pop();
+      }
+      if (stack.length === 0) {
+        root.push(newItem);
+      } else {
+        const parent = stack[stack.length - 1].node;
+        parent.children = parent.children || [];
+        parent.children.push(newItem);
+      }
+      stack.push({node: newItem, level: level});
+    });
+    return root;
+  }
+
   const updateViewerInstance = () => {
     if (isPreviewMode && previewPdfInstance) {
       pdfState.instance = previewPdfInstance;
@@ -128,58 +213,11 @@
     pdfState = {...pdfState};
   };
 
-  const togglePreviewMode = async () => {
-    if (!originalPdfInstance) return;
-    if (!isPreviewMode) {
-      isPreviewLoading = true;
-      try {
-        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
-          await updatePDF();
-        }
-        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
-          toastProps = {
-            show: true,
-            message: 'Add ToC items or enable "Add physical ToC page" to generate a preview.',
-            type: 'error',
-          };
-        } else {
-          isPreviewMode = true;
-        }
-      } catch (error) {
-        console.error('Error generating preview:', error);
-        toastProps = {
-          show: true,
-          message: `Error generating preview: ${error.message}`,
-          type: 'error',
-        };
-      } finally {
-        isPreviewLoading = false;
-      }
-    } else {
-      isPreviewMode = false;
-    }
-    pdfState.currentPage = 1;
-    updateViewerInstance();
-  };
-
-  const handleFileLoaded = (event: CustomEvent<{message: string; type: 'success' | 'error' | 'info'}>) => {
-    toastProps = {
-      show: true,
-      message: event.detail.message,
-      type: event.detail.type,
-    };
-  };
-
-  const updatePDF = async () => {
+  async function updatePDF() {
     if (!pdfState.doc || !$pdfService) return;
-
     if (!pdfjs || !PdfLib) {
-      console.error('PDF libraries not loaded. Cannot update PDF.');
-      toastProps = {
-        show: true,
-        message: 'Components not loaded. Please re-upload your file.',
-        type: 'error',
-      };
+      console.error('PDF libraries not loaded.');
+      toastProps = {show: true, message: 'Components not loaded. Please re-upload your file.', type: 'error'};
       return;
     }
 
@@ -211,45 +249,54 @@
       updateViewerInstance();
     } catch (error) {
       console.error('Error updating PDF:', error);
-      toastProps = {
-        show: true,
-        message: `Error updating PDF: ${error.message}`,
-        type: 'error',
-      };
-    }
-  };
-  const debouncedUpdatePDF = debounce(updatePDF, 300);
-  tocItems.subscribe((items) => {
-    if (items.length > 0) showNextStepHint = false;
-    if (isFileLoading) return;
-    if (!hasShownTocHint && items.length > 0) {
-      toastProps = {
-        show: true,
-        message: `ToC pages will be inserted at page 2.
-          You can change it in Settings.`,
-        type: 'info',
-      };
-      setTimeout(() => {
-        hasShownTocHint = true;
-      }, 3000);
-    }
-    if (!isPreviewMode) return;
-    debouncedUpdatePDF();
-  });
-  tocConfig.subscribe(() => {
-    if (isFileLoading) return;
-    if (!isPreviewMode) return;
-    debouncedUpdatePDF();
-  });
-  let previousAddPhysicalTocPage = addPhysicalTocPage;
-  $: {
-    if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
-      previousAddPhysicalTocPage = addPhysicalTocPage;
-      if (isPreviewMode) {
-        debouncedUpdatePDF();
-      }
+      toastProps = {show: true, message: `Error updating PDF: ${error.message}`, type: 'error'};
     }
   }
+
+  const togglePreviewMode = async () => {
+    if (!originalPdfInstance) return;
+    if (!isPreviewMode) {
+      isPreviewLoading = true;
+      try {
+        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
+          await updatePDF();
+        }
+        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
+          toastProps = {
+            show: true,
+            message: 'Add ToC items or enable "Add physical ToC page" to generate a preview.',
+            type: 'error',
+          };
+        } else {
+          isPreviewMode = true;
+        }
+      } catch (error) {
+        console.error('Error generating preview:', error);
+        toastProps = {show: true, message: `Error generating preview: ${error.message}`, type: 'error'};
+      } finally {
+        isPreviewLoading = false;
+      }
+    } else {
+      isPreviewMode = false;
+    }
+    pdfState.currentPage = 1;
+    updateViewerInstance();
+  };
+
+  const renderOffsetPreviewPage = async (pageNum: number) => {
+    if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
+    const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const renderWidth = canvas.clientWidth * dpr;
+      if (renderWidth === 0) {
+        setTimeout(() => renderOffsetPreviewPage(pageNum), 100);
+        return;
+      }
+      await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
+    }
+  };
+
   const loadPdfFile = async (file: File) => {
     if (!file) return;
     isFileLoading = true;
@@ -261,20 +308,16 @@
     originalPdfInstance = null;
     previewPdfInstance = null;
     pdfState = {...pdfState};
+
     try {
       await loadPdfLibraries();
-
-      if (!pdfjs || !PdfLib) {
-        return;
-      }
+      if (!pdfjs || !PdfLib) return;
 
       const {PDFDocument} = PdfLib;
-
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
       pdfState.doc = await PDFDocument.load(uint8Array);
-
       const loadingTask = pdfjs.getDocument(uint8Array);
       originalPdfInstance = await loadingTask.promise;
 
@@ -289,11 +332,7 @@
       updateTocField('insertAtPage', 2);
     } catch (error) {
       console.error('Error loading PDF:', error);
-      toastProps = {
-        show: true,
-        message: `Error loading PDF: ${error.message}`,
-        type: 'error',
-      };
+      toastProps = {show: true, message: `Error loading PDF: ${error.message}`, type: 'error'};
     } finally {
       updateViewerInstance();
       await tick();
@@ -301,6 +340,7 @@
       showNextStepHint = true;
     }
   };
+
   const handleFileDrop = async (e: CustomEvent) => {
     const {acceptedFiles} = e.detail;
     isDragging = false;
@@ -308,6 +348,11 @@
       await loadPdfFile(acceptedFiles[0]);
     }
   };
+
+  const handleFileLoaded = (event: CustomEvent<{message: string; type: 'success' | 'error' | 'info'}>) => {
+    toastProps = {show: true, message: event.detail.message, type: event.detail.type};
+  };
+
   const handleFileInputChange = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (target.files && target.files.length > 0) {
@@ -315,18 +360,13 @@
       target.value = '';
     }
   };
-  const triggerFileInput = () => {
-    fileInputRef?.click();
-  };
+
+  const triggerFileInput = () => fileInputRef?.click();
+
   const exportPDF = async () => {
     await updatePDF();
     if (!pdfState.newDoc) {
-      console.error('No new PDF document to export.');
-      toastProps = {
-        show: true,
-        message: 'Error: No PDF document to export.',
-        type: 'error',
-      };
+      toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
       return;
     }
     try {
@@ -340,63 +380,21 @@
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toastProps = {
-        show: true,
-        message: 'Export Successful!',
-        type: 'success',
-      };
+      toastProps = {show: true, message: 'Export Successful!', type: 'success'};
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toastProps = {
-        show: true,
-        message: `Error exporting PDF: ${error.message}`,
-        type: 'error',
-      };
+      toastProps = {show: true, message: `Error exporting PDF: ${error.message}`, type: 'error'};
     }
   };
-  function buildTree(items: {title: string; level: number; page: number}[]): TocItem[] {
-    const root: TocItem[] = [];
-    const stack: {node: TocItem; level: number}[] = [];
-    let idCounter = 0;
-    items.forEach((item) => {
-      const newItem: TocItem = {
-        id: `ai-${idCounter++}`,
-        title: item.title,
-        to: item.page,
-        children: [],
-        open: true,
-      };
-      const level = item.level;
-      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
-        stack.pop();
-      }
-      if (stack.length === 0) {
-        root.push(newItem);
-      } else {
-        const parent = stack[stack.length - 1].node;
-        parent.children = parent.children || [];
-        parent.children.push(newItem);
-      }
-      stack.push({node: newItem, level: level});
-    });
-    return root;
-  }
+
   const generateTocFromAI = async () => {
     showNextStepHint = false;
     if (!originalPdfInstance || !$pdfService) {
-      toastProps = {
-        show: true,
-        message: 'Please load a PDF first.',
-        type: 'error',
-      };
+      toastProps = {show: true, message: 'Please load a PDF first.', type: 'error'};
       return;
     }
     if (tocEndPage < tocStartPage) {
-      toastProps = {
-        show: true,
-        message: 'End page must be greater than or equal to start page.',
-        type: 'error',
-      };
+      toastProps = {show: true, message: 'End page must be greater than or equal to start page.', type: 'error'};
       return;
     }
     isAiLoading = true;
@@ -410,7 +408,11 @@
       const response = await fetch('/api/process-toc', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({images: imagesBase64}),
+        body: JSON.stringify({
+          images: imagesBase64,
+          apiKey: customApiConfig.apiKey,
+          provider: customApiConfig.provider,
+        }),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -449,7 +451,6 @@
 
   const handleOffsetConfirm = async () => {
     if (!firstTocItem) return;
-
     const labeledPage = firstTocItem.to;
     const physicalPage = offsetPreviewPageNum;
     const offset = physicalPage - labeledPage;
@@ -457,7 +458,6 @@
 
     const hasChinese = pendingTocItems.some((item) => /[\u4e00-\u9fa5]/.test(item.title));
     const rootTitle = hasChinese ? '目录' : 'Contents';
-
     const firstTitleNormalized = pendingTocItems[0]?.title?.trim().toLowerCase();
     const isDuplicate =
       firstTitleNormalized === '目录' ||
@@ -472,12 +472,10 @@
         children: [],
         open: true,
       };
-
       pendingTocItems.unshift(rootNode);
     }
 
     tocItems.set(pendingTocItems);
-
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
@@ -487,43 +485,15 @@
     }
   };
 
-  const renderOffsetPreviewPage = async (pageNum: number) => {
-    if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
-    const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
-    if (canvas) {
-      const dpr = window.devicePixelRatio || 1;
-      const renderWidth = canvas.clientWidth * dpr;
-      if (renderWidth === 0) {
-        setTimeout(() => renderOffsetPreviewPage(pageNum), 100);
-        return;
-      }
-      await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
-    }
-  };
-  $: {
-    if (
-      showOffsetModal &&
-      offsetPreviewPageNum > 0 &&
-      offsetPreviewPageNum <= (originalPdfInstance?.numPages || 0) &&
-      originalPdfInstance &&
-      $pdfService
-    ) {
-      (async () => {
-        await tick();
-        renderOffsetPreviewPage(offsetPreviewPageNum);
-      })();
-    }
-  }
   const debouncedJumpToPage = debounce((page: number) => {
     if (page > 0 && page <= pdfState.totalPages) {
       pdfState.currentPage = page;
       pdfState = {...pdfState};
     }
   }, 200);
+
   const handleTocItemHover = (e: CustomEvent) => {
-    if (!isPreviewMode) {
-      return;
-    }
+    if (!isPreviewMode) return;
     const logicalPage = e.detail.to as number;
     const physicalContentPage = logicalPage + config.pageOffset;
     let targetPage: number;
@@ -535,6 +505,7 @@
     }
     debouncedJumpToPage(targetPage);
   };
+
   const handleSetStartPage = (e: CustomEvent) => {
     const newStartPage = e.detail.page;
     tocStartPage = newStartPage;
@@ -542,6 +513,7 @@
       tocEndPage = newStartPage;
     }
   };
+
   const handleSetEndPage = (e: CustomEvent) => {
     const newEndPage = e.detail.page;
     if (newEndPage < tocStartPage) {
@@ -549,13 +521,10 @@
     }
     tocEndPage = newEndPage;
   };
+
   const jumpToTocPage = async () => {
     if (!previewPdfInstance) {
-      toastProps = {
-        show: true,
-        message: 'Please edit the ToC first to generate a preview.',
-        type: 'error',
-      };
+      toastProps = {show: true, message: 'Please edit the ToC first to generate a preview.', type: 'error'};
       return;
     }
     if (!isPreviewMode) {
@@ -568,13 +537,17 @@
       pdfState.currentPage = targetPage;
       pdfState = {...pdfState};
     } else {
-      toastProps = {
-        show: true,
-        message: `Invalid ToC start page: ${targetPage}`,
-        type: 'error',
-      };
+      toastProps = {show: true, message: `Invalid ToC start page: ${targetPage}`, type: 'error'};
     }
   };
+
+  function handleApiConfigChange(e: CustomEvent) {
+    customApiConfig = e.detail;
+  }
+
+  function handleApiConfigSave() {
+    toastProps = {show: true, message: 'API Settings Saved!', type: 'success'};
+  }
 </script>
 
 {#if toastProps.show}
@@ -599,6 +572,11 @@
       out:fade
     >
       <Header on:openhelp={() => (showHelpModal = true)} />
+
+      <ApiSetting
+        on:change={handleApiConfigChange}
+        on:save={handleApiConfigSave}
+      />
 
       <TocSettings
         bind:isTocConfigExpanded
@@ -628,6 +606,7 @@
           </p>
         </div>
       {/if}
+
       {#if originalPdfInstance}
         <div transition:fade={{duration: 200}}>
           <AiPageSelector
@@ -637,6 +616,7 @@
           />
         </div>
       {/if}
+
       <button
         class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
         on:click={generateTocFromAI}
@@ -653,11 +633,13 @@
           <span>✨ {$t('btn.generate_toc_ai')}</span>
         {/if}
       </button>
+
       {#if aiError}
         <div class="my-2 p-3 bg-red-100 border-2 border-red-700 text-red-700 rounded-lg">
           {aiError}
         </div>
       {/if}
+
       <TocEditor
         on:hoveritem={handleTocItemHover}
         currentPage={pdfState.currentPage}
@@ -667,6 +649,7 @@
         tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
       />
     </div>
+
     <div
       class="flex flex-col w-full lg:w-[70%]"
       in:fly={{y: 20, duration: 300, delay: 200}}
@@ -735,6 +718,7 @@
       </div>
     </div>
   </div>
+
   <AiLoadingModal
     {isAiLoading}
     {tocStartPage}
@@ -755,13 +739,11 @@
 
 <svelte:head>
   <title>{$t('meta.title') || 'Tocify · Add or edit PDF Table of Contents online'}</title>
-
   <meta
     name="description"
     content={$t('meta.description') ||
       'A free, online tool to automatically generate Table of Contents (bookmarks) for PDFs.'}
   />
-
   <link
     rel="canonical"
     href="https://tocify.vercel.app/"
@@ -786,7 +768,6 @@
     name="twitter:image"
     content="/og-image.png"
   />
-
   <link
     rel="icon"
     href="/favicon.svg"
