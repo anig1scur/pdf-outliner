@@ -7,7 +7,7 @@
   import type * as PdfjsLibTypes from 'pdfjs-dist';
 
   import '../lib/i18n';
-  import {pdfService, tocItems, tocConfig, type TocConfig} from '../stores';
+  import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {setOutline} from '../lib/pdf-outliner';
   import {debounce} from '../lib';
@@ -22,6 +22,7 @@
   import TocSettings from '../components/TocSetting.svelte';
   import ApiSetting from '../components/ApiSetting.svelte';
   import AiPageSelector from '../components/PageSelector.svelte';
+  import Footer from '../components/Footer.svelte';
 
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
@@ -299,6 +300,12 @@
 
   const loadPdfFile = async (file: File) => {
     if (!file) return;
+
+    const fingerprint = `${file.name}_${file.size}`;
+
+    curFileFingerprint.set(fingerprint);
+    localStorage.setItem('tocify_last_fingerprint', fingerprint);
+
     isFileLoading = true;
     showNextStepHint = false;
     hasShownTocHint = false;
@@ -311,13 +318,18 @@
 
     try {
       await loadPdfLibraries();
-      if (!pdfjs || !PdfLib) return;
+
+      if (!pdfjs || !PdfLib) {
+        return;
+      }
 
       const {PDFDocument} = PdfLib;
+
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
       pdfState.doc = await PDFDocument.load(uint8Array);
+
       const loadingTask = pdfjs.getDocument(uint8Array);
       originalPdfInstance = await loadingTask.promise;
 
@@ -327,9 +339,19 @@
       pdfState.currentPage = 1;
       tocStartPage = 1;
       tocEndPage = 1;
-      tocItems.set([]);
-      updateTocField('pageOffset', 0);
-      updateTocField('insertAtPage', 2);
+
+      const session = localStorage.getItem(`toc_draft_${fingerprint}`);
+
+      if (session) {
+        const {items, pageOffset} = JSON.parse(session);
+        tocItems.set(items);
+        updateTocField('pageOffset', pageOffset);
+
+        toastProps = {show: true, message: '已恢复上次的进度 💾', type: 'success'};
+      } else {
+        tocItems.set([]);
+        updateTocField('pageOffset', 0);
+      }
     } catch (error) {
       console.error('Error loading PDF:', error);
       toastProps = {show: true, message: `Error loading PDF: ${error.message}`, type: 'error'};
@@ -520,6 +542,14 @@
       tocStartPage = newEndPage;
     }
     tocEndPage = newEndPage;
+  };
+
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if ($tocItems.length > 0) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
   };
 
   const jumpToTocPage = async () => {
@@ -717,7 +747,9 @@
         {/if}
       </div>
     </div>
+    
   </div>
+  <Footer />
 
   <AiLoadingModal
     {isAiLoading}
@@ -735,7 +767,10 @@
     bind:showHelpModal
     {videoUrl}
   />
-{/if}
+
+  {/if}
+
+<svelte:window on:beforeunload={handleBeforeUnload} />
 
 <svelte:head>
   <title>{$t('meta.title') || 'Tocify · Add or edit PDF Table of Contents online'}</title>
