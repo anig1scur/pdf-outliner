@@ -3,7 +3,7 @@ import {GoogleGenerativeAI} from '@google/generative-ai';
 import {error, json} from '@sveltejs/kit';
 import OpenAI from 'openai';
 
-const SYSTEM_PROMPT = `
+const SYSTEM_PROMPT_VISION = `
 You are an expert PDF Table of Contents (ToC) parser.
 Your task is to analyze one or more images of a ToC and convert it into a single, structured JSON array.
 
@@ -21,6 +21,19 @@ Follow these rules strictly:
 7.  If unusable, return [].
 `;
 
+const SYSTEM_PROMPT_TEXT = `
+You are an expert Table of Contents text parser.
+Your task is to convert raw, unstructured ToC text (copied from websites like Amazon, Douban, etc.) into a structured JSON array.
+
+Rules:
+1.  **Extract Structure**: Identify the title, hierarchy level, and page number from each line.
+2.  **Hierarchy**: Infer the 'level' (1, 2, 3) based on numbering (e.g., "1.", "1.1", "1.1.1") or indentation/symbols in the text.
+3.  **Page Numbers**: Extract the page number at the end of the line.
+4.  **ROMAN NUMERAL BAN**: If the page number is a Roman numeral (i, v, x), **DISCARD THE LINE**. Do not output it.
+5.  **Clean Up**: Remove dots (.....) or dashes (----) typically found in ToCs.
+6.  **JSON ONLY**: Return strictly a JSON array. No markdown.
+    Format: [{"title": "String", "level": Number, "page": Number}]
+`;
 
 function determineProvider(request: Request, userProvider?: string): string {
   if (userProvider && userProvider !== 'auto') {
@@ -50,25 +63,29 @@ export async function POST({request}) {
   }
 
   try {
-    const {images, apiKey, provider} = await request.json();
+    const {images, text, apiKey, provider} = await request.json();
 
-    if (!images || !Array.isArray(images) || images.length === 0) {
+    if ((!images || !Array.isArray(images) || images.length === 0) &&
+        (!text || typeof text !== 'string' || !text.trim())) {
       throw error(
           400,
-          'Invalid request. Must be a JSON object with a non-empty "images" array.');
+          'Invalid request. Must provide either "images" array or "text" string.');
     }
 
     const currentProvider = determineProvider(request, provider);
+    const isTextMode = !!(text && text.trim());
 
-    console.log(`[ToC Parser] Using provider: ${
-        currentProvider} (User specified: ${provider || 'No'})`);
+    console.log(`[ToC Parser] Provider: ${currentProvider} | Mode: ${
+        isTextMode ? 'TEXT' : 'VISION'}`);
 
     let jsonText = '';
 
     if (currentProvider === 'qwen') {
-      jsonText = await processWithQwen(images, apiKey);
+      jsonText =
+          await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
     } else {
-      jsonText = await processWithGemini(images, apiKey);
+      jsonText = await processWithGemini(
+          isTextMode ? text : images, apiKey, isTextMode);
     }
 
     const cleanedJsonText = jsonText.replace(/```json\n?|```/g, '').trim();
@@ -93,39 +110,46 @@ export async function POST({request}) {
 }
 
 async function processWithGemini(
-    images: string[], userKey?: string): Promise<string> {
+    input: string[]|string, userKey?: string,
+    isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.GOOGLE_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
-        '[Gemini] API Key is missing (Server env not set and no user key provided).');
+    throw new Error('[Gemini] API Key is missing.');
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
+
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.5-flash',
-    systemInstruction: SYSTEM_PROMPT,
+    systemInstruction: isTextMode ? SYSTEM_PROMPT_TEXT : SYSTEM_PROMPT_VISION,
   });
 
-  const imageParts = images.map((img) => {
-    const base64Data = img.includes('base64,') ? img.split(',')[1] : img;
-    const mimeType = img.match(/data:(.*?);/)?.[1] || 'image/png';
-    return {inlineData: {data: base64Data, mimeType: mimeType}};
-  });
+  if (isTextMode) {
+    const result = await model.generateContent([input as string]);
+    return result.response.text();
+  } else {
+    const images = input as string[];
+    const imageParts = images.map((img) => {
+      const base64Data = img.includes('base64,') ? img.split(',')[1] : img;
+      const mimeType = img.match(/data:(.*?);/)?.[1] || 'image/png';
+      return {inlineData: {data: base64Data, mimeType: mimeType}};
+    });
 
-  const prompt =
-      'Analyze these Table of Contents images and return the single structured JSON.';
-  const result = await model.generateContent([prompt, ...imageParts]);
-  return result.response.text();
+    const prompt =
+        'Analyze these Table of Contents images and return the single structured JSON.';
+    const result = await model.generateContent([prompt, ...imageParts]);
+    return result.response.text();
+  }
 }
 
 async function processWithQwen(
-    images: string[], userKey?: string): Promise<string> {
+    input: string[]|string, userKey?: string,
+    isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.DASHSCOPE_API_KEY;
 
   if (!apiKey) {
-    throw new Error(
-        '[Qwen] API Key is missing (Server env not set and no user key provided).');
+    throw new Error('[Qwen] API Key is missing.');
   }
 
   const client = new OpenAI({
@@ -133,27 +157,40 @@ async function processWithQwen(
     baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
   });
 
-  const contentParts: any[] = [{
-    type: 'text',
-    text:
-        'Analyze these Table of Contents images and return the single structured JSON.'
-  }];
+  if (isTextMode) {
+    const response = await client.chat.completions.create({
+      model: 'qwen-plus',
+      messages: [
+        {role: 'system', content: SYSTEM_PROMPT_TEXT},
+        {role: 'user', content: input as string}
+      ]
+    });
+    return response.choices[0].message.content || '[]';
 
-  images.forEach((img) => {
-    let imageUrl = img;
-    if (!img.startsWith('data:image/')) {
-      imageUrl = `data:image/png;base64,${img}`;
-    }
-    contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
-  });
+  } else {
+    const images = input as string[];
+    const contentParts: any[] = [{
+      type: 'text',
+      text:
+          'Analyze these Table of Contents images and return the single structured JSON.'
+    }];
 
-  const response = await client.chat.completions.create({
-    model: 'qwen-vl-plus',
-    messages: [
-      {role: 'system', content: SYSTEM_PROMPT},
-      {role: 'user', content: contentParts}
-    ]
-  });
+    images.forEach((img) => {
+      let imageUrl = img;
+      if (!img.startsWith('data:image/')) {
+        imageUrl = `data:image/png;base64,${img}`;
+      }
+      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
+    });
 
-  return response.choices[0].message.content || '[]';
+    const response = await client.chat.completions.create({
+      model: 'qwen-vl-plus',
+      messages: [
+        {role: 'system', content: SYSTEM_PROMPT_VISION},
+        {role: 'user', content: contentParts}
+      ]
+    });
+
+    return response.choices[0].message.content || '[]';
+  }
 }

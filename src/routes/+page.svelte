@@ -675,6 +675,7 @@
         isPreview={isPreviewMode}
         pageOffset={config.pageOffset}
         insertAtPage={config.insertAtPage}
+        apiConfig={customApiConfig}
         tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
       />
     </div>
@@ -746,7 +747,6 @@
         {/if}
       </div>
     </div>
-    
   </div>
   <Footer />
 
@@ -766,8 +766,7 @@
     bind:showHelpModal
     {videoUrl}
   />
-
-  {/if}
+{/if}
 
 <svelte:window on:beforeunload={handleBeforeUnload} />
 
