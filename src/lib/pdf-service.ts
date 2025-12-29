@@ -89,23 +89,13 @@ export class PDFService {
     }
   }
 
-  async addMetadataOnly(sourceDoc: PDFDocument, items: TocItem[]) {
-    const newDoc = await PDFDocument.create();
-    const copiedPages =
-        await newDoc.copyPages(sourceDoc, sourceDoc.getPageIndices());
-    copiedPages.forEach((page) => newDoc.addPage(page));
-    return newDoc;
-  }
-
   async createTocPage(
       sourceDoc: PDFDocument, items: TocItem[], addPhysicalPage: boolean = true,
       insertAtPage: number = 2):
       Promise<{newDoc: PDFDocument; tocPageCount: number}> {
     if (!addPhysicalPage) {
-      const newDoc = await this.addMetadataOnly(sourceDoc, items);
-      return {newDoc, tocPageCount: 0};
+      return {newDoc: sourceDoc, tocPageCount: 0};
     }
-
     await this.loadFonts();
 
     const newDoc = await PDFDocument.create();
