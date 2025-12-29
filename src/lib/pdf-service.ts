@@ -61,12 +61,23 @@ interface TocRenderContext {
   pendingAnnots: PendingAnnot[];
 }
 
+pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
+
 export class PDFService {
   private static regularFontBytes?: ArrayBuffer;
   private static boldFontBytes?: ArrayBuffer;
+  static sharedWorker: any = null;
 
   constructor() {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.mjs`;
+    if (typeof window !== 'undefined') {
+      this.initWorker();
+    }
+  }
+
+  private initWorker() {
+    if (!PDFService.sharedWorker) {
+      PDFService.sharedWorker = new pdfjsLib.PDFWorker();
+    }
   }
 
   private async loadFonts(): Promise<void> {

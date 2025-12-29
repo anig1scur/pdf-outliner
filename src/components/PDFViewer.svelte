@@ -40,7 +40,6 @@
   $: if (instance && filename && filename !== loadedFilename) {
     loadedFilename = filename;
     tick().then(() => {
-      // [修改] 使用 $t() 翻译消息，因为这里是 reactive 语句，直接调用 store value 是没问题的
       dispatch('fileloaded', {
         message: $t('msg.pdf_loaded'),
         type: 'success',

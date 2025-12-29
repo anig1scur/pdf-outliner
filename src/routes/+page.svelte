@@ -46,6 +46,7 @@
   let showHelpModal = false;
   let offsetPreviewPageNum = 1;
   const videoUrl = '/videos/demo.mp4';
+
   let toastProps = {
     show: false,
     message: '',
@@ -217,7 +218,7 @@
     if (!pdfState.doc || !$pdfService) return;
     if (!pdfjs || !PdfLib) {
       console.error('PDF libraries not loaded.');
-      toastProps = {show: true, message: 'Components not loaded. Please re-upload your file.', type: 'error'};
+      toastProps = {show: true, message: 'Components not loaded. Please reupload your file.', type: 'error'};
       return;
     }
 
@@ -233,7 +234,11 @@
       setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
       const pdfBytes = await newDoc.save();
 
-      const loadingTask = pdfjs.getDocument(pdfBytes);
+      const loadingTask = pdfjs.getDocument({
+        data: pdfBytes,
+        worker: PDFService.sharedWorker,
+      });
+
       previewPdfInstance = await loadingTask.promise;
       pdfState.newDoc = newDoc;
       if (isPreviewMode) {
@@ -297,6 +302,49 @@
     }
   };
 
+  async function convertPdfJsOutlineToTocItems(
+    outline: any[],
+    doc: PdfjsLibTypes.PDFDocumentProxy
+  ): Promise<TocItem[]> {
+    let idCounter = 0;
+
+    const processNode = async (node: any): Promise<TocItem> => {
+      let pageNum = 1;
+
+      try {
+        let dest = node.dest;
+
+        // 如果 dest 是字符串（Named Destination），先获取具体引用
+        if (typeof dest === 'string') {
+          dest = await doc.getDestination(dest);
+        }
+
+        // 如果 dest 是数组（常见情况），第一个元素通常是 Ref
+        if (Array.isArray(dest) && dest.length > 0) {
+          const ref = dest[0];
+          if (ref) {
+            const pageIndex = await doc.getPageIndex(ref);
+            pageNum = pageIndex + 1;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to resolve page for outline item:', node.title, e);
+      }
+
+      const children = node.items && node.items.length > 0 ? await Promise.all(node.items.map(processNode)) : [];
+
+      return {
+        id: `imported-${Date.now()}-${idCounter++}`,
+        title: node.title,
+        to: pageNum,
+        children: children,
+        open: false,
+      };
+    };
+
+    return Promise.all(outline.map(processNode));
+  }
+
   const loadPdfFile = async (file: File) => {
     if (!file) return;
 
@@ -329,7 +377,10 @@
 
       pdfState.doc = await PDFDocument.load(uint8Array);
 
-      const loadingTask = pdfjs.getDocument(uint8Array);
+      const loadingTask = pdfjs.getDocument({
+        data: uint8Array,
+        worker: PDFService.sharedWorker,
+      });
       originalPdfInstance = await loadingTask.promise;
 
       previewPdfInstance = originalPdfInstance;
@@ -345,11 +396,25 @@
         const {items, pageOffset} = JSON.parse(session);
         tocItems.set(items);
         updateTocField('pageOffset', pageOffset);
-
-        toastProps = {show: true, message: '已恢复上次的进度 💾', type: 'success'};
       } else {
-        tocItems.set([]);
-        updateTocField('pageOffset', 0);
+        try {
+          const existingOutline = await originalPdfInstance.getOutline();
+
+          if (existingOutline && existingOutline.length > 0) {
+            const importedItems = await convertPdfJsOutlineToTocItems(existingOutline, originalPdfInstance);
+            tocItems.set(importedItems);
+            updateTocField('pageOffset', 0);
+
+            toastProps = {show: true, message: 'The raw ToC has been imported from the PDF.', type: 'info'};
+          } else {
+            tocItems.set([]);
+            updateTocField('pageOffset', 0);
+          }
+        } catch (err) {
+          console.warn('PDF load outline error:', err);
+          tocItems.set([]);
+          updateTocField('pageOffset', 0);
+        }
       }
     } catch (error) {
       console.error('Error loading PDF:', error);
@@ -422,9 +487,9 @@
     const selectedPageCount = tocEndPage - tocStartPage + 1;
     if (selectedPageCount > 10) {
       toastProps = {
-        show: true, 
-        message: `Too many pages selected (${selectedPageCount}). Max allowed is 10 pages.`, 
-        type: 'error'
+        show: true,
+        message: `Too many pages selected (${selectedPageCount}). Max allowed is 10 pages.`,
+        type: 'error',
       };
       return;
     }
@@ -434,16 +499,16 @@
     try {
       const imagesBase64: string[] = [];
       let currentTotalSize = 0;
-      const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024; 
+      const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024;
 
       for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
         const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum, 1.5);
-        
+
         currentTotalSize += image.length;
         if (currentTotalSize > MAX_PAYLOAD_SIZE) {
           throw new Error('Total size too large (>30MB). Please reduce page range.');
         }
-        
+
         imagesBase64.push(image);
       }
 
@@ -456,7 +521,7 @@
           provider: customApiConfig.provider,
         }),
       });
-      
+
       if (!response.ok) {
         const err = await response.json();
         let friendlyMessage = err.message || 'AI processing failed.';
@@ -467,13 +532,13 @@
         ) {
           friendlyMessage = "The selected pages don't look like a ToC. Please try adjusting the page range.";
         } else if (response.status === 413) {
-           friendlyMessage = "Request too large. The images are too high resolution.";
+          friendlyMessage = 'Request too large. The images are too high resolution.';
         } else if (response.status === 429) {
-           friendlyMessage = "Daily limit exceeded or too many requests. Please try again later.";
+          friendlyMessage = 'Daily limit exceeded or too many requests. Please try again later.';
         }
         throw new Error(friendlyMessage);
       }
-      
+
       const aiResult: {title: string; level: number; page: number}[] = await response.json();
       if (!aiResult || aiResult.length === 0) {
         aiError = 'We could not find a valid ToC on these pages.';

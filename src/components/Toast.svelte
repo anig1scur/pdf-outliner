@@ -6,16 +6,19 @@
 
   export let message = 'Success!';
   export let duration = 3000;
+  export let delay = 0;
   export let type: 'success' | 'error' | 'info' = 'info';
 
   const dispatch = createEventDispatcher();
 
+  let timeout: ReturnType<typeof setTimeout>;
   onMount(() => {
-    const timer = setTimeout(() => {
+    timeout = setTimeout(() => {
       dispatch('close');
-    }, duration);
-    return () => clearTimeout(timer);
+    }, duration + delay);
+    return () => clearTimeout(timeout);
   });
+
 </script>
 
 <div
