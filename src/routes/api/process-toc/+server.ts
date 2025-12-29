@@ -3,6 +3,14 @@ import {GoogleGenerativeAI} from '@google/generative-ai';
 import {error, json} from '@sveltejs/kit';
 import OpenAI from 'openai';
 
+const LIMIT_CONFIG = {
+  MAX_REQUESTS_PER_DAY: 5,
+  MAX_IMAGES: 10,
+  MAX_TEXT_SIZE_KB: 128
+};
+
+const rateLimitStore = new Map<string, {count: number, date: string}>();
+
 const SYSTEM_PROMPT_VISION = `
 You are an expert PDF Table of Contents (ToC) parser.
 Your task is to analyze one or more images of a ToC and convert it into a single, structured JSON array.
@@ -35,6 +43,17 @@ Rules:
     Format: [{"title": "String", "level": Number, "page": Number}]
 `;
 
+function getClientIp(request: Request): string {
+  const headers = request.headers;
+  const xForwardedFor = headers.get('x-forwarded-for');
+  if (xForwardedFor) {
+    return xForwardedFor.split(',')[0].trim();
+  }
+
+  return headers.get('x-real-ip') || headers.get('cf-connecting-ip') ||
+      headers.get('x-vercel-forwarded-for') || 'unknown';
+}
+
 function determineProvider(request: Request, userProvider?: string): string {
   if (userProvider && userProvider !== 'auto') {
     return userProvider;
@@ -62,6 +81,37 @@ export async function POST({request}) {
     return new Response('Forbidden: Invalid Origin', {status: 403});
   }
 
+  const clientIp = getClientIp(request);
+
+  if (clientIp !== 'unknown') {
+    const today = new Date().toISOString().split('T')[0];
+    const userRecord = rateLimitStore.get(clientIp);
+
+    if (userRecord) {
+      if (userRecord.date !== today) {
+        rateLimitStore.set(clientIp, {count: 1, date: today});
+      } else {
+        if (userRecord.count >= LIMIT_CONFIG.MAX_REQUESTS_PER_DAY) {
+          return new Response(
+              JSON.stringify({
+                error: 'Rate limit exceeded',
+                message: `You have reached the daily limit of ${
+                    LIMIT_CONFIG.MAX_REQUESTS_PER_DAY} requests.`
+              }),
+              {status: 429, headers: {'Content-Type': 'application/json'}});
+        }
+        userRecord.count++;
+        rateLimitStore.set(clientIp, userRecord);
+      }
+    } else {
+      rateLimitStore.set(clientIp, {count: 1, date: today});
+    }
+
+    if (rateLimitStore.size > 5000) {
+      rateLimitStore.clear();
+    }
+  }
+
   try {
     const {images, text, apiKey, provider} = await request.json();
 
@@ -72,11 +122,31 @@ export async function POST({request}) {
           'Invalid request. Must provide either "images" array or "text" string.');
     }
 
+    if (images && Array.isArray(images)) {
+      if (images.length > LIMIT_CONFIG.MAX_IMAGES) {
+        throw error(
+            400,
+            `Too many pages. Maximum allowed is ${LIMIT_CONFIG.MAX_IMAGES}.`);
+      }
+    }
+
+    if (text && typeof text === 'string') {
+      const byteLength = new TextEncoder().encode(text).length;
+      const maxBytes = LIMIT_CONFIG.MAX_TEXT_SIZE_KB * 1024;
+
+      if (byteLength > maxBytes) {
+        throw error(
+            400,
+            `Text too large. Maximum allowed is ${
+                LIMIT_CONFIG.MAX_TEXT_SIZE_KB}KB.`);
+      }
+    }
+
     const currentProvider = determineProvider(request, provider);
     const isTextMode = !!(text && text.trim());
 
     console.log(`[ToC Parser] Provider: ${currentProvider} | Mode: ${
-        isTextMode ? 'TEXT' : 'VISION'}`);
+        isTextMode ? 'TEXT' : 'VISION'} | IP: ${clientIp}`);
 
     let jsonText = '';
 
@@ -105,7 +175,10 @@ export async function POST({request}) {
 
   } catch (err: any) {
     console.error('API Error:', err);
-    throw error(err.status || 500, err.message || 'Failed to process ToC');
+    throw error(
+        err.status || 500,
+        err.message || err.body.message ||
+            'Failed to process ToC, please contact support.');
   }
 }
 

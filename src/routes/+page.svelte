@@ -418,14 +418,35 @@
       toastProps = {show: true, message: 'End page must be greater than or equal to start page.', type: 'error'};
       return;
     }
+
+    const selectedPageCount = tocEndPage - tocStartPage + 1;
+    if (selectedPageCount > 10) {
+      toastProps = {
+        show: true, 
+        message: `Too many pages selected (${selectedPageCount}). Max allowed is 10 pages.`, 
+        type: 'error'
+      };
+      return;
+    }
+
     isAiLoading = true;
     aiError = null;
     try {
       const imagesBase64: string[] = [];
+      let currentTotalSize = 0;
+      const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024; 
+
       for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
         const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum, 1.5);
+        
+        currentTotalSize += image.length;
+        if (currentTotalSize > MAX_PAYLOAD_SIZE) {
+          throw new Error('Total size too large (>30MB). Please reduce page range.');
+        }
+        
         imagesBase64.push(image);
       }
+
       const response = await fetch('/api/process-toc', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -435,6 +456,7 @@
           provider: customApiConfig.provider,
         }),
       });
+      
       if (!response.ok) {
         const err = await response.json();
         let friendlyMessage = err.message || 'AI processing failed.';
@@ -444,9 +466,14 @@
           friendlyMessage.includes('structure')
         ) {
           friendlyMessage = "The selected pages don't look like a ToC. Please try adjusting the page range.";
+        } else if (response.status === 413) {
+           friendlyMessage = "Request too large. The images are too high resolution.";
+        } else if (response.status === 429) {
+           friendlyMessage = "Daily limit exceeded or too many requests. Please try again later.";
         }
         throw new Error(friendlyMessage);
       }
+      
       const aiResult: {title: string; level: number; page: number}[] = await response.json();
       if (!aiResult || aiResult.length === 0) {
         aiError = 'We could not find a valid ToC on these pages.';
@@ -465,6 +492,7 @@
     } catch (error) {
       console.error('Error generating ToC from AI:', error);
       aiError = error.message;
+      toastProps = {show: true, message: error.message, type: 'error'};
     } finally {
       isAiLoading = false;
     }
