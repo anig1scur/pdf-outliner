@@ -232,7 +232,9 @@
       );
       tocPageCount = count;
       setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
-      const pdfBytes = await newDoc.save();
+      const pdfBytes = await newDoc.save({
+        useObjectStreams: false,
+      });
 
       const loadingTask = pdfjs.getDocument({
         data: pdfBytes,
@@ -254,7 +256,11 @@
       updateViewerInstance();
     } catch (error) {
       console.error('Error updating PDF:', error);
-      toastProps = {show: true, message: `Error updating PDF: ${error.message}`, type: 'error'};
+      const msg =
+        error.name === 'InvalidPDFException'
+          ? 'The PDF structure is too old or corrupted to generate a preview.'
+          : error.message;
+      toastProps = {show: true, message: `Error updating PDF: ${msg}`, type: 'error'};
     }
   }
 
