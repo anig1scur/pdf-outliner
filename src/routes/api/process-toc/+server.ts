@@ -56,6 +56,7 @@ function getClientIp(request: Request): string {
 }
 
 function determineProvider(request: Request, userProvider?: string): string {
+  
   if (userProvider && userProvider !== 'auto') {
     return userProvider;
   }
@@ -144,7 +145,6 @@ export async function POST({request}) {
     }
 
     const currentProvider = determineProvider(request, provider);
-    // const currentProvider = `qwen`;
     const isTextMode = !!(text && text.trim());
 
     console.log(`[ToC Parser] Provider: ${currentProvider} | Mode: ${
@@ -155,6 +155,9 @@ export async function POST({request}) {
     if (currentProvider === 'qwen') {
       jsonText =
           await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
+    } else if (currentProvider === 'siliconflow') {
+      jsonText = await processWithSiliconFlow(
+          isTextMode ? text : images, apiKey, isTextMode);
     } else {
       jsonText = await processWithGemini(
           isTextMode ? text : images, apiKey, isTextMode);
@@ -274,6 +277,58 @@ async function processWithQwen(
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_VISION},
         {role: 'user', content: contentParts}
+      ]
+    });
+
+    return response.choices[0].message.content || '[]';
+  }
+}
+
+async function processWithSiliconFlow(
+  input: string[] | string,
+  userKey?: string,
+  isTextMode: boolean = false
+): Promise<string> {
+  const apiKey = userKey || env.SILICONFLOW_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('[SiliconFlow] API Key is missing.');
+  }
+  const client = new OpenAI({
+    apiKey: apiKey,
+    baseURL: 'https://api.siliconflow.cn/v1'
+  });
+
+  const MODEL_NAME = 'Qwen/Qwen2.5-VL-7B-Instruct'; 
+
+  if (isTextMode) {
+    const response = await client.chat.completions.create({
+      model: MODEL_NAME,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT_TEXT },
+        { role: 'user', content: input as string }
+      ]
+    });
+    return response.choices[0].message.content || '[]';
+  } else {
+    const images = input as string[];
+    const contentParts: any[] = [
+      { type: 'text', text: 'Analyze these Table of Contents images and return the single structured JSON.' }
+    ];
+
+    images.forEach((img) => {
+      let imageUrl = img;
+      if (!img.startsWith('data:image/')) {
+        imageUrl = `data:image/png;base64,${img}`;
+      }
+      contentParts.push({ type: 'image_url', image_url: { url: imageUrl } });
+    });
+
+    const response = await client.chat.completions.create({
+      model: MODEL_NAME,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT_VISION },
+        { role: 'user', content: contentParts }
       ]
     });
 
