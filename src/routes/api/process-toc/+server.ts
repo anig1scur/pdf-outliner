@@ -1,6 +1,8 @@
 import {env} from '$env/dynamic/private';
 import {GoogleGenerativeAI} from '@google/generative-ai';
 import {error, json} from '@sveltejs/kit';
+import {Ratelimit} from '@upstash/ratelimit';
+import {Redis} from '@upstash/redis';
 import {jsonrepair} from 'jsonrepair';
 import OpenAI from 'openai';
 
@@ -9,6 +11,20 @@ const LIMIT_CONFIG = {
   MAX_IMAGES: 10,
   MAX_TEXT_SIZE_KB: 128
 };
+
+
+const redis = new Redis({
+  url: env.UPSTASH_REDIS_REST_URL,
+  token: env.UPSTASH_REDIS_REST_TOKEN,
+});
+
+const ratelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '24 h'),
+  analytics: true,
+  prefix: '@tocify/ratelimit',
+});
+
 
 const rateLimitStore = new Map<string, {count: number, date: string}>();
 
@@ -56,7 +72,6 @@ function getClientIp(request: Request): string {
 }
 
 function determineProvider(request: Request, userProvider?: string): string {
-  
   if (userProvider && userProvider !== 'auto') {
     return userProvider;
   }
@@ -80,37 +95,31 @@ export async function POST({request}) {
   ];
 
   if (origin && !allowedOrigins.includes(origin)) {
-    return new Response('Forbidden: Invalid Origin', {status: 403});
+    return new Response('Forbidden', {status: 403});
   }
 
   const clientIp = getClientIp(request);
 
   if (clientIp !== 'unknown') {
-    const today = new Date().toISOString().split('T')[0];
-    const userRecord = rateLimitStore.get(clientIp);
+    const {success, limit, remaining, reset} = await ratelimit.limit(clientIp);
 
-    if (userRecord) {
-      if (userRecord.date !== today) {
-        rateLimitStore.set(clientIp, {count: 1, date: today});
-      } else {
-        if (userRecord.count >= LIMIT_CONFIG.MAX_REQUESTS_PER_DAY) {
-          return new Response(
-              JSON.stringify({
-                error: 'Rate limit exceeded',
-                message: `You have reached the daily limit of ${
-                    LIMIT_CONFIG.MAX_REQUESTS_PER_DAY} requests.`
-              }),
-              {status: 429, headers: {'Content-Type': 'application/json'}});
-        }
-        userRecord.count++;
-        rateLimitStore.set(clientIp, userRecord);
-      }
-    } else {
-      rateLimitStore.set(clientIp, {count: 1, date: today});
-    }
+    if (!success) {
+      const waitTime = Math.ceil((reset - Date.now()) / 1000 / 60);
 
-    if (rateLimitStore.size > 5000) {
-      rateLimitStore.clear();
+      return new Response(
+          JSON.stringify({
+            error: 'Rate limit exceeded',
+            message: `You have reached the daily limit of ${
+                LIMIT_CONFIG.MAX_REQUESTS_PER_DAY} requests.`
+          }),
+          {
+            status: 429,
+            headers: {
+              'Content-Type': 'application/json',
+              'X-RateLimit-Limit': limit.toString(),
+              'X-RateLimit-Remaining': remaining.toString()
+            }
+          });
     }
   }
 
@@ -285,50 +294,48 @@ async function processWithQwen(
 }
 
 async function processWithSiliconFlow(
-  input: string[] | string,
-  userKey?: string,
-  isTextMode: boolean = false
-): Promise<string> {
+    input: string[]|string, userKey?: string,
+    isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.SILICONFLOW_API_KEY;
 
   if (!apiKey) {
     throw new Error('[SiliconFlow] API Key is missing.');
   }
-  const client = new OpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://api.siliconflow.cn/v1'
-  });
+  const client =
+      new OpenAI({apiKey: apiKey, baseURL: 'https://api.siliconflow.cn/v1'});
 
-  const MODEL_NAME = 'Qwen/Qwen2.5-VL-7B-Instruct'; 
+  const MODEL_NAME = 'Qwen/Qwen2.5-VL-7B-Instruct';
 
   if (isTextMode) {
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT_TEXT },
-        { role: 'user', content: input as string }
+        {role: 'system', content: SYSTEM_PROMPT_TEXT},
+        {role: 'user', content: input as string}
       ]
     });
     return response.choices[0].message.content || '[]';
   } else {
     const images = input as string[];
-    const contentParts: any[] = [
-      { type: 'text', text: 'Analyze these Table of Contents images and return the single structured JSON.' }
-    ];
+    const contentParts: any[] = [{
+      type: 'text',
+      text:
+          'Analyze these Table of Contents images and return the single structured JSON.'
+    }];
 
     images.forEach((img) => {
       let imageUrl = img;
       if (!img.startsWith('data:image/')) {
         imageUrl = `data:image/png;base64,${img}`;
       }
-      contentParts.push({ type: 'image_url', image_url: { url: imageUrl } });
+      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
     });
 
     const response = await client.chat.completions.create({
       model: MODEL_NAME,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT_VISION },
-        { role: 'user', content: contentParts }
+        {role: 'system', content: SYSTEM_PROMPT_VISION},
+        {role: 'user', content: contentParts}
       ]
     });
 
