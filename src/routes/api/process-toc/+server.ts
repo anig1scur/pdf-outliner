@@ -1,6 +1,7 @@
 import {env} from '$env/dynamic/private';
 import {GoogleGenerativeAI} from '@google/generative-ai';
 import {error, json} from '@sveltejs/kit';
+import {jsonrepair} from 'jsonrepair';
 import OpenAI from 'openai';
 
 const LIMIT_CONFIG = {
@@ -143,6 +144,7 @@ export async function POST({request}) {
     }
 
     const currentProvider = determineProvider(request, provider);
+    // const currentProvider = `qwen`;
     const isTextMode = !!(text && text.trim());
 
     console.log(`[ToC Parser] Provider: ${currentProvider} | Mode: ${
@@ -158,19 +160,30 @@ export async function POST({request}) {
           isTextMode ? text : images, apiKey, isTextMode);
     }
 
-    const cleanedJsonText = jsonText.replace(/```json\n?|```/g, '').trim();
+    let rawString = jsonText.replace(/```json\n?|```/g, '').trim();
+
+    const firstBracket = rawString.indexOf('[');
+    if (firstBracket !== -1) {
+      rawString = rawString.substring(firstBracket);
+    }
+
     let tocData;
     try {
-      tocData = JSON.parse(cleanedJsonText);
+      tocData = JSON.parse(rawString);
     } catch (e) {
-      console.error(`[${currentProvider}] JSON Parse Error:`, cleanedJsonText);
-      const match = cleanedJsonText.match(/\[.*\]/s);
-      if (match) {
-        tocData = JSON.parse(match[0]);
-      } else {
-        throw error(500, 'AI returned invalid JSON structure.');
+      console.warn(
+          `[${currentProvider}] JSON strict parse failed, trying repair...`);
+      try {
+        const repaired = jsonrepair(rawString);
+        tocData = JSON.parse(repaired);
+      } catch (repairError) {
+        console.error(`[${currentProvider}] JSON Repair failed:`, rawString);
+        throw error(
+            500,
+            'AI returned invalid JSON structure that could not be repaired.');
       }
     }
+
     return json(tocData);
 
   } catch (err: any) {

@@ -20,6 +20,9 @@ importers:
       '@vercel/analytics':
         specifier: ^1.5.0
         version: 1.5.0(@sveltejs/kit@2.16.1(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.19.2)(vite@6.0.11(jiti@1.21.7)(yaml@2.7.0)))(svelte@5.19.2)(vite@6.0.11(jiti@1.21.7)(yaml@2.7.0)))(svelte@5.19.2)
+      jsonrepair:
+        specifier: ^3.13.1
+        version: 3.13.1
       lucide-svelte:
         specifier: ^0.474.0
         version: 0.474.0(svelte@5.19.2)
@@ -1208,6 +1211,10 @@ packages:
 
   jiti@1.21.7:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
+    hasBin: true
+
+  jsonrepair@3.13.1:
+    resolution: {integrity: sha512-WJeiE0jGfxYmtLwBTEk8+y/mYcaleyLXWaqp5bJu0/ZTSeG0KQq/wWQ8pmnkKenEdN6pdnn6QtcoSUkbqDHWNw==}
     hasBin: true
 
   kleur@4.1.5:
@@ -2624,6 +2631,8 @@ snapshots:
       '@pkgjs/parseargs': 0.11.0
 
   jiti@1.21.7: {}
+
+  jsonrepair@3.13.1: {}
 
   kleur@4.1.5: {}
 
