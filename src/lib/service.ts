@@ -191,7 +191,6 @@ async function processWithZhipu(
   if (isTextMode) {
     const response = await client.chat.completions.create({
       model: 'glm-4-flash',
-      max_token: 4096,
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_TEXT},
         {role: 'user', content: input as string}
@@ -217,7 +216,6 @@ async function processWithZhipu(
     try {
       const response = await client.chat.completions.create({
         model: VISION_MODEL,
-        max_token: 4096,
         temperature: 0.1,
         messages: [
           {role: 'system', content: SYSTEM_PROMPT_VISION},
