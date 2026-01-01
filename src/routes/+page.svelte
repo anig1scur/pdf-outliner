@@ -11,7 +11,7 @@
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {setOutline} from '../lib/pdf-outliner';
   import {debounce} from '../lib';
-  import { processToc } from '../lib/service';
+  import {processToc} from '../lib/service';
 
   import Header from '../components/Header.svelte';
   import Toast from '../components/Toast.svelte';
@@ -28,6 +28,10 @@
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
+  import UpdateModal from '../components/modals/UpdateModal.svelte';
+
+  import {check} from '@tauri-apps/plugin-updater';
+  import {relaunch} from '@tauri-apps/plugin-process';
 
   injectAnalytics();
 
@@ -492,11 +496,11 @@
 
     if (!customApiConfig.apiKey) {
       toastProps = {
-        show: true, 
-        message: 'API Key Missing. Please click the "API" button in the top left to configure your key.', 
-        type: 'error'
+        show: true,
+        message: 'API Key Missing. Please click the "API Settings" in the top left to configure your key.',
+        type: 'error',
       };
-      // isTocConfigExpanded = true; 
+      // isTocConfigExpanded = true;
       return;
     }
     // -------------------
@@ -532,7 +536,7 @@
       const aiResult = await processToc({
         images: imagesBase64,
         apiKey: customApiConfig.apiKey,
-        provider: customApiConfig.provider
+        provider: customApiConfig.provider,
       });
 
       if (!aiResult || aiResult.length === 0) {
@@ -668,6 +672,49 @@
   function handleApiConfigSave() {
     toastProps = {show: true, message: 'API Settings Saved!', type: 'success'};
   }
+
+  let showUpdateModal = false;
+  let updateData = null;
+  let updateObj = null;
+
+  onMount(async () => {
+    // mock
+    // if (import.meta.env.DEV) {
+    //   setTimeout(() => {
+    //     updateData = {
+    //       version: '2.0.0',
+    //       body: '1. Added super cool AI features.\n2. Fixed the bug where the window would explode.\n3. Optimized startup speed.'
+    //     };
+    //     updateObj = {
+    //       downloadAndInstall: async () => {
+    //          return new Promise(resolve => setTimeout(resolve, 2000));
+    //       }
+    //     };
+    //     showUpdateModal = true;
+    //   }, 1000);
+    //   return;
+    // }
+    try {
+      const update = await check();
+      if (update?.available) {
+        updateData = {
+          version: update.version,
+          body: update.body,
+        };
+        updateObj = update;
+        showUpdateModal = true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  async function handleConfirmUpdate() {
+    if (updateObj) {
+      await updateObj.downloadAndInstall();
+      await relaunch();
+    }
+  }
 </script>
 
 {#if toastProps.show}
@@ -684,7 +731,7 @@
   </div>
 {:else}
   <div
-    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%]  justify-between"
+    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
       class="w-full lg:w-[35%]"
@@ -856,6 +903,13 @@
   <HelpModal
     bind:showHelpModal
     {videoUrl}
+  />
+
+  <UpdateModal
+    bind:showUpdateModal
+    {updateData}
+    onUpdate={handleConfirmUpdate}
+    onCancel={() => (showUpdateModal = false)}
   />
 {/if}
 

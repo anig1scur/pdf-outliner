@@ -86,7 +86,7 @@
             on:change={() => (isSaved = false)}
           >
           <option value=""></option>
-          <option value="gemini">Google Gemini</option>
+          <option value="gemini">Gemini</option>
             <option value="qwen">Qwen</option>
             <option value="zhipu">Zhipu</option>
           </select>
@@ -104,7 +104,7 @@
             id="api_key"
             type="password"
             class="w-full outline-none  text-sm"
-            placeholder="sk-..."
+            placeholder="Paste your API key here"
             bind:value={config.apiKey}
             on:input={() => (isSaved = false)}
           />
