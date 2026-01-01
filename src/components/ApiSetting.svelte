@@ -8,7 +8,7 @@
   const dispatch = createEventDispatcher();
 
   let config = {
-    provider: 'auto',
+    provider: '',
     apiKey: '',
   };
 
@@ -34,7 +34,11 @@
 
     setTimeout(() => {
       isSaved = false;
-    }, 2000);
+    }, 1000);
+
+    setTimeout(() => {
+      isExpanded = false;
+    }, 1000);
   }
 </script>
 
@@ -82,9 +86,10 @@
             bind:value={config.provider}
             on:change={() => (isSaved = false)}
           >
-            <option value="auto">Auto (Default / Free)</option>
+            <option value="">Auto</option>
             <option value="gemini">Google Gemini</option>
-            <option value="qwen">Qwen (Aliyun)</option>
+            <option value="qwen">Qwen</option>
+            <option value="zhipu">Zhipu</option>
           </select>
         </div>
 
@@ -100,7 +105,7 @@
             id="api_key"
             type="password"
             class="w-full outline-none font-mono text-sm"
-            placeholder="sk-..."
+            placeholder="paste your API key here"
             bind:value={config.apiKey}
             on:input={() => (isSaved = false)}
           />

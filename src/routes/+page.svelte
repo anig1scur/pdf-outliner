@@ -76,7 +76,7 @@
   let config: TocConfig;
 
   let customApiConfig = {
-    provider: 'auto', // 'auto', 'gemini', 'qwen'
+    provider: '',
     apiKey: '',
   };
 
@@ -540,7 +540,7 @@
         } else if (response.status === 413) {
           friendlyMessage = 'Request too large. The images are too high resolution.';
         } else if (response.status === 429) {
-          friendlyMessage = 'Daily limit exceeded or too many requests. Please try again later.';
+          friendlyMessage = 'Daily limit exceeded. Please try again tomorrow or deploy your own instance.';
         }
         throw new Error(friendlyMessage);
       }

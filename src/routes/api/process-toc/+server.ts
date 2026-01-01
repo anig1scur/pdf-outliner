@@ -71,8 +71,12 @@ function getClientIp(request: Request): string {
       headers.get('x-vercel-forwarded-for') || 'unknown';
 }
 
+function randomChoice<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function determineProvider(request: Request, userProvider?: string): string {
-  if (userProvider && userProvider !== 'auto') {
+  if (userProvider) {
     return userProvider;
   }
 
@@ -80,11 +84,14 @@ function determineProvider(request: Request, userProvider?: string): string {
       request.headers.get('cf-ipcountry') ||
       request.headers.get('x-country-code');
 
+  if (env.AI_PROVIDER) {
+    return env.AI_PROVIDER.toLowerCase();
+  }
   if (country === 'CN') {
-    return 'qwen';
+    return randomChoice(['qwen', 'zhipu']);
   }
 
-  return (env.AI_PROVIDER || 'gemini').toLowerCase();
+  return 'gemini';
 }
 
 export async function POST({request}) {
@@ -99,13 +106,10 @@ export async function POST({request}) {
   }
 
   const clientIp = getClientIp(request);
-
   if (clientIp !== 'unknown') {
     const {success, limit, remaining, reset} = await ratelimit.limit(clientIp);
 
     if (!success) {
-      const waitTime = Math.ceil((reset - Date.now()) / 1000 / 60);
-
       return new Response(
           JSON.stringify({
             error: 'Rate limit exceeded',
@@ -164,8 +168,8 @@ export async function POST({request}) {
     if (currentProvider === 'qwen') {
       jsonText =
           await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
-    } else if (currentProvider === 'siliconflow') {
-      jsonText = await processWithSiliconFlow(
+    } else if (currentProvider === 'zhipu') {
+      jsonText = await processWithZhipu(
           isTextMode ? text : images, apiKey, isTextMode);
     } else {
       jsonText = await processWithGemini(
@@ -293,22 +297,24 @@ async function processWithQwen(
   }
 }
 
-async function processWithSiliconFlow(
+async function processWithZhipu(
     input: string[]|string, userKey?: string,
     isTextMode: boolean = false): Promise<string> {
-  const apiKey = userKey || env.SILICONFLOW_API_KEY;
+  const apiKey = userKey || env.ZHIPU_API_KEY;
 
   if (!apiKey) {
-    throw new Error('[SiliconFlow] API Key is missing.');
+    throw new Error('[Zhipu] API Key is missing.');
   }
-  const client =
-      new OpenAI({apiKey: apiKey, baseURL: 'https://api.siliconflow.cn/v1'});
 
-  const MODEL_NAME = 'Qwen/Qwen2.5-VL-7B-Instruct';
+  const client = new OpenAI(
+      {apiKey: apiKey, baseURL: 'https://open.bigmodel.cn/api/paas/v4/'});
+
+  const VISION_MODEL = 'glm-4v-flash';
 
   if (isTextMode) {
     const response = await client.chat.completions.create({
-      model: MODEL_NAME,
+      model: 'glm-4-flash',
+      // max_tokens: 4095,
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_TEXT},
         {role: 'user', content: input as string}
@@ -331,14 +337,26 @@ async function processWithSiliconFlow(
       contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
     });
 
-    const response = await client.chat.completions.create({
-      model: MODEL_NAME,
-      messages: [
-        {role: 'system', content: SYSTEM_PROMPT_VISION},
-        {role: 'user', content: contentParts}
-      ]
-    });
+    try {
+      const response = await client.chat.completions.create({
+        model: 'glm-4v-flash',
+        // max_tokens: 4095,
+        temperature: 0.1,
+        messages: [
+          {role: 'system', content: SYSTEM_PROMPT_VISION},
+          {role: 'user', content: contentParts}
+        ]
+      });
 
-    return response.choices[0].message.content || '[]';
+      return response.choices[0].message.content || '[]';
+    } catch (err: any) {
+      // 捕获图片过多的具体错误，方便调试
+      console.error('[Zhipu Vision Error]', err);
+      if (err.message && err.message.includes('context_length_exceeded')) {
+        throw new Error(
+            '图片总大小超出了智谱 Flash 模型的限制，请尝试减少图片数量或切换到付费模型 glm-4v');
+      }
+      throw err;
+    }
   }
 }

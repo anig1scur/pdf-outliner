@@ -16,7 +16,7 @@
   export let insertAtPage = 2;
   export let tocPageCount = 0;
 
-  export let apiConfig = {provider: 'auto', apiKey: ''};
+  export let apiConfig = {provider: '', apiKey: ''};
 
   const flipDurationMs = 200;
 
