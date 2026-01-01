@@ -126,7 +126,7 @@
             class="underline decoration-gray-400 hover:text-black hover:decoration-black transition-colors">Gemini</a
           >,
           <a
-            href="https://dashscope.console.aliyun.com/apiKey"
+            href="https://bailian.console.aliyun.com/?tab=model#/api-key"
             target="_blank"
             class="underline decoration-gray-400 hover:text-black hover:decoration-black transition-colors">Qwen</a
           >,
