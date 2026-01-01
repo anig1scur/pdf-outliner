@@ -5,6 +5,7 @@
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
   import Dropzone from 'svelte-file-dropzone';
   import type * as PdfjsLibTypes from 'pdfjs-dist';
+  import { init, trackEvent } from '@aptabase/web';
 
   import '../lib/i18n';
   import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
@@ -83,6 +84,16 @@
   onMount(() => {
     $pdfService = new PDFService();
   });
+
+  onMount(() => {
+    init('A-US-0422911470'); 
+
+    trackEvent('app_started', {
+      platform: window.__TAURI__ ? 'desktop' : 'web',
+      version: '1.0.0'
+    });
+  });
+
 
   tocConfig.subscribe((value) => (config = value));
 
