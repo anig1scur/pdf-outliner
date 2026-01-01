@@ -12,9 +12,9 @@ jobs:
       fail-fast: false
       matrix:
         platform: [macos-latest, windows-latest]
-        
+
     runs-on: ${{ matrix.platform }}
-    
+
     steps:
       - uses: actions/checkout@v4
 
@@ -35,6 +35,44 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install
 
+      - name: Update Version from Tag
+        run: |
+          node -e "
+            const fs = require('fs');
+            // 获取 tag 名，例如 'v1.0.2'
+            const tag = '${{ github.ref_name }}';
+            // 去掉开头的 'v'
+            const version = tag.replace(/^v/, '');
+            
+            console.log('Injecting version:', version);
+
+            // 1. 修改 tauri.conf.json
+            const tauriPath = './src-tauri/tauri.conf.json';
+            const tauriConf = require(tauriPath);
+            tauriConf.version = version; // Tauri v2 顶层属性
+            fs.writeFileSync(tauriPath, JSON.stringify(tauriConf, null, 2));
+
+            // 2. 修改 package.json (可选，为了保持一致)
+            const pkgPath = './package.json';
+            const pkg = require(pkgPath);
+            pkg.version = version;
+            fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
+          "
+
+      - name: Get Commit Log (Generate Release Notes)
+        id: changelog
+        shell: bash
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            LOG=$(git log --oneline --pretty=format:"- %s (%h)")
+          else
+            LOG=$(git log $LAST_TAG..HEAD --oneline --pretty=format:"- %s (%h)")
+          fi
+          echo "RELEASE_BODY<<EOF" >> $GITHUB_ENV
+          echo "$LOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Build and Upload
         uses: tauri-apps/tauri-action@v0
         env:
@@ -42,7 +80,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'App v__VERSION__'
-          body: 'See the assets to download this version and install.'
+          releaseName: 'Tocify v__VERSION__'
+          body: ${{ env.RELEASE_BODY }}
           draft: true
           prerelease: false
