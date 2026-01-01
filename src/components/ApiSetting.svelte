@@ -42,7 +42,7 @@
   }
 </script>
 
-<div class="border-black border-2 rounded-lg p-2 my-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white">
+<div class="border-black border-2 rounded-lg p-2 my-4 shadow-[2px_2px_0px_rgba(0,0,0,1)] bg-white">
   <div class="flex justify-between items-center">
     <div class="flex items-center gap-2">
       <h2>
@@ -82,12 +82,12 @@
           >
           <select
             id="llm_provider"
-            class="w-full bg-white outline-none font-mono text-sm"
+            class="w-full bg-white outline-none  text-sm"
             bind:value={config.provider}
             on:change={() => (isSaved = false)}
           >
             <option value="">Auto</option>
-            <option value="gemini">Google Gemini</option>
+            <option value="gemini">Gemini</option>
             <option value="qwen">Qwen</option>
             <option value="zhipu">Zhipu</option>
           </select>
@@ -104,7 +104,7 @@
           <input
             id="api_key"
             type="password"
-            class="w-full outline-none font-mono text-sm"
+            class="w-full outline-none  text-sm"
             placeholder="paste your API key here"
             bind:value={config.apiKey}
             on:input={() => (isSaved = false)}

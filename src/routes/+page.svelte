@@ -5,7 +5,7 @@
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
   import Dropzone from 'svelte-file-dropzone';
   import type * as PdfjsLibTypes from 'pdfjs-dist';
-  import { init, trackEvent } from '@aptabase/web';
+  import {init, trackEvent} from '@aptabase/web';
 
   import '../lib/i18n';
   import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
@@ -28,6 +28,8 @@
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
+
+  import DownloadBanner from '../components/DownloadBanner.svelte';
 
   injectAnalytics();
 
@@ -86,14 +88,13 @@
   });
 
   onMount(() => {
-    init('A-US-0422911470'); 
+    init('A-US-0422911470');
 
     trackEvent('app_started', {
       platform: window.__TAURI__ ? 'desktop' : 'web',
-      version: '1.0.0'
+      version: '1.0.0',
     });
   });
-
 
   tocConfig.subscribe((value) => (config = value));
 
@@ -689,6 +690,8 @@
   }
 </script>
 
+<DownloadBanner />
+
 {#if toastProps.show}
   <Toast
     message={toastProps.message}
@@ -703,7 +706,7 @@
   </div>
 {:else}
   <div
-    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
+    class="flex flex-col mt-16 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
       class="w-full lg:w-[35%]"
@@ -729,7 +732,7 @@
 
       {#if showNextStepHint && originalPdfInstance}
         <div
-          class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
           transition:fade={{duration: 200}}
         >
           <h3 class="font-bold mb-2">{$t('hint.next_step_title')}:</h3>
@@ -757,7 +760,7 @@
       {/if}
 
       <button
-        class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
+        class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
         on:click={generateTocFromAI}
         title={isAiLoading
           ? $t('status.generating')
@@ -796,7 +799,7 @@
       out:fade
     >
       <div
-        class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+        class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]"
       >
         {#if isFileLoading}
           <div

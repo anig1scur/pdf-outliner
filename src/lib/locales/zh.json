@@ -86,5 +86,16 @@
   "loading": {
     "extracting_range": "正在从第 {start} 页到第 {end} 页提取目录...",
     "take_minutes": "这可能需要几分钟"
+  },
+  "client": {
+    "title": "在客户端运行",
+    "download_btn": "下载 Tocify",
+    "mac_hint": "如果应用提示已损坏，请在终端运行此命令。",
+    "byo_title": "使用自定义 API Key",
+    "report_issue": "反馈问题",
+    "btn_open": "客户端 App",
+    "btn_close": "关闭",
+    "copy_cmd": "复制命令",
+    "copied": "已复制"
   }
 }

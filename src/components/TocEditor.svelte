@@ -323,7 +323,7 @@
 
     <button
       on:click={addTocItem}
-      class="ml-9 mt-3 mb-4 btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
+      class="ml-9 mt-3 mb-4 btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
     >
       {$t('btn.add_section')}
     </button>

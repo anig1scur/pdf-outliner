@@ -17,7 +17,7 @@
   }
 </script>
 
-<div class="border-black border-2 rounded-lg p-2 my-4 shadow-[4px_4px_0px_rgba(0,0,0,1)] bg-white">
+<div class="border-black border-2 rounded-lg p-2 my-4 shadow-[2px_2px_0px_rgba(0,0,0,1)] bg-white">
   <div class="flex justify-between items-center">
     <h2>{$t('settings.title')}</h2>
     <button

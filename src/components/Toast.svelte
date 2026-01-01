@@ -22,7 +22,7 @@
 </script>
 
 <div
-  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90%] md:w-fit transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[4px_4px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
+  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90%] md:w-fit transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center z-50 border-2 border-black"
   class:bg-lime-400={type === 'success'}
   class:bg-red-500={type === 'error'}
   class:bg-yellow-400={type === 'info'}

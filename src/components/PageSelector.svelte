@@ -4,7 +4,7 @@
   export let totalPages: number;
 </script>
 
-<div class="border-black border-2 rounded-lg p-3 my-4 bg-blue-100 shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+<div class="border-black border-2 rounded-lg p-3 my-4 bg-blue-100 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
   <h3 class="font-bold mb-2">ToC Pages Selection</h3>
   <div class="flex gap-4 items-center my-2">
     <label

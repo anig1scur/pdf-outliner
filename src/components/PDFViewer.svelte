@@ -395,7 +395,7 @@
         <div
           data-page-num={page.pageNum}
           class="relative rounded-lg overflow-hidden border-t-[2px] border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform border-2"
-          class:shadow-[4px_4px_0px]={isSelected}
+          class:shadow-[3px_3px_0px]={isSelected}
           class:shadow-blue-400={isSelected}
           class:border-blue-500={isSelected}
           class:border-gray-500={!isSelected}
@@ -428,7 +428,7 @@
             use:lazyRender={{pageNum: page.pageNum}}
           ></canvas>
 
-          <div class="text-center text-xs p-2 font-mono bg-white">
+          <div class="text-center text-xs p-2  bg-white">
             {page.pageNum}
           </div>
         </div>
