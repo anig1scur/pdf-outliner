@@ -11,7 +11,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERCNUZGRURCODIzNjIzRDEKUldUUkl6YUMyLzVmMndGSnEyTlpsR21PMEs5ZUI3VlRNdkJSUXBCTGtlNDdmZ0VjSXNPTVVEWjYK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNCNTdDRTMyRTg1RjAzRjcKUldUM0ExL29NczVYTzhBdWVBWUFnYlYvOE95Y3JIdEM0Z3dhRXFWQ2IwWUwyWkJBc1lwRHRRVFYK",
       "endpoints": [
         "https://github.com/anig1scur/tocify/releases/latest/download/latest.json"
       ]
