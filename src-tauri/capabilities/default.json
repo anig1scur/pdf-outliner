@@ -12,6 +12,8 @@
     "updater:allow-install",
     "updater:allow-download-and-install",
     "process:allow-restart",
-    "process:allow-exit"
+    "process:allow-exit",
+    "dialog:default",
+    "fs:default"
   ]
 }

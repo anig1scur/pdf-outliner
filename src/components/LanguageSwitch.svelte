@@ -11,12 +11,11 @@
   class="
     font-bold
     text-black
-    border-2
+    border-b-2
     border-black
-    rounded-full
-    px-2
-    py-1
-    text-sm
+    px-0.5
+    ml-1
+    pb-[2px]
     transition-all
     duration-200
     hover:shadow-none

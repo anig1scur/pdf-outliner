@@ -10,5 +10,6 @@ export const load = async () => {
   await waitLocale();
 };
 
+
 export const prerender = true;
 export const ssr = false;
