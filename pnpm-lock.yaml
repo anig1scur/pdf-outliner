@@ -17,6 +17,12 @@ importers:
       '@sveltejs/adapter-vercel':
         specifier: ^6.1.1
         version: 6.1.1(@sveltejs/kit@2.16.1(@sveltejs/vite-plugin-svelte@5.0.3(svelte@5.19.2)(vite@6.0.11(jiti@1.21.7)(yaml@2.7.0)))(svelte@5.19.2)(vite@6.0.11(jiti@1.21.7)(yaml@2.7.0)))(rollup@4.31.0)
+      '@tauri-apps/plugin-shell':
+        specifier: ~2
+        version: 2.3.3
+      '@tauri-apps/plugin-window-state':
+        specifier: ~2.4.1
+        version: 2.4.1
       '@upstash/ratelimit':
         specifier: ^2.0.7
         version: 2.0.7(@upstash/redis@1.36.0)
@@ -828,6 +834,9 @@ packages:
     peerDependencies:
       tailwindcss: '>=3.0.0 || insiders || >=4.0.0-alpha.20 || >=4.0.0-beta.1'
 
+  '@tauri-apps/api@2.9.1':
+    resolution: {integrity: sha512-IGlhP6EivjXHepbBic618GOmiWe4URJiIeZFlB7x3czM0yDHHYviH1Xvoiv4FefdkQtn6v7TuwWCRfOGdnVUGw==}
+
   '@tauri-apps/cli-darwin-arm64@2.9.6':
     resolution: {integrity: sha512-gf5no6N9FCk1qMrti4lfwP77JHP5haASZgVbBgpZG7BUepB3fhiLCXGUK8LvuOjP36HivXewjg72LTnPDScnQQ==}
     engines: {node: '>= 10'}
@@ -898,6 +907,12 @@ packages:
     resolution: {integrity: sha512-3xDdXL5omQ3sPfBfdC8fCtDKcnyV7OqyzQgfyT5P3+zY6lcPqIYKQBvUasNvppi21RSdfhy44ttvJmftb0PCDw==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@tauri-apps/plugin-shell@2.3.3':
+    resolution: {integrity: sha512-Xod+pRcFxmOWFWEnqH5yZcA7qwAMuaaDkMR1Sply+F8VfBj++CGnj2xf5UoialmjZ2Cvd8qrvSCbU+7GgNVsKQ==}
+
+  '@tauri-apps/plugin-window-state@2.4.1':
+    resolution: {integrity: sha512-OuvdrzyY8Q5Dbzpj+GcrnV1iCeoZbcFdzMjanZMMcAEUNy/6PH5pxZPXpaZLOR7whlzXiuzx0L9EKZbH7zpdRw==}
 
   '@types/cookie@0.6.0':
     resolution: {integrity: sha512-4Kh9a6B2bQciAhf7FSuMRRkUWecJgJu9nPnx3yzpsfXX/c50REIqpHY4C82bXP90qrLtXtkDxTZosYO3UpOwlA==}
@@ -2297,6 +2312,8 @@ snapshots:
       postcss-selector-parser: 6.0.10
       tailwindcss: 3.4.17
 
+  '@tauri-apps/api@2.9.1': {}
+
   '@tauri-apps/cli-darwin-arm64@2.9.6':
     optional: true
 
@@ -2343,6 +2360,14 @@ snapshots:
       '@tauri-apps/cli-win32-arm64-msvc': 2.9.6
       '@tauri-apps/cli-win32-ia32-msvc': 2.9.6
       '@tauri-apps/cli-win32-x64-msvc': 2.9.6
+
+  '@tauri-apps/plugin-shell@2.3.3':
+    dependencies:
+      '@tauri-apps/api': 2.9.1
+
+  '@tauri-apps/plugin-window-state@2.4.1':
+    dependencies:
+      '@tauri-apps/api': 2.9.1
 
   '@types/cookie@0.6.0': {}
 

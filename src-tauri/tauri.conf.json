@@ -10,13 +10,18 @@
     "beforeBuildCommand": "pnpm build"
   },
   "app": {
-    "windows": [
+   "windows": [
       {
+        "label": "main",
         "title": "Tocify",
-        "width": 800,
-        "height": 600,
+        "width": 1440,       
+        "height": 900,       
+        "minWidth": 900,     
+        "minHeight": 600,    
+        "center": true,      
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true
       }
     ],
     "security": {

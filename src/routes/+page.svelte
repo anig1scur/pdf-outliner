@@ -684,7 +684,7 @@
   </div>
 {:else}
   <div
-    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] font-mono justify-between"
+    class="flex flex-col lg:flex-row mt-4 lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%]  justify-between"
   >
     <div
       class="w-full lg:w-[35%]"

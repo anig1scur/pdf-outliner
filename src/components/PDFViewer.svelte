@@ -428,7 +428,7 @@
             use:lazyRender={{pageNum: page.pageNum}}
           ></canvas>
 
-          <div class="text-center text-xs p-2 font-mono bg-white">
+          <div class="text-center text-xs p-2  bg-white">
             {page.pageNum}
           </div>
         </div>

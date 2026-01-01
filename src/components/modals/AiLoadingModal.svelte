@@ -9,7 +9,7 @@
 
 {#if isAiLoading}
   <div
-    class="fixed inset-0 flex flex-col items-center justify-center z-50 font-mono bg-yellow-400"
+    class="fixed inset-0 flex flex-col items-center justify-center z-50  bg-yellow-400"
     transition:fade={{duration: 200}}
   >
     <div

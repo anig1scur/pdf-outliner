@@ -44,7 +44,7 @@
             {#if copied}
               <span>Copied!</span>
             {:else}
-              <span class="font-mono">{email}</span>
+              <span>{email}</span>
             {/if}
           </button>
         </div>
