@@ -58,7 +58,8 @@
 <div
   class="fixed top-0 right-4 z-[100] flex flex-col items-end transition-transform duration-300 ease-spring"
   class:translate-y-0={isVisible && isOpen}
-  class:-translate-y-[calc(100%-48px)]={isVisible && !isOpen}
+  class:-translate-y-[calc(100%-28px)]={isVisible && !isOpen}
+  class:md:-translate-y-[calc(100%-48px)]={isVisible && !isOpen}
   class:-translate-y-[calc(100%+5px)]={!isVisible}
 >
   <div

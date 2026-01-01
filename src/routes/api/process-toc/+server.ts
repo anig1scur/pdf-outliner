@@ -80,13 +80,14 @@ function determineProvider(request: Request, userProvider?: string): string {
     return userProvider;
   }
 
+  if (env.AI_PROVIDER) {
+    return env.AI_PROVIDER.toLowerCase();
+  }
+
   const country = request.headers.get('x-vercel-ip-country') ||
       request.headers.get('cf-ipcountry') ||
       request.headers.get('x-country-code');
 
-  if (env.AI_PROVIDER) {
-    return env.AI_PROVIDER.toLowerCase();
-  }
   if (country === 'CN') {
     return randomChoice(['qwen', 'zhipu']);
   }

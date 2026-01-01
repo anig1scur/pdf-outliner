@@ -1,6 +1,6 @@
 <script lang="ts">
   import {fade, fly} from 'svelte/transition';
-  import {X, Copy, Check} from 'lucide-svelte';
+  import {X, Send} from 'lucide-svelte';
 
   export let showHelpModal: boolean;
   export let videoUrl: string;
@@ -30,19 +30,31 @@
       transition:fly={{y: 20, duration: 200}}
       on:click|stopPropagation
     >
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
-        <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-2xl font-bold">How to Use Tocify</h2>
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div class="flex flex-wrap items-center gap-4">
+          <h2 class="text-2xl font-black italic">How to Use Tocify</h2>
+
+          <span class=" font-bold border-l-2 border-black pl-4 ml-1 hidden sm:inline-block">
+            Feedback
+            <Send
+              size={18}
+              class="inline-block font-bold mr-1"
+            />
+          </span>
 
           <button
             on:click={copyEmail}
-            class="group flex items-center gap-1.5 px-2 py-1 text-xs font-bold border-2 border-black rounded shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all active:bg-black active:text-white
-                {copied ? 'bg-green-400' : 'bg-white hover:bg-yellow-200'}"
+            class=" relative overflow-hidden group flex items-center gap-2 px-3 py-1.5
+              text-xs font-bold uppercase tracking-wider
+              border-2 border-black rounded-md
+              {copied
+              ? 'bg-lime-400 text-black border-black cursor-default'
+              : 'bg-white text-black hover:bg-yellow-400 hover:text-black active:scale-95'}
+            "
             title="Click to copy email"
           >
-            📮
             {#if copied}
-              <span>Copied!</span>
+              <span>COPIED!</span>
             {:else}
               <span>{email}</span>
             {/if}
@@ -51,10 +63,13 @@
 
         <button
           on:click={() => (showHelpModal = false)}
-          class="absolute top-4 right-4 md:relative md:top-auto md:right-auto p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
+          class="absolute top-4 right-4 md:relative md:top-auto md:right-auto p-2 border-2 border-transparent hover:border-black rounded hover:bg-gray-100 transition-all"
           aria-label="Close modal"
         >
-          <X size={24} />
+          <X
+            size={24}
+            strokeWidth={3}
+          />
         </button>
       </div>
 
@@ -65,7 +80,7 @@
           loop
           autoplay
           muted
-          class="w-full h-auto rounded-lg border-2 border-black"
+          class="w-full h-auto bg-black border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]"
         ></video>
       </div>
     </div>

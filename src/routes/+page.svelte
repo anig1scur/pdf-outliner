@@ -552,7 +552,7 @@
         } else if (response.status === 413) {
           friendlyMessage = 'Request too large. The images are too high resolution.';
         } else if (response.status === 429) {
-          friendlyMessage = 'Daily limit exceeded. Please try again tomorrow or deploy your own instance.';
+          friendlyMessage = 'Daily limit exceeded. Please try again tomorrow or download the client or deploy your own server.';
         }
         throw new Error(friendlyMessage);
       }
@@ -706,7 +706,7 @@
   </div>
 {:else}
   <div
-    class="flex flex-col mt-16 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
+    class="flex flex-col mt-5 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
       class="w-full lg:w-[35%]"
