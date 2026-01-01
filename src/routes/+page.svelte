@@ -708,7 +708,6 @@
       console.error(e);
     }
   });
-
   async function handleConfirmUpdate() {
     if (updateObj) {
       await updateObj.downloadAndInstall();
