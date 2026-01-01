@@ -3,7 +3,7 @@
   import {Sparkles, Download, X, Loader2, AlertTriangle} from 'lucide-svelte';
 
   export let showUpdateModal: boolean = false;
-  export let updateData: {version: string; body: string; date?: string} | null = null;
+  export let updateData: {version: string; notes: string; date?: string} | null = null;
 
   export let onUpdate: () => Promise<void>;
   export let onCancel: () => void;
@@ -95,7 +95,7 @@
           <div
             class="bg-gray-50 border-2 border-black rounded p-4 font-mono text-sm whitespace-pre-wrap leading-relaxed"
           >
-            {updateData.body || 'Bug fixes and performance improvements.'}
+            {updateData.notes || 'Bug fixes and performance improvements.'}
           </div>
         </div>
       </div>
