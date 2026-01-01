@@ -72,7 +72,7 @@ function getClientIp(request: Request): string {
 }
 
 function determineProvider(request: Request, userProvider?: string): string {
-  if (userProvider && userProvider !== 'auto') {
+  if (userProvider) {
     return userProvider;
   }
 

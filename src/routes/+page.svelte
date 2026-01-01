@@ -11,6 +11,7 @@
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {setOutline} from '../lib/pdf-outliner';
   import {debounce} from '../lib';
+  import { processToc } from '../lib/service';
 
   import Header from '../components/Header.svelte';
   import Toast from '../components/Toast.svelte';
@@ -76,7 +77,7 @@
   let config: TocConfig;
 
   let customApiConfig = {
-    provider: 'auto', // 'auto', 'gemini', 'qwen'
+    provider: '', // '', 'gemini', 'qwen'
     apiKey: '',
   };
 
@@ -478,7 +479,6 @@
       toastProps = {show: true, message: `Error exporting PDF: ${error.message}`, type: 'error'};
     }
   };
-
   const generateTocFromAI = async () => {
     showNextStepHint = false;
     if (!originalPdfInstance || !$pdfService) {
@@ -489,6 +489,17 @@
       toastProps = {show: true, message: 'End page must be greater than or equal to start page.', type: 'error'};
       return;
     }
+
+    if (!customApiConfig.apiKey) {
+      toastProps = {
+        show: true, 
+        message: 'API Key Missing. Please click the "API" button in the top left to configure your key.', 
+        type: 'error'
+      };
+      // isTocConfigExpanded = true; 
+      return;
+    }
+    // -------------------
 
     const selectedPageCount = tocEndPage - tocStartPage + 1;
     if (selectedPageCount > 10) {
@@ -518,34 +529,12 @@
         imagesBase64.push(image);
       }
 
-      const response = await fetch('/api/process-toc', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          images: imagesBase64,
-          apiKey: customApiConfig.apiKey,
-          provider: customApiConfig.provider,
-        }),
+      const aiResult = await processToc({
+        images: imagesBase64,
+        apiKey: customApiConfig.apiKey,
+        provider: customApiConfig.provider
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        let friendlyMessage = err.message || 'AI processing failed.';
-        if (
-          friendlyMessage.includes('No valid ToC') ||
-          friendlyMessage.includes('parsing error') ||
-          friendlyMessage.includes('structure')
-        ) {
-          friendlyMessage = "The selected pages don't look like a ToC. Please try adjusting the page range.";
-        } else if (response.status === 413) {
-          friendlyMessage = 'Request too large. The images are too high resolution.';
-        } else if (response.status === 429) {
-          friendlyMessage = 'Daily limit exceeded or too many requests. Please try again later.';
-        }
-        throw new Error(friendlyMessage);
-      }
-
-      const aiResult: {title: string; level: number; page: number}[] = await response.json();
       if (!aiResult || aiResult.length === 0) {
         aiError = 'We could not find a valid ToC on these pages.';
         return;
@@ -560,15 +549,18 @@
         tocItems.set(nestedTocItems);
         pendingTocItems = [];
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating ToC from AI:', error);
-      aiError = error.message;
-      toastProps = {show: true, message: error.message, type: 'error'};
+
+      let msg = error.message || 'Unknown error';
+      if (msg.includes('401')) msg = 'Invalid API Key. Please check your settings.';
+      if (msg.includes('Failed to fetch')) msg = 'Network Error. Check your connection or VPN.';
+      aiError = msg;
+      toastProps = {show: true, message: msg, type: 'error'};
     } finally {
       isAiLoading = false;
     }
   };
-
   const handleOffsetConfirm = async () => {
     if (!firstTocItem) return;
     const labeledPage = firstTocItem.to;

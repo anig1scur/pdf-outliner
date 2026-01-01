@@ -6,6 +6,7 @@
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
+  import { processToc } from '../lib/service';
 
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
@@ -16,7 +17,7 @@
   export let insertAtPage = 2;
   export let tocPageCount = 0;
 
-  export let apiConfig = {provider: 'auto', apiKey: ''};
+  export let apiConfig = {provider: '', apiKey: ''};
 
   const flipDurationMs = 200;
 
@@ -84,41 +85,36 @@
       return;
     }
 
+    if (!apiConfig.apiKey) {
+      alert($t('error.api_key_missing') || 'Please enter your API Key in the settings first.');
+      return;
+    }
+
     isProcessing = true;
     try {
-      const response = await fetch('/api/process-toc', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          text: text,
-          apiKey: apiConfig.apiKey,
-          provider: apiConfig.provider,
-        }),
+      const aiResult = await processToc({
+        text: text,
+        apiKey: apiConfig.apiKey,
+        provider: apiConfig.provider,
+        // images: undefined  // 文本模式不需要传图片
       });
-
-      if (!response.ok) {
-        let errorMessage = 'AI processing failed';
-        try {
-          const errData = await response.json();
-          if (errData.message) errorMessage = errData.message;
-        } catch (e) {
-          /* ignore json parse error */
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const aiResult = await response.json();
+      // ----------------------------------------------------
 
       if (Array.isArray(aiResult) && aiResult.length > 0) {
         const newItems = buildTree(aiResult);
         $tocItems = newItems;
+
       } else {
         throw new Error('AI could not parse any ToC structure from the text.');
       }
+
     } catch (error) {
       console.error('AI Format Error:', error);
-      alert(error.message || $t('error.ai_format_failed') || 'AI formatting failed. Please try again.');
+      
+      let msg = error.message || 'AI formatting failed.';
+      if (msg.includes('401')) msg = 'Invalid API Key.';
+      
+      alert(msg);
     } finally {
       isProcessing = false;
     }
