@@ -29,6 +29,7 @@
 		"@google/generative-ai": "^0.24.1",
 		"@pdf-lib/fontkit": "^1.1.1",
 		"@sveltejs/adapter-vercel": "^6.1.1",
+		"@tauri-apps/api": "^2.9.1",
 		"@tauri-apps/plugin-dialog": "~2",
 		"@tauri-apps/plugin-fs": "~2",
 		"@tauri-apps/plugin-os": "~2.3.2",

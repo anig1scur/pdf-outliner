@@ -38,6 +38,7 @@
   import {save} from '@tauri-apps/plugin-dialog';
   import {writeFile} from '@tauri-apps/plugin-fs';
   import {type} from '@tauri-apps/plugin-os';
+  import {getVersion} from '@tauri-apps/api/app';
 
   injectAnalytics();
 
@@ -95,12 +96,23 @@
     $pdfService = new PDFService();
   });
 
-  onMount(() => {
+  onMount(async () => {
     init('A-US-0422911470');
 
+    const isTauri = !!(window.__TAURI__ || window.__TAURI_INTERNALS__);
+    let currentVersion = '1.0.0';
+
+    if (isTauri) {
+      try {
+        currentVersion = await getVersion();
+      } catch (error) {
+        console.warn('Failed to get app version:', error);
+      }
+    }
+
     trackEvent('app_started', {
-      platform: window.__TAURI__ ? 'desktop' : 'web',
-      version: '1.0.0',
+      platform: isTauri ? 'desktop' : 'web',
+      version: currentVersion,
     });
   });
 
