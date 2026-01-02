@@ -35,6 +35,10 @@
   import {relaunch} from '@tauri-apps/plugin-process';
   import {Sparkles} from 'lucide-svelte';
 
+  import {save} from '@tauri-apps/plugin-dialog';
+  import {writeFile} from '@tauri-apps/plugin-fs';
+  import {type} from '@tauri-apps/plugin-os';
+
   injectAnalytics();
 
   let pdfjs: typeof PdfjsLibTypes | null = null;
@@ -477,23 +481,54 @@
       toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
       return;
     }
+
     try {
       const pdfBytes = await pdfState.newDoc.save();
-      const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = pdfState.filename.replace('.pdf', '_outlined.pdf');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const defaultFilename = pdfState.filename.replace('.pdf', '_outlined.pdf');
+
+      const osType = await type();
+      const sep = osType === 'windows' ? '\\' : '/';
+
+      const lastSaveDir = localStorage.getItem('tocify_last_save_dir');
+
+      let defaultPath = defaultFilename;
+      if (lastSaveDir) {
+        const cleanDir = lastSaveDir.endsWith(sep) ? lastSaveDir.slice(0, -1) : lastSaveDir;
+        defaultPath = `${cleanDir}${sep}${defaultFilename}`;
+      }
+
+      const filePath = await save({
+        defaultPath: defaultPath,
+        filters: [
+          {
+            name: 'PDF Document',
+            extensions: ['pdf'],
+          },
+        ],
+      });
+
+      if (!filePath) {
+        return;
+      }
+
+      await writeFile(filePath, pdfBytes);
+
+      const lastSlashIndex = filePath.lastIndexOf(sep);
+      if (lastSlashIndex !== -1) {
+        const dirPath = filePath.substring(0, lastSlashIndex);
+        localStorage.setItem('tocify_last_save_dir', dirPath);
+      }
+
       toastProps = {show: true, message: 'Export Successful!', type: 'success'};
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      toastProps = {show: true, message: `Error exporting PDF: ${error.message}`, type: 'error'};
+
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      toastProps = {show: true, message: `Error exporting PDF: ${errorMsg}`, type: 'error'};
     }
   };
+
   const generateTocFromAI = async () => {
     showNextStepHint = false;
     if (!originalPdfInstance || !$pdfService) {

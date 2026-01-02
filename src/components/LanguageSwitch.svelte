@@ -10,6 +10,7 @@
   on:click={toggle}
   class="
     font-bold
+    text-lg
     text-black
     border-b-2
     border-black

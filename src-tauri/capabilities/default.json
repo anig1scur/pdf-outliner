@@ -14,6 +14,12 @@
     "process:allow-restart",
     "process:allow-exit",
     "dialog:default",
-    "fs:default"
+    "fs:default",
+    "os:default",
+    "fs:allow-write-file",
+    {
+      "identifier": "fs:scope",
+      "allow": ["$HOME/**"]
+    }
   ]
 }
