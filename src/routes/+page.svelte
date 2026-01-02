@@ -517,14 +517,14 @@
     try {
       const imagesBase64: string[] = [];
       let currentTotalSize = 0;
-      const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024;
+      const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024;
 
       for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
-        const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum, 1.5);
+        const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum);
 
         currentTotalSize += image.length;
         if (currentTotalSize > MAX_PAYLOAD_SIZE) {
-          throw new Error('Total size too large (>30MB). Please reduce page range.');
+          throw new Error('Total size too large (>5MB). Please reduce page range or lower resolution.');
         }
 
         imagesBase64.push(image);

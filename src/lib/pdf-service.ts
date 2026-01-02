@@ -375,17 +375,30 @@ export class PDFService {
     }
   }
 
-  async getPageAsImage(pdf: any, pageNum: number, scale: number = 1.5):
-      Promise<string> {
+  async getPageAsImage(
+      pdf: any, pageNum: number, targetScale: number = 1.5,
+      maxDimension: number = 2048): Promise<string> {
     const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({scale});
+
+    let viewport = page.getViewport({scale: targetScale});
+
+    const maxSide = Math.max(viewport.width, viewport.height);
+
+    if (maxSide > maxDimension) {
+      const adjustmentRatio = maxDimension / maxSide;
+      const finalScale = targetScale * adjustmentRatio;
+
+      viewport = page.getViewport({scale: finalScale});
+      console.log(`Page ${pageNum} too large (${maxSide}px). Downscaling to ${
+          finalScale.toFixed(2)}x`);
+    }
+
     const canvas = document.createElement('canvas');
     canvas.height = viewport.height;
     canvas.width = viewport.width;
 
     const context = canvas.getContext('2d');
-    if (!context)
-      throw new Error('Could not create 2D context for image generation');
+    if (!context) throw new Error('Could not create 2D context');
 
     await page
         .render({
@@ -394,6 +407,6 @@ export class PDFService {
         })
         .promise;
 
-    return canvas.toDataURL('image/png');
+    return canvas.toDataURL('image/jpeg', 0.8);
   }
 }
