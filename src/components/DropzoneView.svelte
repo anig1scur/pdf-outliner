@@ -1,6 +1,6 @@
 <script lang="ts">
   import {Upload} from 'lucide-svelte';
-  import {t} from 'svelte-i18n'; // [新增]
+  import {t} from 'svelte-i18n';
 
   export let isDragging: boolean;
   export let hasInstance: boolean;

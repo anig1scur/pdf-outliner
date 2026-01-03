@@ -1,10 +1,11 @@
 <script lang="ts">
   import {createEventDispatcher, tick} from 'svelte';
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
-  import { t } from 'svelte-i18n';
+  import {t} from 'svelte-i18n';
 
   import {pdfService} from '../stores';
   import {type PDFService, type PDFState} from '../lib/pdf-service';
+  import type {RenderTask} from 'pdfjs-dist';
 
   export let pdfState: PDFState;
   export let mode: 'single' | 'grid' = 'single';
@@ -33,6 +34,10 @@
   let autoScrollSpeed = 0;
   let autoScrollFrameId: number | null = null;
 
+  let currentRenderTask: RenderTask | null = null;
+  let lastRenderedPage = 0;
+  let lastRenderedScale = 0;
+
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
   $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
@@ -47,12 +52,25 @@
     });
   }
 
-  $: if (mode === 'single' && instance && currentPage && scale) {
-    (async () => {
-      await tick();
-      const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
-      if (!canvas || !instance) return;
+  async function renderCurrentPage() {
+    if (!instance || !currentPage || !scale) return;
+    if (lastRenderedPage === currentPage && lastRenderedScale === scale) {
+      return;
+    }
 
+    if (currentRenderTask) {
+      try {
+        currentRenderTask.cancel();
+      } catch (e) {
+      }
+      currentRenderTask = null;
+    }
+
+    await tick();
+    const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
+    if (!canvas || !instance) return;
+
+    try {
       const page = await instance.getPage(currentPage);
 
       const dpr = window.devicePixelRatio || 1;
@@ -74,8 +92,23 @@
         viewport,
       };
 
-      await page.render(renderContext).promise;
-    })();
+      currentRenderTask = page.render(renderContext);
+
+      await currentRenderTask?.promise;
+
+      lastRenderedPage = currentPage;
+      lastRenderedScale = scale;
+      currentRenderTask = null;
+    } catch (e: any) {
+      if (e?.name !== 'RenderingCancelledException') {
+        console.error('Rendering error:', e);
+      }
+      currentRenderTask = null;
+    }
+  }
+
+  $: if (mode === 'single' && instance && currentPage && scale) {
+    renderCurrentPage();
   }
 
   const goToNextPage = () => {
@@ -389,7 +422,8 @@
       on:touchmove={handleTouchMove}
       on:touchend={handleTouchEnd}
       on:touchcancel={handleTouchEnd}
-      on:mousemove={handleGridMouseMove} >
+      on:mousemove={handleGridMouseMove}
+    >
       {#each gridPages as page (page.pageNum)}
         {@const isSelected = page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
         <div
@@ -428,7 +462,7 @@
             use:lazyRender={{pageNum: page.pageNum}}
           ></canvas>
 
-          <div class="text-center text-xs p-2  bg-white">
+          <div class="text-center text-xs p-2 bg-white">
             {page.pageNum}
           </div>
         </div>

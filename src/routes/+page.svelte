@@ -3,7 +3,6 @@
   import {slide, fade, fly} from 'svelte/transition';
   import {t, isLoading} from 'svelte-i18n';
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
-  import Dropzone from 'svelte-file-dropzone';
   import type * as PdfjsLibTypes from 'pdfjs-dist';
   import {init, trackEvent} from '@aptabase/web';
 
@@ -12,17 +11,10 @@
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {setOutline} from '../lib/pdf-outliner';
   import {debounce} from '../lib';
+  import {buildTree, convertPdfJsOutlineToTocItems, setNestedValue} from '$lib/utils';
+  import {generateToc} from '$lib/toc-service';
 
-  import Header from '../components/Header.svelte';
   import Toast from '../components/Toast.svelte';
-  import DropzoneView from '../components/DropzoneView.svelte';
-
-  import PDFViewer from '../components/PDFViewer.svelte';
-  import PdfControls from '../components/PdfControls.svelte';
-  import TocEditor from '../components/TocEditor.svelte';
-  import TocSettings from '../components/TocSetting.svelte';
-  import ApiSetting from '../components/ApiSetting.svelte';
-  import AiPageSelector from '../components/PageSelector.svelte';
   import Footer from '../components/Footer.svelte';
 
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
@@ -30,6 +22,8 @@
   import HelpModal from '../components/modals/HelpModal.svelte';
 
   import DownloadBanner from '../components/DownloadBanner.svelte';
+  import SidebarPanel from '../components/panels/SidebarPanel.svelte';
+  import PreviewPanel from '../components/panels/PreviewPanel.svelte';
 
   injectAnalytics();
 
@@ -174,42 +168,10 @@
     }
   };
 
-  function updateTocField(fieldPath, value) {
+  function updateTocField(fieldPath: string, value: any) {
     tocConfig.update((cfg) => {
-      const keys = fieldPath.split('.');
-      let target = cfg;
-      keys.slice(0, -1).forEach((key) => (target = target[key]));
-      target[keys[keys.length - 1]] = value;
-      return cfg;
+      return setNestedValue(cfg, fieldPath, value);
     });
-  }
-
-  function buildTree(items: {title: string; level: number; page: number}[]): TocItem[] {
-    const root: TocItem[] = [];
-    const stack: {node: TocItem; level: number}[] = [];
-    let idCounter = 0;
-    items.forEach((item) => {
-      const newItem: TocItem = {
-        id: `item-${idCounter++}`,
-        title: item.title,
-        to: item.page,
-        children: [],
-        open: true,
-      };
-      const level = item.level;
-      while (stack.length > 0 && stack[stack.length - 1].level >= level) {
-        stack.pop();
-      }
-      if (stack.length === 0) {
-        root.push(newItem);
-      } else {
-        const parent = stack[stack.length - 1].node;
-        parent.children = parent.children || [];
-        parent.children.push(newItem);
-      }
-      stack.push({node: newItem, level: level});
-    });
-    return root;
   }
 
   const updateViewerInstance = () => {
@@ -322,50 +284,8 @@
     }
   };
 
-  async function convertPdfJsOutlineToTocItems(
-    outline: any[],
-    doc: PdfjsLibTypes.PDFDocumentProxy
-  ): Promise<TocItem[]> {
-    let idCounter = 0;
-
-    const processNode = async (node: any): Promise<TocItem> => {
-      let pageNum = 1;
-
-      try {
-        let dest = node.dest;
-
-        // 如果 dest 是字符串（Named Destination），先获取具体引用
-        if (typeof dest === 'string') {
-          dest = await doc.getDestination(dest);
-        }
-
-        // 如果 dest 是数组（常见情况），第一个元素通常是 Ref
-        if (Array.isArray(dest) && dest.length > 0) {
-          const ref = dest[0];
-          if (ref) {
-            const pageIndex = await doc.getPageIndex(ref);
-            pageNum = pageIndex + 1;
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to resolve page for outline item:', node.title, e);
-      }
-
-      const children = node.items && node.items.length > 0 ? await Promise.all(node.items.map(processNode)) : [];
-
-      return {
-        id: `imported-${Date.now()}-${idCounter++}`,
-        title: node.title,
-        to: pageNum,
-        children: children,
-        open: false,
-      };
-    };
-
-    return Promise.all(outline.map(processNode));
-  }
-
   const loadPdfFile = async (file: File) => {
+    console.log(file);
     if (!file) return;
 
     const fingerprint = `${file.name}_${file.size}`;
@@ -447,28 +367,6 @@
     }
   };
 
-  const handleFileDrop = async (e: CustomEvent) => {
-    const {acceptedFiles} = e.detail;
-    isDragging = false;
-    if (acceptedFiles.length) {
-      await loadPdfFile(acceptedFiles[0]);
-    }
-  };
-
-  const handleFileLoaded = (event: CustomEvent<{message: string; type: 'success' | 'error' | 'info'}>) => {
-    toastProps = {show: true, message: event.detail.message, type: event.detail.type};
-  };
-
-  const handleFileInputChange = async (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    if (target.files && target.files.length > 0) {
-      await loadPdfFile(target.files[0]);
-      target.value = '';
-    }
-  };
-
-  const triggerFileInput = () => fileInputRef?.click();
-
   const exportPDF = async () => {
     await updatePDF();
     if (!pdfState.newDoc) {
@@ -495,79 +393,34 @@
 
   const generateTocFromAI = async () => {
     showNextStepHint = false;
-    if (!originalPdfInstance || !$pdfService) {
-      toastProps = {show: true, message: 'Please load a PDF first.', type: 'error'};
-      return;
-    }
-    if (tocEndPage < tocStartPage) {
-      toastProps = {show: true, message: 'End page must be greater than or equal to start page.', type: 'error'};
-      return;
-    }
 
-    const selectedPageCount = tocEndPage - tocStartPage + 1;
-    if (selectedPageCount > 10) {
-      toastProps = {
-        show: true,
-        message: `Too many pages selected (${selectedPageCount}). Max allowed is 10 pages.`,
-        type: 'error',
-      };
+    if (!originalPdfInstance) {
+      toastProps = {show: true, message: 'Please load a PDF first.', type: 'error'};
       return;
     }
 
     isAiLoading = true;
     aiError = null;
+
     try {
-      const imagesBase64: string[] = [];
-      let currentTotalSize = 0;
-      const MAX_PAYLOAD_SIZE = 5 * 1024 * 1024;
-
-      for (let pageNum = tocStartPage; pageNum <= tocEndPage; pageNum++) {
-        const image = await $pdfService.getPageAsImage(originalPdfInstance, pageNum);
-
-        currentTotalSize += image.length;
-        if (currentTotalSize > MAX_PAYLOAD_SIZE) {
-          throw new Error('Total size too large (>5MB). Please reduce page range or lower resolution.');
-        }
-
-        imagesBase64.push(image);
-      }
-
-      const response = await fetch('/api/process-toc', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          images: imagesBase64,
-          apiKey: customApiConfig.apiKey,
-          provider: customApiConfig.provider,
-        }),
+      const res = await generateToc({
+        pdfInstance: originalPdfInstance,
+        startPage: tocStartPage,
+        endPage: tocEndPage,
+        apiKey: customApiConfig.apiKey,
+        provider: customApiConfig.provider,
       });
 
-      if (!response.ok) {
-        const err = await response.json();
-        let friendlyMessage = err.message || 'AI processing failed.';
-        if (
-          friendlyMessage.includes('No valid ToC') ||
-          friendlyMessage.includes('parsing error') ||
-          friendlyMessage.includes('structure')
-        ) {
-          friendlyMessage = "The selected pages don't look like a ToC. Please try adjusting the page range.";
-        } else if (response.status === 413) {
-          friendlyMessage = 'Request too large. The images are too high resolution.';
-        } else if (response.status === 429) {
-          friendlyMessage =
-            'Daily limit exceeded. Please try again tomorrow or download the client or deploy your own server.';
-        }
-        throw new Error(friendlyMessage);
-      }
-
-      const aiResult: {title: string; level: number; page: number}[] = await response.json();
-      if (!aiResult || aiResult.length === 0) {
+      if (!res || res.length === 0) {
         aiError = 'We could not find a valid ToC on these pages.';
         return;
       }
-      const nestedTocItems = buildTree(aiResult);
+
+      const nestedTocItems = buildTree(res);
+
       pendingTocItems = nestedTocItems;
       firstTocItem = nestedTocItems.length > 0 ? nestedTocItems[0] : null;
+
       if (firstTocItem) {
         offsetPreviewPageNum = firstTocItem.to;
         showOffsetModal = true;
@@ -692,16 +545,20 @@
     toastProps = {show: true, message: 'API Settings Saved!', type: 'success'};
   }
 
+  const handleViewerMessage = (event: CustomEvent<{message: string; type: 'success' | 'error' | 'info'}>) => {
+    toastProps = {show: true, message: event.detail.message, type: event.detail.type};
+  };
+
   onMount(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const msg = event.reason?.message || event.reason || 'Unknown Async Error';
-      toastProps = { show: true, message: msg, type: 'error' };
-      event.preventDefault(); 
+      toastProps = {show: true, message: msg, type: 'error'};
+      event.preventDefault();
     };
 
     const handleSyncError = (event: ErrorEvent) => {
       const msg = event.message || 'Unknown Error';
-      toastProps = { show: true, message: msg, type: 'error' };
+      toastProps = {show: true, message: msg, type: 'error'};
     };
 
     window.addEventListener('unhandledrejection', handleRejection);
@@ -712,7 +569,6 @@
       window.removeEventListener('error', handleSyncError);
     };
   });
-
 </script>
 
 <DownloadBanner />
@@ -734,158 +590,68 @@
     class="flex flex-col mt-5 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
-      class="w-full lg:w-[35%]"
       in:fly={{y: 20, duration: 300, delay: 100}}
       out:fade
+      class="contents"
     >
-      <Header on:openhelp={() => (showHelpModal = true)} />
-
-      <ApiSetting
-        on:change={handleApiConfigChange}
-        on:save={handleApiConfigSave}
-      />
-
-      <TocSettings
-        bind:isTocConfigExpanded
-        bind:addPhysicalTocPage
-        {config}
+      <SidebarPanel
+        {pdfState}
+        {originalPdfInstance}
         {previewPdfInstance}
-        on:toggleExpand={() => (isTocConfigExpanded = !isTocConfigExpanded)}
+        {isAiLoading}
+        {aiError}
+        {showNextStepHint}
+        {config}
+        {customApiConfig}
+        {tocPageCount}
+        {isPreviewMode}
+        bind:tocStartPage
+        bind:tocEndPage
+        bind:addPhysicalTocPage
+        bind:isTocConfigExpanded
+        on:openhelp={() => (showHelpModal = true)}
+        on:apiConfigChange={handleApiConfigChange}
+        on:apiConfigSave={handleApiConfigSave}
         on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
         on:jumpToTocPage={jumpToTocPage}
-      />
-
-      {#if showNextStepHint && originalPdfInstance}
-        <div
-          class="border-black border-2 rounded-lg p-3 my-4 bg-yellow-200 shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-          transition:fade={{duration: 200}}
-        >
-          <h3 class="font-bold mb-2">{$t('hint.next_step_title')}:</h3>
-          <p class="text-sm text-gray-800">
-            1. {$t('hint.step_1_text')} <strong class="text-black">{$t('hint.step_1_bold')}</strong>
-          </p>
-          <p class="text-sm text-gray-800 mt-1">
-            2. {$t('hint.step_2_text')} <strong class="text-black"> {$t('hint.step_2_bold')}</strong>
-          </p>
-          <p class="text-sm text-gray-800 mt-2">
-            {$t('hint.or_text')} <strong class="text-black">{$t('hint.manual_add_bold')}</strong>
-            {$t('hint.manual_add_text')}
-          </p>
-        </div>
-      {/if}
-
-      {#if originalPdfInstance}
-        <div transition:fade={{duration: 200}}>
-          <AiPageSelector
-            bind:tocStartPage
-            bind:tocEndPage
-            totalPages={pdfState.totalPages}
-          />
-        </div>
-      {/if}
-
-      <button
-        class="btn w-full my-2 font-bold bg-blue-400 transition-all duration-300 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] disabled:bg-gray-300 disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0"
-        on:click={generateTocFromAI}
-        title={isAiLoading
-          ? $t('status.generating')
-          : !originalPdfInstance
-            ? $t('status.load_pdf_first')
-            : $t('tooltip.generate_ai')}
-        disabled={isAiLoading || !originalPdfInstance}
-      >
-        {#if isAiLoading}
-          <span>{$t('btn.generating')}</span>
-        {:else}
-          <span>✨ {$t('btn.generate_toc_ai')}</span>
-        {/if}
-      </button>
-
-      {#if aiError}
-        <div class="my-2 p-3 bg-red-100 border-2 border-red-700 text-red-700 rounded-lg">
-          {aiError}
-        </div>
-      {/if}
-
-      <TocEditor
+        on:generateAi={generateTocFromAI}
         on:hoveritem={handleTocItemHover}
-        currentPage={pdfState.currentPage}
-        isPreview={isPreviewMode}
-        pageOffset={config.pageOffset}
-        insertAtPage={config.insertAtPage}
-        apiConfig={customApiConfig}
-        tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
+        on:fileselect={(e) => loadPdfFile(e.detail)}
+        on:viewerMessage={handleViewerMessage}
+        on:setstartpage={handleSetStartPage}
+        on:setendpage={handleSetEndPage}
+        on:togglePreview={togglePreviewMode}
+        on:export={exportPDF}
       />
     </div>
 
     <div
-      class="flex flex-col w-full lg:w-[70%]"
       in:fly={{y: 20, duration: 300, delay: 200}}
       out:fade
+      class="contents"
     >
-      <div
-        class="h-fit pb-4 min-h-[85vh] top-5 sticky border-black border-2 rounded-lg bg-white shadow-[2px_2px_0px_rgba(0,0,0,1)]"
-      >
-        {#if isFileLoading}
-          <div
-            class="absolute inset-0 bg-white bg-opacity-80 flex items-center justify-center z-50 rounded-lg"
-            transition:fade={{duration: 100}}
-          >
-            <div class="flex flex-col items-center gap-4">
-              <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
-              <span class="text-xl font-bold">{$t('status.loading_rendering')}</span>
-            </div>
-          </div>
-        {:else}
-          <Dropzone
-            containerClasses="absolute inset-0 w-full h-full"
-            accept=".pdf"
-            disableDefaultStyles
-            on:drop={handleFileDrop}
-            on:dragenter={() => (isDragging = true)}
-            on:dragleave={() => (isDragging = false)}
-          >
-            <DropzoneView
-              {isDragging}
-              hasInstance={!!pdfState.instance}
-            />
-          </Dropzone>
-        {/if}
-        {#if pdfState.instance}
-          <div class="relative z-10 h-full flex flex-col">
-            <PDFViewer
-              bind:pdfState
-              on:fileloaded={handleFileLoaded}
-              mode={isPreviewMode ? 'single' : 'grid'}
-              {tocStartPage}
-              {tocEndPage}
-              on:setstartpage={handleSetStartPage}
-              on:setendpage={handleSetEndPage}
-              {jumpToTocPage}
-              {addPhysicalTocPage}
-              hasPreview={!!previewPdfInstance}
-            />
-            <input
-              type="file"
-              class="hidden"
-              accept=".pdf"
-              bind:this={fileInputRef}
-              on:change={handleFileInputChange}
-            />
-            <PdfControls
-              {isPreviewLoading}
-              {isPreviewMode}
-              {originalPdfInstance}
-              doc={pdfState.doc}
-              on:triggerUpload={triggerFileInput}
-              on:togglePreview={togglePreviewMode}
-              on:export={exportPDF}
-            />
-          </div>
-        {/if}
-      </div>
+      <PreviewPanel
+        {isFileLoading}
+        {pdfState}
+        {originalPdfInstance}
+        {previewPdfInstance}
+        {isPreviewMode}
+        {isPreviewLoading}
+        {tocStartPage}
+        {tocEndPage}
+        {addPhysicalTocPage}
+        {jumpToTocPage}
+        bind:isDragging
+        on:fileselect={(e) => loadPdfFile(e.detail)}
+        on:viewerMessage={handleViewerMessage}
+        on:setstartpage={handleSetStartPage}
+        on:setendpage={handleSetEndPage}
+        on:togglePreview={togglePreviewMode}
+        on:export={exportPDF}
+      />
     </div>
   </div>
+
   <Footer />
 
   <AiLoadingModal
@@ -893,6 +659,7 @@
     {tocStartPage}
     {tocEndPage}
   />
+
   <OffsetModal
     bind:showOffsetModal
     bind:offsetPreviewPageNum
@@ -900,6 +667,7 @@
     totalPages={pdfState.totalPages}
     on:confirm={handleOffsetConfirm}
   />
+
   <HelpModal
     bind:showHelpModal
     {videoUrl}

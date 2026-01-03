@@ -316,7 +316,6 @@ export class PDFService {
     if (!pdf) return;
     const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
     if (!canvas) {
-      console.warn('PDF Canvas element not found');
       return;
     }
 

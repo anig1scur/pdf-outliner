@@ -80,7 +80,7 @@
           loop
           autoplay
           muted
-          class="w-full h-auto bg-black border-4 border-black shadow-[4px_4px_0px_rgba(0,0,0,1)]"
+          class="w-full h-auto rounded-md"
         ></video>
       </div>
     </div>
