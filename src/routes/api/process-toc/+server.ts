@@ -36,11 +36,13 @@ Follow these rules strictly:
     - **DO NOT CONVERT** Roman numerals to Arabic numbers (e.g., never change 'vii' to 7).
     - If you see 'vii', the output for that line should be NOTHING (skip it).
 3.  **ARABIC NUMERALS ONLY**: Only extract lines where the printed page number is a digit (0-9).
-4.  Mentally stitch images together if multiple are provided.
-5.  Analyze text and indentation to infer hierarchy (level 1, 2, etc.).
-6.  The output MUST be a valid JSON array ONLY, no markdown.
-    Format: [{"title": "String", "level": Number, "page": Number}]
-7.  If unusable, return [].
+4.  **PAGE NUMBER**: Even if the page is a number like 10, output it as a string "10".
+    If there are multiple pages (e.g., 10-15 or 10, 12), put the whole text in the string (e.g., "10-15").
+5.  Mentally stitch images together if multiple are provided.
+6.  Analyze text and indentation to infer hierarchy (level 1, 2, etc.).
+7.  The output MUST be a valid JSON array ONLY, no markdown.
+    Format: [{"title": "String", "level": Number, "page": String}]
+8.  If unusable, return [].
 `;
 
 const SYSTEM_PROMPT_TEXT = `
@@ -70,6 +72,37 @@ function getClientIp(request: Request): string {
 
 function randomChoice<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
+}
+
+interface TocItem {
+  title: string;
+  level: number;
+  page: number;
+}
+
+function normalizeToc(rawData: any[]): TocItem[] {
+  if (!Array.isArray(rawData)) return [];
+
+  return rawData
+      .map((item) => {
+        let cleanPage = 0;
+
+        if (typeof item.page === 'string') {
+          const match = item.page.match(/(\d+)/);
+          if (match) {
+            cleanPage = parseInt(match[0], 10);
+          }
+        } else if (typeof item.page === 'number') {
+          cleanPage = item.page;
+        }
+
+        return {
+          title: String(item.title || '').trim(),
+          level: typeof item.level === 'number' ? item.level : 1,
+          page: cleanPage
+        };
+      })
+      .filter(item => item.page > 0 && item.title.length > 0);
 }
 
 function determineProvider(request: Request, userProvider?: string): string {
@@ -204,6 +237,7 @@ export async function POST({request}) {
       }
     }
 
+    tocData = normalizeToc(tocData);
     return json(tocData);
 
   } catch (err: any) {
