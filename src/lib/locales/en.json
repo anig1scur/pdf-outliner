@@ -71,7 +71,8 @@
     "reset": "Reset zoom",
     "upload_new": "Upload a new PDF file",
     "switch_edit": "Switch to Edit Mode (Show Original PDF)",
-    "switch_preview": "Switch to Preview Mode (Show Generated PDF)"
+    "switch_preview": "Switch to Preview Mode (Show Generated PDF)",
+    "ai_format": "Use AI to format the ToC text, use it when you can find text instead of visual ToC"
   },
   "dropzone": {
     "drop_here": "Drop your PDF file here...",

@@ -75,52 +75,36 @@
   async function handleAiFormat() {
     if (!text.trim()) return;
 
-    const MAX_TEXT_SIZE = 128 * 1024; // 128KB
+    const MAX_TEXT_SIZE = 128 * 1024;
     const byteSize = new TextEncoder().encode(text).length;
 
     if (byteSize > MAX_TEXT_SIZE) {
-      const currentSizeKB = (byteSize / 1024).toFixed(2);
-      alert(`Text content is too large (${currentSizeKB}KB). The limit is 128KB.`);
-      return;
+      throw new Error(`Text content is too large. Limit is 128KB.`);
     }
 
     isProcessing = true;
-    try {
-      const response = await fetch('/api/process-toc', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          text: text,
-          apiKey: apiConfig.apiKey,
-          provider: apiConfig.provider,
-        }),
-      });
+    const response = await fetch('/api/process-toc', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        text: text,
+        apiKey: apiConfig.apiKey,
+        provider: apiConfig.provider,
+      }),
+    });
 
-      if (!response.ok) {
-        let errorMessage = 'AI processing failed';
-        try {
-          const errData = await response.json();
-          if (errData.message) errorMessage = errData.message;
-        } catch (e) {
-          /* ignore json parse error */
-        }
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || 'AI processing failed');
+    }
 
-        throw new Error(errorMessage);
-      }
+    const aiResult = await response.json();
+    isProcessing = false;
 
-      const aiResult = await response.json();
-
-      if (Array.isArray(aiResult) && aiResult.length > 0) {
-        const newItems = buildTree(aiResult);
-        $tocItems = newItems;
-      } else {
-        throw new Error('AI could not parse any ToC structure from the text.');
-      }
-    } catch (error) {
-      console.error('AI Format Error:', error);
-      alert(error.message || $t('error.ai_format_failed') || 'AI formatting failed. Please try again.');
-    } finally {
-      isProcessing = false;
+    if (Array.isArray(aiResult) && aiResult.length > 0) {
+      $tocItems = buildTree(aiResult);
+    } else {
+      throw new Error('AI could not parse any ToC structure.');
     }
   }
 
@@ -272,7 +256,7 @@
     <div class="absolute bottom-3 right-3">
       <button
         on:click={handleAiFormat}
-        disabled={isProcessing || !text.trim() || text.startsWith('1 ')}
+        disabled={isProcessing || !text.trim()}
         class="flex items-center gap-1.5 bg-gradient-to-br from-blue-300 to-pink-600 text-white px-3 py-1.5 rounded-md shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
         title={$t('tooltip.ai_format') || 'Auto-format with AI'}
       >

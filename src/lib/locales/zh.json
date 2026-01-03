@@ -67,7 +67,8 @@
     "reset": "重置缩放",
     "upload_new": "上传新的 PDF 文件",
     "switch_edit": "切换到编辑模式（显示原始 PDF）",
-    "switch_preview": "切换到预览模式（显示生成的 PDF）"
+    "switch_preview": "切换到预览模式（显示生成的 PDF）",
+    "ai_format": "智能格式化目录文本，当只能找到文本内容时使用"
   },
   "dropzone": {
     "drop_here": "将 PDF 文件拖放到此处...",

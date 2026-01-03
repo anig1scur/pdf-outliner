@@ -691,6 +691,28 @@
   function handleApiConfigSave() {
     toastProps = {show: true, message: 'API Settings Saved!', type: 'success'};
   }
+
+  onMount(() => {
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const msg = event.reason?.message || event.reason || 'Unknown Async Error';
+      toastProps = { show: true, message: msg, type: 'error' };
+      event.preventDefault(); 
+    };
+
+    const handleSyncError = (event: ErrorEvent) => {
+      const msg = event.message || 'Unknown Error';
+      toastProps = { show: true, message: msg, type: 'error' };
+    };
+
+    window.addEventListener('unhandledrejection', handleRejection);
+    window.addEventListener('error', handleSyncError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleRejection);
+      window.removeEventListener('error', handleSyncError);
+    };
+  });
+
 </script>
 
 <DownloadBanner />
