@@ -89,7 +89,7 @@ function determineProvider(request: Request, userProvider?: string): string {
       request.headers.get('x-country-code');
 
   if (country === 'CN') {
-    return randomChoice(['qwen', 'zhipu']);
+    return randomChoice(['qwen', 'doubao', 'zhipu']);
   }
 
   return 'gemini';
@@ -171,6 +171,9 @@ export async function POST({request}) {
           await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
     } else if (currentProvider === 'zhipu') {
       jsonText = await processWithZhipu(
+          isTextMode ? text : images, apiKey, isTextMode);
+    } else if (currentProvider === 'doubao') {
+      jsonText = await processWithDoubao(
           isTextMode ? text : images, apiKey, isTextMode);
     } else {
       jsonText = await processWithGemini(
@@ -359,5 +362,61 @@ async function processWithZhipu(
       }
       throw err;
     }
+  }
+}
+
+async function processWithDoubao(
+    input: string[]|string, userKey?: string,
+    isTextMode: boolean = false): Promise<string> {
+  const apiKey = userKey || env.DOUBAO_API_KEY;
+  if (!apiKey) throw new Error('[Doubao] API Key is missing.');
+
+  const modelName =
+      isTextMode ? env.DOUBAO_ENDPOINT_ID_TEXT : env.DOUBAO_ENDPOINT_ID_VISION;
+
+  if (!modelName) {
+    throw new Error(`[Doubao] Endpoint ID missing for ${
+        isTextMode ? 'TEXT' : 'VISION'} mode. Please check .env`);
+  }
+
+  const client = new OpenAI({
+    apiKey: apiKey,
+    baseURL: 'https://ark.cn-beijing.volces.com/api/v3',
+  });
+
+  if (isTextMode) {
+    const response = await client.chat.completions.create({
+      model: modelName,
+      messages: [
+        {role: 'system', content: SYSTEM_PROMPT_TEXT},
+        {role: 'user', content: input as string}
+      ]
+    });
+    return response.choices[0].message.content || '[]';
+  } else {
+    const images = input as string[];
+    const contentParts: any[] = [{
+      type: 'text',
+      text:
+          'Analyze these Table of Contents images and return the structured JSON array.'
+    }];
+
+    images.forEach((img) => {
+      let imageUrl = img;
+      if (!img.startsWith('data:image/')) {
+        imageUrl = `data:image/png;base64,${img}`;
+      }
+      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
+    });
+
+    const response = await client.chat.completions.create({
+      model: modelName,
+      messages: [
+        {role: 'system', content: SYSTEM_PROMPT_VISION},
+        {role: 'user', content: contentParts}
+      ]
+    });
+
+    return response.choices[0].message.content || '[]';
   }
 }

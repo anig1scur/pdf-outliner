@@ -89,6 +89,7 @@
             <option value="">Auto</option>
             <option value="gemini">Gemini</option>
             <option value="qwen">Qwen</option>
+            <option value="doubao">Doubao</option>
             <option value="zhipu">Zhipu</option>
           </select>
         </div>
