@@ -38,7 +38,7 @@
 
     setTimeout(() => {
       isExpanded = false;
-    }, 1000);
+    }, 600);
   }
 </script>
 

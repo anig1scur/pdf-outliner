@@ -101,12 +101,8 @@ export class PDFService {
   }
 
   async createTocPage(
-      sourceDoc: PDFDocument, items: TocItem[], addPhysicalPage: boolean = true,
-      insertAtPage: number = 2):
+      sourceDoc: PDFDocument, items: TocItem[], insertAtPage: number = 2):
       Promise<{newDoc: PDFDocument; tocPageCount: number}> {
-    if (!addPhysicalPage) {
-      return {newDoc: sourceDoc, tocPageCount: 0};
-    }
     await this.loadFonts();
 
     const newDoc = await PDFDocument.create();
@@ -127,8 +123,10 @@ export class PDFService {
       copiedPages.forEach((page) => newDoc.addPage(page));
     }
 
-    const [firstPage] = sourceDoc.getPages();
-    const {width, height} = firstPage.getSize();
+    const allSourcePages = sourceDoc.getPages();
+    const sizeRefPage =
+        allSourcePages.length > 1 ? allSourcePages[1] : allSourcePages[0];
+    const {width, height} = sizeRefPage.getSize();
     const tocPage = newDoc.addPage([width, height]);
 
     let yOffset = height * TOC_LAYOUT.TITLE.Y_START_RATIO;
@@ -199,7 +197,6 @@ export class PDFService {
 
     return {newDoc, tocPageCount};
   }
-
   private async drawTocItems(
       currentPage: PDFPage, items: TocItem[], level: number, startY: number,
       ctx: TocRenderContext, options: {prefix?: string} = {}) {
@@ -407,6 +404,6 @@ export class PDFService {
         })
         .promise;
 
-    return canvas.toDataURL('image/jpeg', 0.8);
+    return canvas.toDataURL('image/jpeg', 0.9);
   }
 }

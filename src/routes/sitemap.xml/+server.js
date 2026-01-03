@@ -1,6 +1,6 @@
 // src/routes/sitemap.xml/+server.js
 
-const DOMAIN = 'https://tocify.vercel.app/';
+const DOMAIN = 'https://tocify.aeriszhu.com/';
 
 export async function GET () {
   const headers = {

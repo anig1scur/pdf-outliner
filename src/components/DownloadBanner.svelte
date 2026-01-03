@@ -32,6 +32,12 @@
     }, 30000);
   }
 
+  function closeCompletely() {
+    isVisible = false;
+    clearTimeout(autoCloseTimer);
+    clearTimeout(hideTimer);
+  }
+
   function toggle() {
     clearTimeout(autoCloseTimer);
 
@@ -70,7 +76,7 @@
         {$t('client.title', {default: 'Run in Client App'})}
       </h3>
       <button
-        on:click={toggle}
+        on:click={closeCompletely}
         class="hover:bg-black hover:text-white transition-colors border-2 border-transparent hover:border-gray-800 p-0.5 rounded-lg"
       >
         <X
@@ -182,7 +188,7 @@
       />
     {:else}
       <span class="uppercase tracking-wide">
-        {$t('client.btn_close', {default: 'Close'})}
+        {$t('client.btn_fold', {default: 'Fold'})}
       </span>
     {/if}
   </button>

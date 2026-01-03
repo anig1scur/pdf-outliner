@@ -236,13 +236,15 @@
 
     try {
       const currentPageBackup = pdfState.currentPage;
-      const {newDoc, tocPageCount: count} = await $pdfService.createTocPage(
-        pdfState.doc,
-        $tocItems,
-        addPhysicalTocPage,
-        config.insertAtPage
-      );
-      tocPageCount = count;
+      let newDoc = pdfState.doc;
+      let tocPageCount = 0;
+
+      if (addPhysicalTocPage) {
+        const res = await $pdfService.createTocPage(pdfState.doc, $tocItems, config.insertAtPage);
+        newDoc = res.newDoc;
+        tocPageCount = res.tocPageCount;
+      }
+
       setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
       const pdfBytes = await newDoc.save({
         useObjectStreams: false,
@@ -552,7 +554,8 @@
         } else if (response.status === 413) {
           friendlyMessage = 'Request too large. The images are too high resolution.';
         } else if (response.status === 429) {
-          friendlyMessage = 'Daily limit exceeded. Please try again tomorrow or download the client or deploy your own server.';
+          friendlyMessage =
+            'Daily limit exceeded. Please try again tomorrow or download the client or deploy your own server.';
         }
         throw new Error(friendlyMessage);
       }
@@ -892,7 +895,7 @@
   />
   <link
     rel="canonical"
-    href="https://tocify.vercel.app/"
+    href="https://tocify.aeriszhu.com/"
   />
   <meta
     name="keywords"
@@ -916,12 +919,16 @@
   />
   <link
     rel="icon"
-    href="/favicon.svg"
-    type="image/svg"
+    href="/favicon.ico"
   />
   <link
     rel="icon"
+    type="image/svg+xml"
+    href="/favicon.svg"
+  />
+  <link
+    rel="icon"
+    type="image/png"
     href="/favicon.png"
-    sizes="any"
   />
 </svelte:head>

@@ -12,7 +12,6 @@ const LIMIT_CONFIG = {
   MAX_TEXT_SIZE_KB: 128
 };
 
-
 const redis = new Redis({
   url: env.UPSTASH_REDIS_REST_URL,
   token: env.UPSTASH_REDIS_REST_TOKEN,
@@ -20,13 +19,11 @@ const redis = new Redis({
 
 const ratelimit = new Ratelimit({
   redis: redis,
-  limiter: Ratelimit.slidingWindow(LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '24 h'),
+  limiter: Ratelimit.fixedWindow(LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '24 h'),
   analytics: true,
   prefix: '@tocify/ratelimit',
 });
 
-
-const rateLimitStore = new Map<string, {count: number, date: string}>();
 
 const SYSTEM_PROMPT_VISION = `
 You are an expert PDF Table of Contents (ToC) parser.
@@ -108,8 +105,11 @@ export async function POST({request}) {
 
   const clientIp = getClientIp(request);
   if (clientIp !== 'unknown') {
-    const {success, limit, remaining, reset} = await ratelimit.limit(clientIp);
+    const today = new Date().toISOString().split('T')[0];
 
+    const identifier = `${clientIp}:${today}`;
+
+    const {success, limit, remaining} = await ratelimit.limit(identifier);
     if (!success) {
       return new Response(
           JSON.stringify({
@@ -313,12 +313,11 @@ async function processWithZhipu(
   const client = new OpenAI(
       {apiKey: apiKey, baseURL: 'https://open.bigmodel.cn/api/paas/v4/'});
 
-  const VISION_MODEL = 'glm-4v-flash';
 
   if (isTextMode) {
     const response = await client.chat.completions.create({
       model: 'glm-4-flash',
-      // max_tokens: 4095,
+      max_completion_tokens: 4096,
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_TEXT},
         {role: 'user', content: input as string}
@@ -344,8 +343,8 @@ async function processWithZhipu(
     try {
       const response = await client.chat.completions.create({
         model: 'glm-4v-flash',
-        // max_tokens: 4095,
-        temperature: 0.1,
+        // 这玩意没用
+        max_completion_tokens: 4096,
         messages: [
           {role: 'system', content: SYSTEM_PROMPT_VISION},
           {role: 'user', content: contentParts}
@@ -387,6 +386,7 @@ async function processWithDoubao(
   if (isTextMode) {
     const response = await client.chat.completions.create({
       model: modelName,
+      max_completion_tokens: 4096,
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_TEXT},
         {role: 'user', content: input as string}
@@ -411,6 +411,7 @@ async function processWithDoubao(
 
     const response = await client.chat.completions.create({
       model: modelName,
+      max_completion_tokens: 4096,
       messages: [
         {role: 'system', content: SYSTEM_PROMPT_VISION},
         {role: 'user', content: contentParts}
