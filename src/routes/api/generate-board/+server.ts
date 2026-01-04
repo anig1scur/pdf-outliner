@@ -1,141 +1,152 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { env } from '$env/dynamic/private';
+import {env} from '$env/dynamic/private';
+import {GoogleGenerativeAI} from '@google/generative-ai';
+import {json} from '@sveltejs/kit';
 
 const LAYOUT_CONFIG = {
-  colWidth: 200,   
-  rowHeight: 140,  
-  padding: 60,
-  // 移除 clusterGap，因为不再按行分组
+  colWidth: 220,
+  rowHeight: 160,
+  padding: 80,
+  jitter: 40
 };
 
-// 升级 Prompt：更严厉的“打散”指令
 const SYSTEM_PROMPT = `
-Role: You are an expert Detective connecting clues.
-Task: Create a "Conspiracy Wall" style knowledge graph from the ToC.
+Role: You are an expert Investigative Journalist and Domain Expert. 
+Task: Create a "Conspiracy Wall" knowledge graph based on the provided Table of Contents (ToC).
+
+**CORE OBJECTIVE:**
+Don't just copy the ToC. **Read between the lines.** Use your internal knowledge base to identify *implicit connections*, *underlying themes*, or *prerequisite concepts* that link these chapters together.
 
 **CRITICAL RULES:**
-1. **EXPLODE THE HIERARCHY**: 
-   - DO NOT summarize a whole Part/Chapter into one node.
-   - You MUST extract specific sub-concepts (Level 2/Level 3 items).
-   - **TARGET: Generate at least 12-20 nodes.** If the input is short, break it down further.
-   
-2. **Nodes**:
-   - Label: Keep it short (2-4 words).
-   - Cluster: Group them by theme (e.g., "The Crime", "The Motive", "The Evidence").
 
-3. **Edges**:
-   - Connect everything. No orphans.
-   - Use 'type': 'CAUSES' | 'REQUIRES' | 'CONTRASTS' | 'LINKS'.
+1.  **LANGUAGE CONSISTENCY (IMPORTANT):**
+    - Detect the dominant language of the provided ToC (e.g., Chinese, English, Spanish).
+    - **ALL** output specific fields (label, cluster, edge label) **MUST** be in that same language.
 
-Output JSON:
+2.  **CONNECTING THE DOTS (The "Detective" Work):**
+    - **Explode** high-level chapters into specific, bite-sized concepts.
+    - **Bridge Nodes**: If Chapter A and Chapter B are related via a concept not explicitly written (e.g., historical context, a mathematical theorem), **CREATE a new node** for that concept to bridge them.
+    - **Target**: Generate 10-18 nodes. 
+
+3.  **CLUSTERING:**
+    - Do not use generic names like "Chapter 1".
+    - Use thematic cluster names (e.g., "The Core Theory", "The Evidence", "The Controversy").
+
+4.  **EDGES (RELATIONSHIPS):**
+    - Avoid generic "relates to". Use specific active verbs:
+    - 'CAUSES', 'PRECEDES', 'SOLVES', 'CONTRADICTS', 'ENABLES', 'REQUIRES'.
+
+Output JSON format:
 {
-  "nodes": [ { "id": "string", "label": "string", "cluster": "string" } ], 
-  "edges": [ { "source": "id", "target": "id", "type": "string", "label": "string" } ]
+  "nodes": [ { "id": "string", "label": "string (Short, <6 words)", "cluster": "string" } ], 
+  "edges": [ { "source": "id", "target": "id", "type": "string", "label": "string (Short relationship desc)" } ]
 }
 `;
 
 export async function POST({request}) {
   try {
-    const { tocItems, apiKey } = await request.json();
+    const {tocItems, apiKey} = await request.json();
 
     if (!tocItems || !Array.isArray(tocItems)) {
-      return new Response(JSON.stringify({ error: 'Invalid tocItems' }), { status: 400 });
+      return json({error: 'Invalid tocItems'}, {status: 400});
     }
 
     const googleApiKey = apiKey || env.GOOGLE_API_KEY;
-    const tocText = tocItems.map((item) => `${item.id}: ${item.title}`).join('\n');
-    const fullPrompt = `${SYSTEM_PROMPT}\n\nToC to Analyze:\n${tocText}`;
+    if (!googleApiKey) {
+      return json({error: 'No API Key provided'}, {status: 401});
+    }
+
+    // save token
+    const tocText =
+        tocItems.map((item) => `[ID:${item.id}] ${item.title}`).join('\n');
+    const fullPrompt = `${SYSTEM_PROMPT}\n\nToC Data:\n${tocText}`;
 
     const genAI = new GoogleGenerativeAI(googleApiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({model: 'gemini-2.5-flash'});
 
     const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
-      generationConfig: { responseMimeType: "application/json" } 
+      contents: [{role: 'user', parts: [{text: fullPrompt}]}],
+      generationConfig: {responseMimeType: 'application/json'}
     });
-    
+
     const responseText = result.response.text();
     const cleanedJson = responseText.replace(/```json|```/g, '').trim();
+
     let aiData;
-    
     try {
       aiData = JSON.parse(cleanedJson);
     } catch (e) {
-      throw new Error("AI returned invalid JSON structure");
+      console.error('JSON Parse Error', responseText);
+      throw new Error('AI returned invalid JSON structure');
     }
 
-    // --- 数据恢复逻辑 ---
-    // 如果 AI 返回的节点太少 (< 5)，强制把原始 ToC 的前 15 个项加进去
-    let finalGraphNodes = aiData.nodes || [];
-    
-    if (finalGraphNodes.length < 5) {
-      const fallbackNodes = tocItems.slice(0, 15).map(item => ({
-        id: String(item.id),
-        label: item.title,
-        cluster: 'Evidence',
-        page: item.page
-      }));
-      // 合并并去重
-      const existingIds = new Set(finalGraphNodes.map(n => String(n.id)));
-      fallbackNodes.forEach(n => {
-        if (!existingIds.has(n.id)) finalGraphNodes.push(n);
-      });
-    }
-
-    // 补全页码 (Data Merging)
-    finalGraphNodes = finalGraphNodes.map((aiNode: any) => {
+    let finalGraphNodes = aiData.nodes.map((aiNode) => {
       let match = tocItems.find((t) => String(t.id) === String(aiNode.id));
       if (!match && aiNode.label) {
-        match = tocItems.find((t) => t.title.toLowerCase().includes(aiNode.label.toLowerCase()));
+        match = tocItems.find(
+            (t) => t.title.toLowerCase().includes(aiNode.label.toLowerCase()));
       }
       return {
         id: aiNode.id,
         title: aiNode.label || aiNode.id,
+        isInferred: !match,
         page: match ? match.page : null,
-        cluster: aiNode.cluster || 'default',
-        x: 0, y: 0 
+        cluster: aiNode.cluster || 'Unclassified',
+        w: LAYOUT_CONFIG.colWidth,
+        h: LAYOUT_CONFIG.rowHeight
       };
     });
 
-    // ==========================================
-    // 核心修复：Unified Grid Layout (全局网格布局)
-    // ==========================================
-    
-    // 1. 打乱数组顺序 (Shuffle)，让不同 Cluster 的节点混合在一起，看起来更像“乱序的线索墙”
-    // 这样相同颜色的便利贴不会死板地聚在一起，而是散落在墙上
-    for (let i = finalGraphNodes.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [finalGraphNodes[i], finalGraphNodes[j]] = [finalGraphNodes[j], finalGraphNodes[i]];
+    const nodeLevels = new Map();
+    finalGraphNodes.forEach(n => nodeLevels.set(n.id, 0));
+
+    const edges = aiData.edges || [];
+    const MAX_ITERATIONS = 5;
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      let changed = false;
+      edges.forEach(edge => {
+        const srcLevel = nodeLevels.get(edge.source) || 0;
+        const tgtLevel = nodeLevels.get(edge.target) || 0;
+
+        if (srcLevel >= tgtLevel) {
+          nodeLevels.set(edge.target, srcLevel + 1);
+          changed = true;
+        }
+      });
+      if (!changed) break;
     }
 
-    const totalCount = finalGraphNodes.length;
-    // 强制计算一个近似正方形的网格列数
-    // 例如 12个节点 -> sqrt(12)≈3.4 -> 4列 -> 3行
-    const TARGET_COLS = Math.ceil(Math.sqrt(totalCount)); 
-    
-    finalGraphNodes.forEach((node: any, idx: number) => {
-      const col = idx % TARGET_COLS;
-      const row = Math.floor(idx / TARGET_COLS);
-      
-      // 基础网格坐标
-      let gridX = LAYOUT_CONFIG.padding + col * LAYOUT_CONFIG.colWidth;
-      let gridY = LAYOUT_CONFIG.padding + row * LAYOUT_CONFIG.rowHeight;
-
-      // 增加显著的随机偏移 (Jitter)，打破死板的网格感
-      // offset 范围在 -30 到 +30 之间
-      const randomOffsetX = (Math.random() - 0.5) * 60; 
-      const randomOffsetY = (Math.random() - 0.5) * 60;
-
-      node.x = gridX + randomOffsetX;
-      node.y = gridY + randomOffsetY;
+    const levels = [];
+    finalGraphNodes.forEach(node => {
+      const lvl = nodeLevels.get(node.id);
+      if (!levels[lvl]) levels[lvl] = [];
+      levels[lvl].push(node);
     });
 
-    return new Response(JSON.stringify({
-      nodes: finalGraphNodes,
-      edges: aiData.edges || []
-    }), { status: 200 });
+    levels.forEach((levelNodes, levelIndex) => {
+      if (!levelNodes) return;
 
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      const rowWidth = levelNodes.length * LAYOUT_CONFIG.colWidth;
+      const startX = -rowWidth / 2;
+
+      levelNodes.forEach((node, idx) => {
+        let gridX = startX + (idx * LAYOUT_CONFIG.colWidth) + 400;
+        let gridY = LAYOUT_CONFIG.padding +
+            (levelIndex * (LAYOUT_CONFIG.rowHeight + 40));
+
+        const jitter = LAYOUT_CONFIG.jitter;
+        const randomOffsetX = (Math.random() - 0.5) * jitter * 2;
+        const randomOffsetY = (Math.random() - 0.5) * jitter * 1.5;
+
+        node.x = Math.floor(gridX + randomOffsetX);
+        node.y = Math.floor(gridY + randomOffsetY);
+      });
+    });
+
+    return json({nodes: finalGraphNodes, edges: aiData.edges || []});
+
+  } catch (error) {
+    console.error(error);
+    return json({error: error.message}, {status: 500});
   }
 }
