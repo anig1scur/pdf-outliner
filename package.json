@@ -36,6 +36,7 @@
 		"openai": "^6.15.0",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^4.10.38",
+		"roughjs": "^4.6.6",
 		"short-unique-id": "^5.2.0",
 		"svelte-dnd-action": "^0.9.68",
 		"svelte-file-dropzone": "^2.0.9",
