@@ -1,8 +1,7 @@
 <script lang="ts">
   import {createEventDispatcher} from 'svelte';
   import {slide} from 'svelte/transition';
-  import {Eye, EyeOff} from 'lucide-svelte';
-  import { t } from 'svelte-i18n';
+  import {t} from 'svelte-i18n';
   import type {TocConfig} from '../stores';
 
   export let isTocConfigExpanded: boolean;
@@ -21,15 +20,22 @@
   <div class="flex justify-between items-center">
     <h2>{$t('settings.title')}</h2>
     <button
-      class="w-6 h-6 flex items-center justify-center"
+      class="w-6 h-6 flex items-center justify-center transition-transform duration-200"
       on:click={() => dispatch('toggleExpand')}
-      aria-label={$t('settings.toggle_expand')} 
+      aria-label={$t('settings.toggle_expand')}
+      class:rotate-180={isTocConfigExpanded}
     >
-      {#if isTocConfigExpanded}
-        <Eye class="text-gray-700" />
-      {:else}
-        <EyeOff class="text-gray-500" />
-      {/if}
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg
+      >
     </button>
   </div>
   {#if isTocConfigExpanded}

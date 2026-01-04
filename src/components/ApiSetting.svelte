@@ -82,7 +82,7 @@
           >
           <select
             id="llm_provider"
-            class="w-full bg-white outline-none  text-sm"
+            class="w-full bg-white outline-none text-sm"
             bind:value={config.provider}
             on:change={() => (isSaved = false)}
           >
@@ -105,7 +105,7 @@
           <input
             id="api_key"
             type="password"
-            class="w-full outline-none  text-sm"
+            class="w-full outline-none text-sm"
             placeholder="paste your API key here"
             bind:value={config.apiKey}
             on:input={() => (isSaved = false)}

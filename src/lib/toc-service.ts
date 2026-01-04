@@ -66,10 +66,10 @@ export async function generateToc(
           'The selected pages don\'t look like a ToC. Please try adjusting the page range.';
     } else if (response.status === 413) {
       friendlyMessage =
-          'Request too large. The images are too high resolution.';
+          'Request too large. Please reduce the page range or lower the resolution.';
     } else if (response.status === 429) {
       friendlyMessage =
-          'Daily limit exceeded. Please try again tomorrow or download the client.';
+          'Daily limit exceeded. Please try again tomorrow or download the client or deploy service with your own API key.';
     }
     throw new Error(friendlyMessage);
   }

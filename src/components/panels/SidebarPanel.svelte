@@ -8,6 +8,7 @@
   import TocSettings from '../TocSetting.svelte';
   import AiPageSelector from '../PageSelector.svelte';
   import TocEditor from '../TocEditor.svelte';
+  import {Sparkles} from 'lucide-svelte';
 
   export let pdfState: any;
   export let originalPdfInstance: any;
@@ -89,7 +90,13 @@
     {#if isAiLoading}
       <span>{$t('btn.generating')}</span>
     {:else}
-      <span>✨ {$t('btn.generate_toc_ai')}</span>
+      <span>
+        <Sparkles
+          size={16}
+          class="inline-block mr-1"
+        />
+        {$t('btn.generate_toc_ai')}</span
+      >
     {/if}
   </button>
 

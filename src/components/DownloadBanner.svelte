@@ -1,7 +1,7 @@
 <script lang="ts">
   import {onMount} from 'svelte';
   import {t} from 'svelte-i18n';
-  import {X, Download, Terminal, ChevronDown, Bug} from 'lucide-svelte';
+  import {X, Download, Terminal, ChevronDown, Bug, EyeOff} from 'lucide-svelte';
 
   let isOpen = false;
   let copied = false;
@@ -12,7 +12,16 @@
 
   const macCommand = 'sudo xattr -r -d com.apple.quarantine /Applications/Tocify.app';
 
+  const STORAGE_KEY = 'tocify_client_promo_hidden_until';
+  const HIDE_DAYS = 7;
+
   onMount(() => {
+    const hiddenUntil = localStorage.getItem(STORAGE_KEY);
+    if (hiddenUntil && Date.now() < parseInt(hiddenUntil)) {
+      isVisible = false;
+      return;
+    }
+
     setTimeout(() => {
       isOpen = true;
     }, 500);
@@ -36,6 +45,12 @@
     isVisible = false;
     clearTimeout(autoCloseTimer);
     clearTimeout(hideTimer);
+  }
+
+  function dismissForWeek() {
+    const expirationDate = Date.now() + HIDE_DAYS * 24 * 60 * 60 * 1000;
+    localStorage.setItem(STORAGE_KEY, expirationDate.toString());
+    closeCompletely();
   }
 
   function toggle() {
@@ -65,11 +80,11 @@
   class="fixed top-0 right-4 z-[100] flex flex-col items-end transition-transform duration-300 ease-spring"
   class:translate-y-0={isVisible && isOpen}
   class:-translate-y-[calc(100%-28px)]={isVisible && !isOpen}
-  class:md:-translate-y-[calc(100%-48px)]={isVisible && !isOpen}
+  class:md:-translate-y-[calc(100%-38px)]={isVisible && !isOpen}
   class:-translate-y-[calc(100%+5px)]={!isVisible}
 >
   <div
-    class="bg-white border-2 border-gray-800 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] w-[320px] p-5 flex flex-col gap-5 rounded-b-2xl"
+    class="bg-white border-2 border-gray-800 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] w-[320px] p-5 flex flex-col gap-4 rounded-b-2xl"
   >
     <div class="flex items-center justify-between border-gray-800 pb-2">
       <h3 class="font-bold text-black text-lg flex items-center gap-2 uppercase tracking-tight">
@@ -153,7 +168,7 @@
       </div>
     </div>
 
-    <div class="flex justify-center">
+    <div class="flex justify-between items-center">
       <a
         href="https://github.com/anig1scur/tocify/issues"
         target="_blank"
@@ -163,14 +178,26 @@
           size={12}
           strokeWidth={2.5}
         />
-        {$t('client.report_issue', {default: 'Report an Issue'})}
+        {$t('client.report_issue', {default: 'Report Issue'})}
       </a>
+
+      <button
+        on:click={dismissForWeek}
+        class="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-400 hover:text-red-500 transition-colors"
+        title="Don't show this for 7 days"
+      >
+        <EyeOff
+          size={12}
+          strokeWidth={2.5}
+        />
+        {$t('client.snooze', {default: 'Hide for 7 days'})}
+      </button>
     </div>
   </div>
 
   <button
     on:click={toggle}
-    class="mr-4 -mt-[2px] h-12 px-5 bg-white border-x-2 border-b-2 border-gray-800 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3 text-sm font-bold text-black hover:bg-amber-300 transition-colors cursor-pointer z-10 rounded-b-xl"
+    class="mr-4 -mt-[2px] h-10 px-5 bg-white border-x-2 border-b-2 border-gray-800 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3 text-sm font-bold text-black hover:bg-amber-300 transition-colors cursor-pointer z-10 rounded-b-xl"
   >
     {#if !isOpen}
       <img
