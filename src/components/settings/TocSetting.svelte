@@ -2,7 +2,9 @@
   import {createEventDispatcher} from 'svelte';
   import {slide} from 'svelte/transition';
   import {t} from 'svelte-i18n';
-  import type {TocConfig} from '../stores';
+  import type {TocConfig} from '../../stores';
+
+  import PrefixSettings from './PrefixSetting.svelte';
 
   export let isTocConfigExpanded: boolean;
   export let addPhysicalTocPage: boolean;
@@ -13,6 +15,10 @@
 
   function updateField(path: string, value: any) {
     dispatch('updateField', {path, value});
+  }
+
+  function handlePrefixChange(e: CustomEvent) {
+     updateField('prefixSettings', e.detail);
   }
 </script>
 
@@ -38,6 +44,7 @@
       >
     </button>
   </div>
+
   {#if isTocConfigExpanded}
     <div
       class="mt-3"
@@ -51,6 +58,7 @@
         />
         <label for="add_physical_page">{$t('settings.add_physical_page')}</label>
       </div>
+
       {#if addPhysicalTocPage}
         <div class="border-black border-2 rounded-md my-2 p-2 w-full">
           <div class="flex gap-2 items-center">
@@ -75,18 +83,10 @@
               {$t('btn.go')}
             </button>
           </div>
-          <div class="text-xs text-gray-500 mt-1">{$t('settings.insert_at_page_hint')}</div>
+          <!-- <div class="text-xs text-gray-500 mt-1">{$t('settings.insert_at_page_hint')}</div> -->
         </div>
       {/if}
-      <div class="border-black border-2 rounded-md my-1 p-2 w-full">
-        <input
-          checked={config.showNumberedList}
-          type="checkbox"
-          id="show_numbered_list"
-          on:change={(e) => updateField('showNumberedList', e.target.checked)}
-        />
-        <label for="show_numbered_list">{$t('settings.with_numbered_list')}</label>
-      </div>
+
       <div class="border-black border-2 rounded-md my-2 p-2 w-full">
         <div class="flex gap-2 items-center">
           <label
@@ -103,9 +103,17 @@
         </div>
         <div class="text-xs text-gray-500 mt-1">{$t('settings.offset_hint')}</div>
       </div>
+
+      <div class="border-black border-2 rounded-md my-2 p-2 w-full bg-gray-50">
+        <PrefixSettings
+        settings={config.prefixSettings}
+        on:change={handlePrefixChange}
+      />
+      </div>
       <div class="flex flex-col md:flex-row gap-4">
         <div class="w-full md:w-1/2">
-          <h3 class="my-4 font-bold">{$t('settings.first_level')}</h3>
+          <h3 class="my-3 font-bold">{$t('settings.first_level')}</h3>
+
           <div class="border-black border-2 rounded-md my-3 p-2 w-full">
             <label for="first_level_font_size">{$t('settings.font_size')}</label>
             <input
@@ -148,8 +156,10 @@
             />
           </div>
         </div>
+
         <div class="w-full md:w-1/2">
-          <h3 class="my-4 font-bold">{$t('settings.other_levels')}</h3>
+          <h3 class="my-3 font-bold">{$t('settings.other_levels')}</h3>
+
           <div class="border-black border-2 rounded-md my-3 p-2 w-full">
             <label for="other_levels_font_size">{$t('settings.font_size')}</label>
             <input

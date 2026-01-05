@@ -1,14 +1,15 @@
 import {browser} from '$app/environment';
 import {PDFService} from '$lib/pdf-service';
+import {DEFAULT_PREFIX_CONFIG, type LevelConfig} from '$lib/prefix-service';
 import {get, writable} from 'svelte/store';
 
 export type StyleConfig = {
   fontSize: number; dotLeader: string; color: string; lineSpacing: string;
 };
 export type TocConfig = {
-  insertAtPage: number; showNumberedList: Boolean; pageOffset: number;
-  firstLevel: StyleConfig;
+  insertAtPage: number; pageOffset: number; firstLevel: StyleConfig;
   otherLevels: StyleConfig;
+  prefixSettings: {enabled: boolean; configs: LevelConfig[];};
 };
 
 type TocSession = {
@@ -21,7 +22,10 @@ export const tocItems = writable<any[]>([]);
 export const curFileFingerprint = writable<string>('');
 export const pdfService = writable(new PDFService());
 export const tocConfig = writable({
-  showNumberedList: true,
+  prefixSettings: {
+    enabled: false,
+    configs: DEFAULT_PREFIX_CONFIG,
+  },
   pageOffset: 0,
   firstLevel: {
     fontSize: 11,

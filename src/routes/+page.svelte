@@ -13,6 +13,7 @@
   import {debounce} from '../lib';
   import {buildTree, convertPdfJsOutlineToTocItems, setNestedValue} from '$lib/utils';
   import {generateToc} from '$lib/toc-service';
+  import {applyCustomPrefix, DEFAULT_PREFIX_CONFIG, type LevelConfig} from '$lib/prefix-service';
 
   import Toast from '../components/Toast.svelte';
   import Footer from '../components/Footer.svelte';
@@ -29,7 +30,6 @@
 
   let pdfjs: typeof PdfjsLibTypes | null = null;
   let PdfLib: typeof import('pdf-lib') | null = null;
-  let fileInputRef: HTMLInputElement;
 
   let isDragging = false;
   let isFileLoading = false;
@@ -90,7 +90,12 @@
     });
   });
 
-  tocConfig.subscribe((value) => (config = value));
+  tocConfig.subscribe((value) => {
+    config = value;
+    if (isPreviewMode && !isFileLoading) {
+      debouncedUpdatePDF();
+    }
+  });
 
   $: {
     if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
@@ -197,17 +202,19 @@
     }
 
     try {
+      const settings = config.prefixSettings;
+      const tocItems_ = settings.enabled ? applyCustomPrefix($tocItems, settings.configs) : $tocItems;
       const currentPageBackup = pdfState.currentPage;
       let newDoc = pdfState.doc;
       let tocPageCount = 0;
 
       if (addPhysicalTocPage) {
-        const res = await $pdfService.createTocPage(pdfState.doc, $tocItems, config.insertAtPage);
+        const res = await $pdfService.createTocPage(pdfState.doc, tocItems_, config.insertAtPage);
         newDoc = res.newDoc;
         tocPageCount = res.tocPageCount;
       }
 
-      setOutline(newDoc, $tocItems, config.pageOffset, tocPageCount);
+      setOutline(newDoc, tocItems_, config.pageOffset, tocPageCount);
       const pdfBytes = await newDoc.save({
         useObjectStreams: false,
       });
@@ -549,6 +556,16 @@
     toastProps = {show: true, message: event.detail.message, type: event.detail.type};
   };
 
+  let prefixConfigs = DEFAULT_PREFIX_CONFIG;
+  let prefixEnabled = false;
+
+  const handlePrefixChange = (e: CustomEvent) => {
+    if (e.detail.configs) prefixConfigs = e.detail.configs;
+    if (e.detail.enabled !== undefined) prefixEnabled = e.detail.enabled;
+
+    if (isPreviewMode) debouncedUpdatePDF();
+  };
+
   onMount(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const msg = event.reason?.message || event.reason || 'Unknown Async Error';
@@ -609,6 +626,7 @@
         bind:tocEndPage
         bind:addPhysicalTocPage
         bind:isTocConfigExpanded
+        on:prefixChange={handlePrefixChange}
         on:openhelp={() => (showHelpModal = true)}
         on:apiConfigChange={handleApiConfigChange}
         on:apiConfigSave={handleApiConfigSave}

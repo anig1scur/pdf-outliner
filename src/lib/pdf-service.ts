@@ -234,10 +234,7 @@ export class PDFService {
       const indentation = level * TOC_LAYOUT.ITEM.INDENT_PER_LEVEL;
       const lineHeight = fontSize * lineSpacing;
 
-      const snl = config.showNumberedList;
-      const itemPrefix =
-          snl ? (prefix ? `${prefix}.${i + 1}` : `${i + 1}`) : '';
-      const title = `${itemPrefix} ${item.title}`.trim();
+      const title = `${item.title}`.trim();
 
       const titleX = TOC_LAYOUT.PAGE.MARGIN_X + indentation;
 
@@ -299,8 +296,7 @@ export class PDFService {
 
       if (item.children?.length) {
         const childResult = await this.drawTocItems(
-            currentWorkingPage, item.children, level + 1, yOffset, ctx,
-            {prefix: itemPrefix});
+            currentWorkingPage, item.children, level + 1, yOffset, ctx);
         currentWorkingPage = childResult.currentPage;
         yOffset = childResult.yOffset;
       }
