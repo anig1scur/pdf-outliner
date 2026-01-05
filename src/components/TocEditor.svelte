@@ -6,8 +6,7 @@
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
   import {tocItems, maxPage} from '../stores';
-  import TocRelation from './TocRelation.svelte';
-  
+
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
 
@@ -235,7 +234,6 @@
 </script>
 
 <div class="flex flex-col gap-4 mt-3">
-  <TocRelation items={$tocItems} />
   <div class="h-48 relative group">
     <div class="absolute -left-2 top-0">
       <Tooltip

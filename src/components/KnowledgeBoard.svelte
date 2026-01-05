@@ -1,55 +1,60 @@
 <script>
-  import {onMount, tick} from 'svelte';
+  import {tick} from 'svelte';
   import rough from 'roughjs';
-  import {Sparkles, Loader2, RefreshCw, Maximize2, Minimize2, BrainCircuit} from 'lucide-svelte';
-
+  import GraphNode from './GraphNode.svelte';
+  import {Sparkles, Loader2, RefreshCw, Maximize2, Minimize2, BrainCircuit, BookOpen} from 'lucide-svelte';
+  import {CARD_W, CARD_H, getRandomPaperColor, computeHierarchicalLayout, getClosestPoints} from '../lib/graph-utils';
   export let items = [];
   export let apiConfig = {apiKey: ''};
+
+  export let title = 'Untitled Book';
+
+  export let onJumpToPage = (pageNumber) => {
+    console.log('Jump to page:', pageNumber);
+  };
 
   let graphData = {nodes: [], edges: []};
   let isLoading = false;
   let isFullscreen = false;
   let activeNodeId = null;
 
-  // DOM References
   let svg;
   let rc;
 
-  // Canvas State
   let canvasWidth = 400;
   let canvasHeight = 400;
 
-  // Dragging State
   let dragTarget = null;
   let initialMouse = {x: 0, y: 0};
   let initialNodePos = {x: 0, y: 0};
   let isDragging = false;
+  let hasMovedDuringDrag = false;
 
-  // --- Visual Config (更宽松的布局) ---
-  const CARD_W = 200;
-  const CARD_H = 120;
-  const GAP_X = 320;
-  const GAP_Y = 280;
+  const ACTIVE_COLOR = '#ff8787';
 
   const ROUGH_OPTS = {roughness: 2.5, bowing: 1.5, stroke: '#2d3436', strokeWidth: 1.5};
-
   const LINE_DIM = {roughness: 2, bowing: 1, stroke: '#e2e8f0', strokeWidth: 1};
-  const LINE_ACTIVE = {roughness: 1, bowing: 1, stroke: '#ef4444', strokeWidth: 2.5};
-
-  const getRandomPaperColor = () => {
-    const papers = ['#ffffff', '#fdfbf7', '#fcfcfc'];
-    return papers[Math.floor(Math.random() * papers.length)];
-  };
+  const LINE_ACTIVE = {roughness: 1, bowing: 1, stroke: ACTIVE_COLOR, strokeWidth: 2.5};
 
   async function handleGenerateGraph() {
     if (items.length === 0) return;
     isLoading = true;
     activeNodeId = null;
+
+    const simplifiedItems = items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      page: item.to || null,
+    }));
+
     try {
       const response = await fetch('/api/generate-board', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({tocItems: items, apiKey: apiConfig.apiKey}),
+        body: JSON.stringify({
+          tocItems: simplifiedItems,
+          apiKey: apiConfig.apiKey,
+        }),
       });
 
       if (!response.ok) throw new Error('API Failed');
@@ -60,10 +65,11 @@
         bgColor: n.isInferred ? '#f8fafc' : getRandomPaperColor(),
         x: 0,
         y: 0,
+        page: n.page || null,
       }));
       let edges = data.edges || [];
 
-      nodes = computeHierarchicalLayout(nodes, edges);
+      nodes = computeHierarchicalLayout(nodes, edges, canvasWidth);
       graphData = {nodes, edges};
 
       await tick();
@@ -76,92 +82,6 @@
     } finally {
       isLoading = false;
     }
-  }
-
-  function computeHierarchicalLayout(nodes, edges) {
-    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-    const adj = new Map();
-    const revAdj = new Map();
-
-    nodes.forEach((n) => {
-      adj.set(n.id, []);
-      revAdj.set(n.id, []);
-    });
-    edges.forEach((e) => {
-      if (adj.has(e.source)) adj.get(e.source).push(e.target);
-      if (revAdj.has(e.target)) revAdj.get(e.target).push(e.source);
-    });
-
-    const asapLevels = new Map();
-    nodes.forEach((n) => asapLevels.set(n.id, 0));
-
-    for (let i = 0; i < 10; i++) {
-      let changed = false;
-      edges.forEach((edge) => {
-        const srcLvl = asapLevels.get(edge.source) || 0;
-        const tgtLvl = asapLevels.get(edge.target) || 0;
-        if (srcLvl >= tgtLvl) {
-          asapLevels.set(edge.target, srcLvl + 1);
-          changed = true;
-        }
-      });
-      if (!changed) break;
-    }
-
-    const finalLevels = new Map();
-    nodes.forEach((n) => {
-      if ((adj.get(n.id) || []).length === 0) {
-        finalLevels.set(n.id, asapLevels.get(n.id));
-      } else {
-        finalLevels.set(n.id, -1);
-      }
-    });
-
-    for (let i = 0; i < 10; i++) {
-      let changed = false;
-      nodes.forEach((n) => {
-        const targets = adj.get(n.id);
-        if (targets.length > 0) {
-          let minChildLevel = Infinity;
-          targets.forEach((tId) => {
-            const childLvl = asapLevels.get(tId);
-            if (childLvl < minChildLevel) minChildLevel = childLvl;
-          });
-          const anchorLevel = minChildLevel - 1;
-          const baseLevel = asapLevels.get(n.id);
-          const bestLevel = Math.max(baseLevel, anchorLevel);
-
-          if (finalLevels.get(n.id) !== bestLevel) {
-            finalLevels.set(n.id, bestLevel);
-            asapLevels.set(n.id, bestLevel);
-            changed = true;
-          }
-        }
-      });
-      if (!changed) break;
-    }
-
-    const levelGroups = [];
-    nodes.forEach((n) => {
-      let lvl = finalLevels.get(n.id);
-      if (lvl === -1 || lvl === undefined) lvl = asapLevels.get(n.id);
-      if (!levelGroups[lvl]) levelGroups[lvl] = [];
-      levelGroups[lvl].push(n);
-    });
-
-    const compactGroups = levelGroups.filter((g) => g && g.length > 0);
-
-    compactGroups.forEach((group, lvlIndex) => {
-      const rowWidth = group.length * GAP_X;
-      const startX = canvasWidth / 2 - rowWidth / 2;
-
-      group.forEach((node, colIndex) => {
-        node.x = startX + colIndex * GAP_X + (Math.random() - 0.5) * 40;
-        node.y = 100 + lvlIndex * GAP_Y;
-      });
-    });
-
-    return nodes;
   }
 
   function updateCanvasSize() {
@@ -204,16 +124,25 @@
 
     isDragging = true;
     dragTarget = node;
+    hasMovedDuringDrag = false;
     initialMouse = {x: e.clientX, y: e.clientY};
     initialNodePos = {x: node.x, y: node.y};
   }
 
   function handleWindowMouseMove(e) {
     if (!isDragging || !dragTarget) return;
+
     const dx = e.clientX - initialMouse.x;
     const dy = e.clientY - initialMouse.y;
+
+    if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+      hasMovedDuringDrag = true;
+    }
+
     dragTarget.x = initialNodePos.x + dx;
     dragTarget.y = initialNodePos.y + dy;
+
+    graphData.nodes = graphData.nodes;
 
     requestAnimationFrame(drawWall);
   }
@@ -226,6 +155,14 @@
     }
   }
 
+  function handleNodeClick(node) {
+    if (!hasMovedDuringDrag) {
+      if (node.page && onJumpToPage) {
+        onJumpToPage(node.page);
+      }
+    }
+  }
+
   function drawWall() {
     if (!svg || !graphData.nodes.length) return;
     svg.innerHTML = '';
@@ -233,9 +170,16 @@
 
     const inactiveGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     const activeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    const pinGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 
     svg.appendChild(inactiveGroup);
     svg.appendChild(activeGroup);
+    svg.appendChild(nodeGroup);
+    svg.appendChild(pinGroup);
+
+    const pinsToDraw = new Set();
+    const nodesWithPins = new Set();
 
     const edgesToDraw = graphData.edges
       .map((edge, idx) => {
@@ -244,7 +188,6 @@
         if (!src || !tgt) return null;
 
         const isActive = activeNodeId && (edge.source === activeNodeId || edge.target === activeNodeId);
-
         return {edge, src, tgt, idx, isActive};
       })
       .filter(Boolean);
@@ -253,17 +196,29 @@
       const parentGroup = isActive ? activeGroup : inactiveGroup;
       const options = isActive ? LINE_ACTIVE : LINE_DIM;
 
-      const x1 = src.x + CARD_W / 2;
-      const y1 = src.y + CARD_H / 2;
-      const x2 = tgt.x + CARD_W / 2;
-      const y2 = tgt.y + 5;
+      // 1. 计算最近的连接点
+      const {start, end} = getClosestPoints(src, tgt);
+      const x1 = start.x;
+      const y1 = start.y;
+      const x2 = end.x;
+      const y2 = end.y;
 
+      // 2. 注册钉子位置
+      pinsToDraw.add(`${x1},${y1}`);
+      pinsToDraw.add(`${x2},${y2}`);
+      nodesWithPins.add(src.id);
+      nodesWithPins.add(tgt.id);
+
+      // 3. 绘制自然下垂的曲线
       const distY = Math.abs(y2 - y1);
-      const gravity = distY * 0.15;
-      const curveDir = idx % 2 === 0 ? 1 : -1;
-      const swing = (40 + distY * 0.1) * curveDir;
+      const distX = Math.abs(x2 - x1);
 
-      const midX = (x1 + x2) / 2 + swing + (Math.random() * 20 - 10);
+      // 根据距离动态调整下垂幅度和摆动
+      const gravity = 10 + distY * 0.15;
+      const curveDir = idx % 2 === 0 ? 1 : -1;
+      const swing = (10 + distX * 0.05) * curveDir;
+
+      const midX = (x1 + x2) / 2 + swing;
       const midY = (y1 + y2) / 2 + gravity;
 
       parentGroup.appendChild(
@@ -286,12 +241,15 @@
       }
     });
 
-    const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    svg.appendChild(nodeGroup);
-
+    // 4. 绘制卡片
     graphData.nodes.forEach((node) => {
       const fillStyle = node.isInferred ? 'zigzag' : 'solid';
       const strokeStyle = node.isInferred ? '#94a3b8' : '#2d3436';
+
+      // 如果当前节点没有连线，我们给它补一个默认顶部的钉子，防止它没钉子
+      if (!nodesWithPins.has(node.id)) {
+        pinsToDraw.add(`${node.x + CARD_W / 2},${node.y + 4}`);
+      }
 
       nodeGroup.appendChild(
         rc.rectangle(node.x, node.y, CARD_W, CARD_H, {
@@ -300,30 +258,30 @@
           fillStyle: fillStyle,
           stroke: strokeStyle,
           fillWeight: 1,
+          strokeWidth: node.isInferred ? 1 : 1.5,
         })
       );
+    });
 
-      drawPin(nodeGroup, node.x + CARD_W / 2, node.y + 4);
+    // 5. 统一绘制所有钉子 (去重后)
+    pinsToDraw.forEach((coordStr) => {
+      const [px, py] = coordStr.split(',').map(Number);
+      drawPin(pinGroup, px, py);
     });
   }
 
   function centerContent() {
     if (graphData.nodes.length === 0) return;
-
     const minX = Math.min(...graphData.nodes.map((n) => n.x));
     const maxX = Math.max(...graphData.nodes.map((n) => n.x));
     const graphWidth = maxX - minX + CARD_W;
-
     const containerWidth = isFullscreen ? window.innerWidth : 400;
-
     const targetMinX = Math.max(50, (containerWidth - graphWidth) / 2);
-
     const offsetX = targetMinX - minX;
-
     graphData.nodes.forEach((n) => (n.x += offsetX));
-
     graphData.nodes = graphData.nodes;
   }
+
   function drawArrowHead(parent, prevX, prevY, tipX, tipY, color) {
     const angle = Math.atan2(tipY - prevY, tipX - prevX);
     const arrowLen = 14;
@@ -352,7 +310,6 @@
 
   function drawEdgeLabel(parent, text, x, y) {
     if (!text) return;
-    parent.appendChild(rc.rectangle(x - 30, y - 12, 60, 24, {fill: '#fff', fillStyle: 'solid', stroke: 'none'}));
 
     const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     t.setAttribute('x', x);
@@ -360,14 +317,14 @@
     t.setAttribute('text-anchor', 'middle');
     t.setAttribute('font-family', "'Patrick Hand', cursive");
     t.setAttribute('font-size', '14');
-    t.setAttribute('fill', '#ef4444');
+    t.setAttribute('fill', ACTIVE_COLOR);
     t.setAttribute('font-weight', 'bold');
     t.textContent = text;
     parent.appendChild(t);
   }
 
   function drawPin(parent, x, y) {
-    parent.appendChild(rc.circle(x, y, 12, {fill: '#ef4444', fillStyle: 'solid', stroke: 'none'}));
+    parent.appendChild(rc.circle(x, y, 10, {fill: '#ef4444', fillStyle: 'solid', stroke: 'none'}));
   }
 </script>
 
@@ -384,34 +341,43 @@
 </svelte:head>
 
 <div
-  class="bg-[#f0f0f0] flex flex-col overflow-hidden transition-all duration-300
-  {isFullscreen
-    ? 'fixed inset-0 z-[9999] w-screen h-screen rounded-none'
-    : 'relative w-full h-[400px] rounded-xl border-2 border-black shadow-[2px_2px_0px_#000]'}"
+  class="bg-[#f0f0f0] flex flex-col overflow-hidden mx-auto
+{isFullscreen
+    ? 'fixed inset-0 z-[9999] w-screen h-screen rounded-none transition-all duration-300'
+    : 'relative h-full rounded-xl border-2 border-black shadow-[2px_2px_0px_#000]'}"
   on:click={handleBgClick}
 >
-  <div class="absolute top-4 right-4 z-50 flex gap-2">
-    <button
-      on:click={handleGenerateGraph}
-      disabled={isLoading || items.length === 0}
-      class="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['Patrick_Hand'] text-xl shadow-lg"
-    >
-      {#if isLoading}
-        <Loader2
-          class="animate-spin"
-          size={20}
-        />
-        <span>Connecting...</span>
-      {:else}
-        <Sparkles size={20} />
-        <span>Investigate</span>
-      {/if}
-    </button>
+  <div class="absolute top-4 left-5 z-40 pointer-events-none select-none">
+    <div class="flex gap-2 text-gray-500 opacity-80">
+      <BookOpen size={32} />
+      <span class="font-serif text-xl tracking-wide">{title}</span>
+    </div>
   </div>
+
+  {#if items.length > 0}
+    <div class="absolute top-4 right-4 z-50 flex gap-2">
+      <button
+        on:click={handleGenerateGraph}
+        disabled={isLoading || items.length === 0}
+        class="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['Patrick_Hand'] text-xl shadow-lg"
+      >
+        {#if isLoading}
+          <Loader2
+            class="animate-spin"
+            size={20}
+          />
+          <span>Connecting...</span>
+        {:else}
+          <Sparkles size={20} />
+          <span>Investigate</span>
+        {/if}
+      </button>
+    </div>
+  {/if}
 
   <div class="flex-1 overflow-auto relative w-full h-full bg-grid-pattern cursor-grab active:cursor-grabbing">
     <div
-      class="relative origin-top-left transition-[width,height] duration-200"
+      class="relative origin-top-left"
       style="width: {canvasWidth}px; height: {canvasHeight}px;"
     >
       <svg
@@ -423,45 +389,19 @@
 
       <div class="absolute inset-0 z-20 pointer-events-none">
         {#each graphData.nodes as node (node.id)}
-          <div
-            class="absolute pointer-events-auto select-none group flex flex-col items-center justify-center text-center p-3 transition-colors duration-200
-                {activeNodeId === node.id ? 'ring-4 ring-red-400 z-50 scale-105' : 'z-20 hover:scale-105'}
-                "
-            style="
-                    left: {node.x}px; 
-                    top: {node.y}px; 
-                    width: {CARD_W}px; 
-                    height: {CARD_H}px;
-                "
+          <GraphNode
+            {node}
+            {activeNodeId}
+            isDragTarget={dragTarget && dragTarget.id === node.id}
             on:mousedown={(e) => handleMouseDown(e, node)}
-          >
-            {#if node.isInferred}
-              <div
-                class="absolute top-2 left-2 flex items-center gap-1 text-[9px] text-slate-400 uppercase font-bold tracking-widest bg-slate-100 px-1 rounded"
-              >
-                <BrainCircuit size={10} />
-                <span>AI</span>
-              </div>
-            {/if}
-
-            <div
-              class="font-['Patrick_Hand'] text-lg leading-5 font-bold text-gray-400 break-words line-clamp-3 w-full"
-            >
-              {node.title}
-            </div>
-
-            {#if node.page}
-              <div class="absolute bottom-2 right-2 text-xs font-mono text-gray-400">
-                p.{node.page}
-              </div>
-            {/if}
-          </div>
+            on:click={() => handleNodeClick(node)}
+          />
         {/each}
       </div>
     </div>
   </div>
 
-  {#if graphData.nodes.length === 0 && !isLoading}
+  {#if items.length === 0}
     <div
       class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
     >
@@ -469,15 +409,33 @@
         size={64}
         class="mb-6"
       />
-      <span class="text-3xl">Upload ToC to start...</span>
+      <span class="text-3xl">Generate ToC to start...</span>
+    </div>
+  {:else if !isLoading && items.length > 0 && graphData.nodes.length === 0}
+    <div
+      class="absolute max-w-[80%] mx-auto text-center inset-0 flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
+    >
+      <Sparkles
+        size={64}
+        class="mb-6"
+      />
+      <span class="text-3xl">Investigate to generate the knowledge board</span>
+    </div>
+  {:else if isLoading}
+    <div
+      class="absolute inset-0 max-w-[80%] mx-auto text-center flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
+    >
+      <span class="text-3xl animate-bounce">Generating the knowledge board...</span>
     </div>
   {/if}
 
-  <div
-    class="absolute bottom-4 left-4 font-['Patrick_Hand'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
-  >
-    CONNECTION BOARD
-  </div>
+  {#if isFullscreen}
+    <div
+      class="absolute bottom-4 left-4 font-['Patrick_Hand'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
+    >
+      KNOWLEDGE BOARD
+    </div>
+  {/if}
 
   <button
     on:click={toggleFullscreen}

@@ -3,7 +3,6 @@
   import {X, Send} from 'lucide-svelte';
 
   export let showHelpModal: boolean;
-  export let videoUrl: string;
 
   const email = 'anigiscur@gmail.com';
   let copied = false;
@@ -75,7 +74,7 @@
 
       <div class="flex flex-col gap-6">
         <video
-          src={videoUrl}
+          src={'/videos/demo.mp4'}
           controls
           loop
           autoplay
