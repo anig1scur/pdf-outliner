@@ -8,7 +8,6 @@
     "toggle_expand": "Toggle Expand/Collapse",
     "add_physical_page": "Add physical ToC page",
     "insert_at_page": "Insert At Page #",
-    "insert_at_page_hint": "(1-based, 1 = first page)",
     "with_numbered_list": "with numbered list",
     "page_offset": "Page Number Offset",
     "offset_hint": "(Physical Num #) - (Labeled Num #)",
@@ -19,7 +18,14 @@
     "color": "Color",
     "spacing": "Spacing",
     "api_settings_title": "API Settings",
-    "api_key_hint": "Stored locally only"
+    "api_key_hint": "Stored locally only",
+    "auto_numbering": "Auto Numbering",
+    "style": "Style",
+    "prefix": "Prefix",
+    "suffix": "Suffix",
+    "inherit_parent": "Inherit",
+    "separator": "Separator",
+    "preview": "Preview"
   },
   "msg": {
     "pdf_loaded": "Pdf loaded, long press and drag to select ToC pages"

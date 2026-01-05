@@ -31,17 +31,24 @@ Your task is to analyze one or more images of a ToC and convert it into a single
 
 Follow these rules strictly:
 1.  **VISUAL LITERALISM**: Look at the page number EXACTLY as printed in the image.
-2.  **ROMAN NUMERAL BAN**:
-    - If the page number in the image is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
-    - **DO NOT CONVERT** Roman numerals to Arabic numbers (e.g., never change 'vii' to 7).
-    - If you see 'vii', the output for that line should be NOTHING (skip it).
-3.  **ARABIC NUMERALS ONLY**: Only extract lines where the printed page number is a digit (0-9).
-4.  **PAGE NUMBER**: Even if the page is a number like 10, output it as a string "10".
-    If there are multiple pages (e.g., 10-15 or 10, 12), put the whole text in the string (e.g., "10-15").
-5.  Mentally stitch images together if multiple are provided.
-6.  Analyze text and indentation to infer hierarchy (level 1, 2, etc.).
+2.  **ROMAN NUMERAL BAN (PAGES ONLY)**:
+    - If the **PAGE NUMBER** (at the end of line) is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
+    - **DO NOT CONVERT** Roman page numbers to Arabic.
+    - If you see 'vii' as the page, output NOTHING for that line.
+    - Note: Roman numerals in the **TITLE** (e.g., "Part II", "Chapter V") ARE ALLOWED and must be preserved.
+3.  **ARABIC PAGE NUMBERS ONLY**: Only extract lines where the printed page number is a digit (0-9).
+4.  **PAGE NUMBER FORMAT**: Even if the page is a number like 10, output it as a string "10".
+    If there are multiple pages (e.g., 10-15 or 10, 12), put the whole text in the string.
+5.  **PRESERVE TITLE PREFIXES (CRITICAL)**:
+    - The "title" field MUST include the numbering/prefix exactly as seen.
+    - Example: If image shows "1.1 Introduction", title is "1.1 Introduction" (NOT just "Introduction").
+    - Example: If image shows "Chapter 1: The Beginning", title is "Chapter 1: The Beginning".
+    - Do NOT strip "1.", "1.2", "A.", "Part I", etc.
+6.  **Inference**:
+    - Mentally stitch images together.
+    - Analyze text indentation and numbering (e.g., 1 vs 1.1) to infer 'level' (1, 2, 3).
 7.  The output MUST be a valid JSON array ONLY, no markdown.
-    Format: [{"title": "String", "level": Number, "page": String}]
+    Format: [{"title": "String", "level": Number, "page": "String"}]
 8.  If unusable, return [].
 `;
 
@@ -51,14 +58,18 @@ Your task is to convert raw, unstructured ToC text (copied from websites like Am
 
 Rules:
 1.  **Extract Structure**: Identify the title, hierarchy level, and page number from each line.
-2.  **Hierarchy**: Infer the 'level' (1, 2, 3) based on numbering (e.g., "1.", "1.1", "1.1.1") or indentation/symbols in the text.
+2.  **Hierarchy**: Infer the 'level' (1, 2, 3) based on numbering (e.g., "1.", "1.1", "1.1.1") or indentation.
 3.  **Page Numbers**: Extract the page number at the end of the line.
-4.  **ROMAN NUMERAL BAN**: If the page number is a Roman numeral (i, v, x), **DISCARD THE LINE**. Do not output it.
-5.  **Clean Up**: Remove dots (.....) or dashes (----) typically found in ToCs.
-6.  **JSON ONLY**: Return strictly a JSON array. No markdown.
+4.  **FULL TITLE RETENTION (CRITICAL)**:
+    - The "title" field MUST include the numbering prefix exactly as it appears in the text.
+    - Example Input: "1.2 Methodology ....... 15" -> Output Title: "1.2 Methodology"
+    - Example Input: "Chapter One: Basics ... 5" -> Output Title: "Chapter One: Basics"
+    - Do NOT remove the leading numbers or labels.
+5.  **ROMAN NUMERAL BAN (PAGES)**: If the *page number* at the end is Roman (i, v, x), **DISCARD THE LINE**.
+6.  **Clean Up**: Remove dots (.....) or dashes (----) that connect the title to the page number.
+7.  **JSON ONLY**: Return strictly a JSON array. No markdown.
     Format: [{"title": "String", "level": Number, "page": Number}]
 `;
-
 function getClientIp(request: Request): string {
   const headers = request.headers;
   const xForwardedFor = headers.get('x-forwarded-for');

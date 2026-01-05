@@ -4,7 +4,6 @@
     "toggle_expand": "展开 / 折叠切换",
     "add_physical_page": "添加实体目录页",
     "insert_at_page": "插入到页码 #",
-    "insert_at_page_hint": "（从 1 开始，1 = 第一页）",
     "with_numbered_list": "添加编号列表",
     "page_offset": "页码偏移量",
     "offset_hint": "（物理页码 #）-（标注页码 #）",
@@ -15,7 +14,14 @@
     "color": "颜色",
     "spacing": "间距",
     "api_settings_title": "API 设置",
-    "api_key_hint": "仅存储在本地，不会上传到服务器"
+    "api_key_hint": "仅存储在本地，不会上传到服务器",
+    "auto_numbering": "自动编号",
+    "style": "样式",
+    "prefix": "前缀",
+    "suffix": "后缀",
+    "inherit_parent": "继承父级",
+    "separator": "连接符",
+    "preview": "预览"
   },
   "msg": {
     "pdf_loaded": "PDF 已加载，长按并拖动以选择目录页面"
