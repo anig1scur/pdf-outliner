@@ -46,7 +46,7 @@
 
 <div class="space-y-3">
   <div class="flex justify-between items-center">
-    <h3>{$t('settings.auto_numbering')}</h3>
+    <h3>{$t('settings.add_numbering')}</h3>
 
     <label class="relative inline-flex items-center cursor-pointer">
       <input
@@ -56,7 +56,7 @@
         on:change={handleChange}
       />
       <div
-        class="w-11 h-6 bg-gray-200 peer-focus:outline-none border-2 border-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-black"
+        class="w-11 h-6 bg-gray-200 peer-focus:outline-none border-2 border-black rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-black after:border-2 after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gray-800"
       ></div>
     </label>
   </div>
@@ -115,7 +115,7 @@
                   <div class="flex-grow">
                     <label class="text-sm text-gray-500 mb-1 block">{$t('settings.style')}</label>
                     <select
-                      class="w-full h-8 text-xs border-2 border-black rounded px-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-black/20"
+                      class="w-full h-8 text-xs border-2 border-gray-300 rounded px-2 bg-transparent focus:outline-none focus:ring-2 focus:ring-black/20"
                       bind:value={config.style}
                       on:change={handleChange}
                     >
@@ -130,7 +130,7 @@
                       <label class="text-sm text-gray-500 mb-1 block">{$t('settings.inherit_parent')}</label>
                       <input
                         type="checkbox"
-                        class="checkbox h-8 w-8 checkbox-xs border-2 border-black rounded-sm checkbox-primary"
+                        class="checkbox h-8 w-8 checkbox-xs outline-2 outline-gray-300 rounded-sm checkbox-primary"
                         bind:checked={config.inheritParent}
                         on:change={handleChange}
                       />
@@ -138,13 +138,13 @@
 
                     {#if config.inheritParent}
                       <div
-                        class="w-12"
+                        class="w-16"
                         transition:slide={{axis: 'x', duration: 200}}
                       >
                         <label class="text-sm text-gray-500 mb-1 block max-h-5">{$t('settings.separator')}</label>
                         <input
                           type="text"
-                          class="w-full h-8 text-xs border-2 border-black rounded text-center focus:outline-none focus:bg-gray-50"
+                          class="w-full h-8 text-xs border-2 border-gray-300 rounded text-center focus:outline-none focus:bg-gray-50"
                           bind:value={config.separator}
                           on:input={handleChange}
                         />
@@ -158,7 +158,7 @@
                     <label class="text-sm text-gray-500 mb-1 block">{$t('settings.prefix')}</label>
                     <input
                       type="text"
-                      class="w-full h-8 text-xs border-2 border-black rounded px-2 focus:outline-none focus:bg-gray-50"
+                      class="w-full h-8 text-xs border-2 border-gray-300 rounded px-2 focus:outline-none focus:bg-gray-50"
                       placeholder="e.g. Chapter"
                       bind:value={config.prefix}
                       on:input={handleChange}
@@ -171,7 +171,7 @@
                     <label class="text-sm text-gray-500 mb-1 block">{$t('settings.suffix')}</label>
                     <input
                       type="text"
-                      class="w-full h-8 text-xs border-2 border-black rounded px-2 focus:outline-none focus:bg-gray-50"
+                      class="w-full h-8 text-xs border-2 border-gray-300 rounded px-2 focus:outline-none focus:bg-gray-50"
                       placeholder="e.g. ."
                       bind:value={config.suffix}
                       on:input={handleChange}

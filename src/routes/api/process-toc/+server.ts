@@ -130,7 +130,8 @@ function determineProvider(request: Request, userProvider?: string): string {
       request.headers.get('x-country-code');
 
   if (country === 'CN') {
-    return randomChoice(['qwen', 'doubao', 'zhipu']);
+    // return randomChoice(['gemini', 'qwen', 'doubao', 'zhipu']);
+    return randomChoice(['gemini', 'qwen', 'doubao']);
   }
 
   return 'gemini';
