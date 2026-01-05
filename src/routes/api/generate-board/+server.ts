@@ -19,26 +19,32 @@ Don't just copy the ToC. **Read between the lines.** Use your internal knowledge
 **CRITICAL RULES:**
 
 1.  **LANGUAGE CONSISTENCY (IMPORTANT):**
-    - Detect the dominant language of the provided ToC (e.g., Chinese, English, Spanish).
+    - Detect the dominant language of the provided ToC.
     - **ALL** output specific fields (label, cluster, edge label) **MUST** be in that same language.
 
 2.  **CONNECTING THE DOTS (The "Detective" Work):**
     - **Explode** high-level chapters into specific, bite-sized concepts.
-    - **Bridge Nodes**: If Chapter A and Chapter B are related via a concept not explicitly written (e.g., historical context, a mathematical theorem), **CREATE a new node** for that concept to bridge them.
+    - **Bridge Nodes**: If Chapter A and Chapter B are related via a concept not explicitly written, **CREATE a new node** for that concept to bridge them.
     - **Target**: Generate 10-18 nodes. 
 
-3.  **CLUSTERING:**
-    - Do not use generic names like "Chapter 1".
-    - Use thematic cluster names (e.g., "The Core Theory", "The Evidence", "The Controversy").
+3.  **DATA INTEGRITY (PAGES):**
+    - **Strictly Preserve Pages**: If a node directly corresponds to a provided ToC item, you **MUST** include its exact "page" number from the input.
+    - **Inferred Nodes**: If the node is a new concept (Bridge Node) created by you, set "page" to null.
 
 4.  **EDGES (RELATIONSHIPS):**
-    - Avoid generic "relates to". Use specific active verbs:
-    - 'CAUSES', 'PRECEDES', 'SOLVES', 'CONTRADICTS', 'ENABLES', 'REQUIRES'.
+    - Avoid generic "relates to". Use specific active verbs like: 'CAUSES', 'PRECEDES', 'SOLVES', 'CONTRADICTS', 'ENABLES'.
 
 Output JSON format:
 {
-  "nodes": [ { "id": "string", "label": "string (Short, <6 words)", "cluster": "string" } ], 
-  "edges": [ { "source": "id", "target": "id", "type": "string", "label": "string (Short relationship desc)" } ]
+  "nodes": [ 
+    { 
+      "id": "string", 
+      "label": "string (Short, <6 words)", 
+      "cluster": "string",
+      "page": number | null  // <--- NEW FIELD
+    } 
+  ], 
+  "edges": [ { "source": "id", "target": "id", "type": "string", "label": "string" } ]
 }
 `;
 
@@ -55,13 +61,17 @@ export async function POST({request}) {
       return json({error: 'No API Key provided'}, {status: 401});
     }
 
-    // save token
-    const tocText =
-        tocItems.map((item) => `[ID:${item.id}] ${item.title}`).join('\n');
+    const tocText = tocItems
+                        .map(
+                            (item) => `[ID:${item.id}] ${item.title} (Page: ${
+                                item.page || 'N/A'})`)
+                        .join('\n');
+
     const fullPrompt = `${SYSTEM_PROMPT}\n\nToC Data:\n${tocText}`;
 
     const genAI = new GoogleGenerativeAI(googleApiKey);
-    const model = genAI.getGenerativeModel({model: 'gemini-2.5-flash'});
+    const model = genAI.getGenerativeModel(
+        {model: 'gemini-2.5-flash'});  // 或者 gemini-1.5-flash
 
     const result = await model.generateContent({
       contents: [{role: 'user', parts: [{text: fullPrompt}]}],
@@ -81,18 +91,20 @@ export async function POST({request}) {
 
     let finalGraphNodes = aiData.nodes.map((aiNode) => {
       let match = tocItems.find((t) => String(t.id) === String(aiNode.id));
-      if (!match && aiNode.label) {
-        match = tocItems.find(
-            (t) => t.title.toLowerCase().includes(aiNode.label.toLowerCase()));
-      }
+
+      const page =
+          aiNode.page !== undefined ? aiNode.page : (match ? match.page : null);
+
       return {
         id: aiNode.id,
         title: aiNode.label || aiNode.id,
-        isInferred: !match,
-        page: match ? match.page : null,
+        isInferred: !page,
+        page: page,
         cluster: aiNode.cluster || 'Unclassified',
         w: LAYOUT_CONFIG.colWidth,
-        h: LAYOUT_CONFIG.rowHeight
+        h: LAYOUT_CONFIG.rowHeight,
+        x: 0,
+        y: 0
       };
     });
 
@@ -143,7 +155,7 @@ export async function POST({request}) {
       });
     });
 
-    return json({nodes: finalGraphNodes, edges: aiData.edges || []});
+    return json({nodes: finalGraphNodes, edges: edges});
 
   } catch (error) {
     console.error(error);

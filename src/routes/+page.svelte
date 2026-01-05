@@ -26,6 +26,9 @@
   import SidebarPanel from '../components/panels/SidebarPanel.svelte';
   import PreviewPanel from '../components/panels/PreviewPanel.svelte';
 
+  import TocRelation from '../components/KnowledgeBoard.svelte';
+  import {ChevronRight, ChevronLeft} from 'lucide-svelte';
+
   injectAnalytics();
 
   let pdfjs: typeof PdfjsLibTypes | null = null;
@@ -39,10 +42,11 @@
   let showNextStepHint = false;
   let hasShownTocHint = false;
 
+  let showGraphDrawer = false;
+
   let showOffsetModal = false;
   let showHelpModal = false;
   let offsetPreviewPageNum = 1;
-  const videoUrl = '/videos/demo.mp4';
 
   let toastProps = {
     show: false,
@@ -292,7 +296,6 @@
   };
 
   const loadPdfFile = async (file: File) => {
-    console.log(file);
     if (!file) return;
 
     const fingerprint = `${file.name}_${file.size}`;
@@ -490,15 +493,7 @@
   const handleTocItemHover = (e: CustomEvent) => {
     if (!isPreviewMode) return;
     const logicalPage = e.detail.to as number;
-    const physicalContentPage = logicalPage + config.pageOffset;
-    let targetPage: number;
-    const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
-    if (physicalContentPage >= config.insertAtPage) {
-      targetPage = physicalContentPage + insertedPages;
-    } else {
-      targetPage = physicalContentPage;
-    }
-    debouncedJumpToPage(targetPage);
+    jumpToPage(logicalPage);
   };
 
   const handleSetStartPage = (e: CustomEvent) => {
@@ -523,6 +518,22 @@
       e.returnValue = '';
       return '';
     }
+  };
+
+  const jumpToPage = async (logicalPage: number) => {
+    if (!isPreviewMode) {
+      await togglePreviewMode();
+      if (!isPreviewMode) return;
+    }
+    const physicalContentPage = logicalPage + config.pageOffset;
+    let targetPage: number;
+    const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
+    if (physicalContentPage >= config.insertAtPage) {
+      targetPage = physicalContentPage + insertedPages;
+    } else {
+      targetPage = physicalContentPage;
+    }
+    debouncedJumpToPage(targetPage);
   };
 
   const jumpToTocPage = async () => {
@@ -587,6 +598,49 @@
     };
   });
 </script>
+
+{#if !showGraphDrawer && tocItems}
+  <button
+    transition:fly={{x: -50, duration: 300}}
+    class="fixed left-0 top-[40vh] z-40 bg-white border-2 border-black border-l-0 rounded-r-lg p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-200 transition-colors flex flex-col items-center gap-2 group"
+    on:click={() => (showGraphDrawer = true)}
+    title="Show Content Graph"
+  >
+    <div class="writing-mode-vertical text-xs font-bold font-mono tracking-widest uppercase rotate-180 select-none">
+      Graph
+    </div>
+    <ChevronRight class="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+  </button>
+{/if}
+
+<div
+  class={`fixed inset-y-0 left-0 z-50 flex transition-transform duration-300 ease-in-out ${showGraphDrawer ? 'translate-x-0' : '-translate-x-full'}`}
+>
+  <div class="h-full w-[85vw] md:w-[540px] bg-white shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] flex flex-col relative">
+    <button
+      class="p-2 right-0 bottom-[50%] absolute z-10 inline"
+      on:click={() => (showGraphDrawer = false)}
+    >
+      <ChevronLeft class="w-8 h-8 hover:-translate-x-1 transition-transform" />
+    </button>
+
+    <div class="flex-1 overflow-hidden relative w-full h-full bg-slate-50">
+      <TocRelation
+        items={$tocItems}
+        onJumpToPage={jumpToPage}
+        title={pdfState.filename ? `${pdfState.filename}`.replace('.pdf', '') : 'No file loaded'}
+      />
+    </div>
+  </div>
+
+  {#if showGraphDrawer}
+    <div
+      transition:fade={{duration: 200}}
+      class="flex-1 bg-black/20 backdrop-blur-sm cursor-pointer"
+      on:click={() => (showGraphDrawer = false)}
+    ></div>
+  {/if}
+</div>
 
 <DownloadBanner />
 
@@ -686,10 +740,7 @@
     on:confirm={handleOffsetConfirm}
   />
 
-  <HelpModal
-    bind:showHelpModal
-    {videoUrl}
-  />
+  <HelpModal bind:showHelpModal />
 {/if}
 
 <svelte:window on:beforeunload={handleBeforeUnload} />
@@ -740,3 +791,9 @@
     href="/favicon.png"
   />
 </svelte:head>
+
+<style>
+  .writing-mode-vertical {
+    writing-mode: vertical-rl;
+  }
+</style>
