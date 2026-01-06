@@ -210,7 +210,6 @@
       const tocItems_ = settings.enabled ? applyCustomPrefix($tocItems, settings.configs) : $tocItems;
       const currentPageBackup = pdfState.currentPage;
       let newDoc = pdfState.doc;
-      let tocPageCount = 0;
 
       if (addPhysicalTocPage) {
         const res = await $pdfService.createTocPage(pdfState.doc, tocItems_, config.insertAtPage);
@@ -488,7 +487,7 @@
       pdfState.currentPage = page;
       pdfState = {...pdfState};
     }
-  }, 200);
+  }, 300);
 
   const handleTocItemHover = (e: CustomEvent) => {
     if (!isPreviewMode) return;
@@ -527,9 +526,8 @@
     }
     const physicalContentPage = logicalPage + config.pageOffset;
     let targetPage: number;
-    const insertedPages = addPhysicalTocPage ? tocPageCount : 0;
-    if (physicalContentPage >= config.insertAtPage) {
-      targetPage = physicalContentPage + insertedPages;
+    if (physicalContentPage >= (config.insertAtPage || 2)) {
+      targetPage = physicalContentPage + tocPageCount;
     } else {
       targetPage = physicalContentPage;
     }
