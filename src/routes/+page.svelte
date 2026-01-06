@@ -215,6 +215,8 @@
         const res = await $pdfService.createTocPage(pdfState.doc, tocItems_, config.insertAtPage);
         newDoc = res.newDoc;
         tocPageCount = res.tocPageCount;
+      } else {
+        tocPageCount = 0;
       }
 
       setOutline(newDoc, tocItems_, config.pageOffset, tocPageCount);
