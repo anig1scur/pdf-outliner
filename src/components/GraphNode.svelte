@@ -10,9 +10,9 @@
 </script>
 
 <div
-  class="absolute pointer-events-auto select-none group flex flex-col items-center justify-center text-center p-3 transition-colors duration-75
+  class="absolute pointer-events-auto select-none group rounded-md flex flex-col items-center justify-center text-center p-3 transition-colors duration-75
         {isDragTarget ? 'z-[100] scale-105' : 'z-20'}
-        {activeNodeId === node.id ? 'ring-4 ring-red-400' : 'hover:scale-105'}"
+        {activeNodeId === node.id ? 'ring-4 ring-blue-400' : 'hover:scale-105'}"
   style="
         left: {node.x}px; 
         top: {node.y}px; 
@@ -37,7 +37,7 @@
 
   {#if node.page}
     <button
-      class="absolute bottom-2 right-2 text-xs font-mono text-gray-400 bg-white/50 px-1 rounded border border-transparent hover:border-red-300 hover:text-red-500 transition-colors"
+      class="absolute bottom-2 right-2 text-xs font-mono text-gray-400 bg-white/50 px-1 rounded border border-transparent hover:text-yellow-400 transition-colors"
       title="Jump to page {node.page}"
       on:click|stopPropagation={() => dispatch('jump', node.page)}
     >

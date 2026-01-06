@@ -30,7 +30,7 @@
   let isDragging = false;
   let hasMovedDuringDrag = false;
 
-  const ACTIVE_COLOR = '#ff8787';
+  const ACTIVE_COLOR = '#60a5fa';
 
   const ROUGH_OPTS = {roughness: 2.5, bowing: 1.5, stroke: '#2d3436', strokeWidth: 1.5};
   const LINE_DIM = {roughness: 2, bowing: 1, stroke: '#e2e8f0', strokeWidth: 1};
@@ -232,7 +232,7 @@
         )
       );
 
-      drawArrowHead(parentGroup, midX, midY, x2, y2, isActive ? '#ef4444' : '#e2e8f0');
+      drawArrowHead(parentGroup, midX, midY, x2, y2, isActive ? ACTIVE_COLOR : '#e2e8f0');
 
       if (isActive) {
         const labelX = (x1 + x2) / 2 + swing / 2;
@@ -315,16 +315,18 @@
     t.setAttribute('x', x);
     t.setAttribute('y', y + 5);
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-family', "'Patrick Hand', cursive");
+    t.setAttribute('font-family', 'serif');
     t.setAttribute('font-size', '14');
     t.setAttribute('fill', ACTIVE_COLOR);
     t.setAttribute('font-weight', 'bold');
+    // translate(10px, 10px)
+    t.setAttribute('transform', `translate(-15, -15)`);
     t.textContent = text;
     parent.appendChild(t);
   }
 
   function drawPin(parent, x, y) {
-    parent.appendChild(rc.circle(x, y, 10, {fill: '#ef4444', fillStyle: 'solid', stroke: 'none'}));
+    parent.appendChild(rc.circle(x, y, 10, {fill: ACTIVE_COLOR, fillStyle: 'solid', stroke: 'none'}));
   }
 </script>
 
@@ -342,9 +344,7 @@
 
 <div
   class="bg-[#f0f0f0] flex flex-col overflow-hidden mx-auto
-{isFullscreen
-    ? 'fixed inset-0 z-[9999] w-screen h-screen rounded-none transition-all duration-300'
-    : 'relative h-full rounded-xl border-2 border-black shadow-[2px_2px_0px_#000]'}"
+{isFullscreen ? ' fixed inset-0 z-[9999] w-screen h-screen rounded-none' : ' relative h-full rounded-xl '}"
   on:click={handleBgClick}
 >
   <div class="absolute top-4 left-5 z-40 pointer-events-none select-none">
@@ -355,11 +355,11 @@
   </div>
 
   {#if items.length > 0}
-    <div class="absolute top-4 right-4 z-50 flex gap-2">
+    <div class="absolute bottom-5 right-24 z-50 flex gap-2">
       <button
         on:click={handleGenerateGraph}
         disabled={isLoading || items.length === 0}
-        class="flex items-center gap-2 bg-black text-white px-5 py-2 rounded-lg hover:bg-gray-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['Patrick_Hand'] text-xl shadow-lg"
+        class="flex items-center gap-2 text-white px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-400 to-cyan-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['Patrick_Hand'] text-xl shadow-lg"
       >
         {#if isLoading}
           <Loader2
@@ -439,12 +439,12 @@
 
   <button
     on:click={toggleFullscreen}
-    class="absolute bottom-4 right-4 z-50 p-3 bg-white border-2 border-black rounded-full shadow-md hover:bg-yellow-100 transition-all hover:scale-110 active:scale-95"
+    class="absolute bottom-4 right-4 z-50 p-3 rounded-full transition-all hover:scale-110 active:scale-95 text-gray-400"
   >
     {#if isFullscreen}
-      <Minimize2 size={24} />
+      <Minimize2 size={30} />
     {:else}
-      <Maximize2 size={24} />
+      <Maximize2 size={30} />
     {/if}
   </button>
 </div>

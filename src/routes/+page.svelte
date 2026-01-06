@@ -602,7 +602,7 @@
 {#if !showGraphDrawer && tocItems}
   <button
     transition:fly={{x: -50, duration: 300}}
-    class="fixed left-0 top-[40vh] z-40 bg-white border-2 border-black border-l-0 rounded-r-lg p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-200 transition-colors flex flex-col items-center gap-2 group"
+    class="fixed -left-1 p-1 md:p-2 md:left-0 top-[40vh] z-40 bg-white border-2 border-black border-l-0 rounded-r-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-yellow-200 transition-colors flex flex-col items-center gap-2 group"
     on:click={() => (showGraphDrawer = true)}
     title="Show Content Graph"
   >
@@ -618,7 +618,7 @@
 >
   <div class="h-full w-[85vw] md:w-[540px] bg-white shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] flex flex-col relative">
     <button
-      class="p-2 right-0 bottom-[50%] absolute z-10 inline"
+      class="p-2 right-0 bottom-[50%] absolute z-10 inline text-gray-400"
       on:click={() => (showGraphDrawer = false)}
     >
       <ChevronLeft class="w-8 h-8 hover:-translate-x-1 transition-transform" />
