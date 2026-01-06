@@ -379,22 +379,55 @@
   };
 
   const exportPDF = async () => {
-    await updatePDF();
-    if (!pdfState.newDoc) {
-      toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
-      return;
-    }
     try {
+      let fileHandle;
+      let writable;
+      const isSupported = 'showSaveFilePicker' in window;
+
+      if (isSupported) {
+        try {
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: pdfState.filename.replace('.pdf', '_outlined.pdf'),
+            types: [
+              {
+                description: 'PDF Document',
+                accept: {'application/pdf': ['.pdf']},
+              },
+            ],
+          });
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          throw err;
+        }
+      }
+
+      toastProps = {show: true, message: 'Exporting file...', type: 'info'};
+
+      await updatePDF();
+
+      if (!pdfState.newDoc) {
+        toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
+        return;
+      }
+
       const pdfBytes = await pdfState.newDoc.save();
-      const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
-      const url = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = pdfState.filename.replace('.pdf', '_outlined.pdf');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+
+      if (isSupported && fileHandle) {
+        writable = await fileHandle.createWritable();
+        await writable.write(pdfBytes);
+        await writable.close();
+      } else {
+        const pdfBlob = new Blob([pdfBytes], {type: 'application/pdf'});
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = pdfState.filename.replace('.pdf', '_outlined.pdf');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
       toastProps = {show: true, message: 'Export Successful!', type: 'success'};
     } catch (error) {
       console.error('Error exporting PDF:', error);
