@@ -14,10 +14,8 @@ export function getDistance(p1, p2) {
 
 export function getClosestPoints(srcNode, tgtNode) {
   const getAnchors = (node) =>
-      [{x: node.x + CARD_W / 2, y: node.y},           // Top
-       {x: node.x + CARD_W / 2, y: node.y + CARD_H},  // Bottom
-       {x: node.x, y: node.y + CARD_H / 2},           // Left
-       {x: node.x + CARD_W, y: node.y + CARD_H / 2},  // Right
+      [{x: node.x + CARD_W / 2, y: node.y},           // Top Mid
+       {x: node.x + CARD_W / 2, y: node.y + CARD_H},  // Bottom Mid
   ];
 
   const srcAnchors = getAnchors(srcNode);
