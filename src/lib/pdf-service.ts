@@ -147,7 +147,7 @@ export class PDFService {
     const insertionStartIndex =
         Math.max(0, Math.min(insertAtPage - 1, allIndices.length));
 
-    const sizeRefPage = doc.getPage(0);
+    const sizeRefPage = doc.getPage(1) || doc.getPage(0);
     const {width, height} = sizeRefPage.getSize();
 
     const pendingAnnots: PendingAnnot[] = [];
