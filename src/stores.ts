@@ -7,6 +7,7 @@ export type StyleConfig = {
   fontSize: number; dotLeader: string; color: string; lineSpacing: string;
 };
 export type TocConfig = {
+  titleYStart?: number;
   insertAtPage: number; pageOffset: number; firstLevel: StyleConfig;
   otherLevels: StyleConfig;
   prefixSettings: {enabled: boolean; configs: LevelConfig[];};
