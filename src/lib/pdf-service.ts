@@ -102,9 +102,8 @@ export class PDFService {
     if (PDFService.regularFontBytes && PDFService.boldFontBytes) return;
     try {
       const [reg, bold] = await Promise.all([
-        fetch('/fonts/NotoSerifSC-Regular.ttf')
-            .then((res) => res.arrayBuffer()),
-        fetch('/fonts/NotoSerifSC-Bold.ttf').then((res) => res.arrayBuffer()),
+        fetch('/fonts/huiwen-mincho.ttf').then((res) => res.arrayBuffer()),
+        fetch('/fonts/huiwen-mincho.ttf').then((res) => res.arrayBuffer()),
       ]);
       PDFService.regularFontBytes = reg;
       PDFService.boldFontBytes = bold;
@@ -134,8 +133,8 @@ export class PDFService {
 
     if (PDFService.regularFontBytes && PDFService.boldFontBytes) {
       regularFont =
-          await doc.embedFont(PDFService.regularFontBytes, {subset: false});
-      boldFont = await doc.embedFont(PDFService.boldFontBytes, {subset: false});
+          await doc.embedFont(PDFService.regularFontBytes, {subset: true});
+      boldFont = await doc.embedFont(PDFService.boldFontBytes, {subset: true});
     } else {
       regularFont = await doc.embedFont(StandardFonts.Helvetica);
       boldFont = await doc.embedFont(StandardFonts.HelveticaBold);
