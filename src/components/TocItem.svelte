@@ -43,7 +43,8 @@
   }
 
   function handlePageChange(e) {
-    const page = parseInt(e.target.value) || 1;
+    const val = parseInt(e.target.value);
+    const page = isNaN(val) ? 1 : val;
     onUpdate(item, {to: page});
   }
 
@@ -133,7 +134,6 @@
         bind:value={item.to}
         on:input={handlePageChange}
         class="w-14 border-2 border-black rounded ml-1 pl-1.5 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500"
-        min="1"
       />
 
       <div class="flex gap-1">

@@ -105,12 +105,12 @@
     }));
   }
 
-  tocConfig.subscribe((value) => {
-    config = value;
+  $: {
+    config = $tocConfig;
     if (isPreviewMode && !isFileLoading) {
       debouncedUpdatePDF();
     }
-  });
+  }
 
   $: {
     if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
@@ -173,7 +173,6 @@
     if (!isPreviewMode) return;
 
     toggleShowInsertTocHint();
-
     if (isDragging) return;
     const currentContentJson = JSON.stringify(getPdfEffectiveData(items));
 
@@ -287,31 +286,28 @@
 
   const togglePreviewMode = async () => {
     if (!originalPdfInstance) return;
+
     if (!isPreviewMode) {
       isPreviewLoading = true;
       try {
         if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
           await updatePDF();
         }
-        if (!previewPdfInstance || previewPdfInstance === originalPdfInstance) {
-          toastProps = {
-            show: true,
-            message: 'Add ToC items or enable "Add physical ToC page" to generate a preview.',
-            type: 'error',
-          };
-        } else {
-          isPreviewMode = true;
-        }
+
+        isPreviewMode = true;
+        toggleShowInsertTocHint();
+        await tick();
       } catch (error) {
         console.error('Error generating preview:', error);
         toastProps = {show: true, message: `Error generating preview: ${error.message}`, type: 'error'};
+        isPreviewMode = false;
       } finally {
         isPreviewLoading = false;
       }
     } else {
       isPreviewMode = false;
     }
-    pdfState.currentPage = 1;
+
     updateViewerInstance();
   };
 
@@ -549,10 +545,6 @@
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
-
-    if (!isPreviewMode) {
-      await togglePreviewMode();
-    }
   };
 
   const debouncedJumpToPage = debounce((page: number) => {
@@ -595,7 +587,6 @@
   const jumpToPage = async (logicalPage: number) => {
     if (!isPreviewMode) {
       await togglePreviewMode();
-      if (!isPreviewMode) return;
     }
     const physicalContentPage = logicalPage + config.pageOffset;
     let targetPage: number;
@@ -614,7 +605,6 @@
     }
     if (!isPreviewMode) {
       await togglePreviewMode();
-      if (!isPreviewMode) return;
     }
     await tick();
     const targetPage = config.insertAtPage || 2;
