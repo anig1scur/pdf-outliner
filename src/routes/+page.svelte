@@ -244,7 +244,7 @@
           lastInsertAtPage = currentInsertPage;
         }
 
-        const res = await $pdfService.updateTocPages(tocItems_, config);
+        const res = await $pdfService.updateTocPages(tocItems_, config, currentInsertPage);
         newDoc = res.newDoc;
         tocPageCount = res.tocPageCount;
       } else {

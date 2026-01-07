@@ -23,46 +23,31 @@ const ratelimit = new Ratelimit({
   analytics: true,
   prefix: '@tocify/ratelimit',
 });
+const SYSTEM_PROMPT_VISION  = `
+Role: Expert PDF ToC Image Parser.
+Task: Parse image(s) into a structured JSON array.
 
-const SYSTEM_PROMPT_VISION = `
-You are an expert PDF Table of Contents (ToC) parser.
-Your task is to analyze one or more images of a ToC and convert it into a single, structured JSON array.
+Strict Rules:
+1. READING ORDER (Auto-Detect):
+   - Horizontal: Top-to-Bottom. Page num at line end.
+   - Vertical (CJK): Right-to-Left columns. Page num at column bottom.
+   - Stitch multiple images mentally.
 
-Follow these rules strictly:
-1.  **VISUAL LITERALISM**: Look at the page number EXACTLY as printed in the image.
+2. FILTERING (CRITICAL):
+   - PAGE NUMBERS: Must contain Arabic digits (0-9).
+   - DISCARD line if page is Roman numeral (i, v, x).
+   - KEEP Roman numerals in TITLES (e.g., "Part II").
 
-2.  **LAYOUT & READING ORDER (CRITICAL)**:
-    - **Auto-Detect Orientation**: First, determine if the text is Horizontal (Standard) or Vertical (Traditional Chinese/Japanese).
-    - **Horizontal Text**: Read lines from Top to Bottom. Page number is typically at the **Right** end of the line/dots.
-    - **Vertical Text**: Read columns from **Right to Left**. Within a column, read text Top to Bottom. The page number is typically at the **Bottom** of the column.
-    - **Mixed**: Treat the visual structure logically based on the detected orientation.
+3. CONTENT EXTRACTION:
+   - VISUAL LITERALISM: Transcribe page text exactly (e.g., "10", "10-15") as String.
+   - PREFIXES: Preserve exact numbering in Title (e.g., "1.1 Intro", "Chapter 1:").
+   - LEVEL: Infer 1, 2, 3 from indentation/size/color visual hierarchy.
 
-3.  **ROMAN NUMERAL BAN (PAGES ONLY)**:
-    - Check the **PAGE NUMBER** specifically (usually at the end of the line or bottom of column).
-    - If the page number is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
-    - **DO NOT CONVERT** Roman page numbers to Arabic.
-    - Note: Roman numerals in the **TITLE** (e.g., "Part II", "Chapter V") ARE ALLOWED and must be preserved.
-
-4.  **ARABIC PAGE NUMBERS ONLY**: Only extract lines where the printed page number is a digit (0-9).
-
-5.  **PAGE NUMBER FORMAT**: Even if the page is a number like 10, output it as a string "10".
-    If there are multiple pages (e.g., 10-15 or 10, 12), put the whole text in the string.
-
-6.  **PRESERVE TITLE PREFIXES (CRITICAL)**:
-    - The "title" field MUST include the numbering/prefix exactly as seen.
-    - Example: "1.1 Introduction", "Chapter 1: The Beginning".
-    - Do NOT strip "1.", "1.2", "A.", "Part I", etc.
-    - Failure to preserve prefixes is a strict violation.
-
-7.  **Inference**:
-    - Mentally stitch images together.
-    - Analyze text indentation and numbering (e.g., 1 vs 1.1) to infer 'level' (1, 2, 3).
-    - For Vertical text, "indentation" usually means vertical height difference or position relative to the top margin.
-
-8.  The output MUST be a valid JSON array ONLY, no markdown.
-    Format: [{"title": "String", "level": Number, "page": "String"}]
-9.  If unusable, return [].
+Output Format (JSON Only, No Markdown):
+[{"title": "String (w/ prefix)", "level": Number, "page": "String"}]
+Return [] if unusable.
 `;
+
 const SYSTEM_PROMPT_TEXT = `
 You are an expert Table of Contents text parser.
 Your task is to convert raw, unstructured ToC text (copied from websites like Amazon, Douban, etc.) into a structured JSON array.
