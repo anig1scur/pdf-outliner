@@ -112,6 +112,29 @@
                   {$t('btn.go')}
                 </button>
               </div>
+              <div class="flex flex-col gap-1 border-t border-gray-200 mt-2 pt-2">
+                <div class="flex justify-between items-center">
+                  <label
+                    class="text-sm"
+                    for="title_y_start">Title Vertical Position</label
+                  >
+                </div>
+
+                <div class="flex items-center gap-2 h-6">
+                  <span class="text-[10px] text-gray-400">Top</span>
+                  <input
+                    type="range"
+                    id="title_y_start"
+                    min="0.1"
+                    max="0.9"
+                    step="0.1"
+                    value={config.titleYStart ?? 0.66}
+                    on:input={(e) => updateField('titleYStart', parseFloat(e.target.value))}
+                    class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black border border-gray-300 hover:border-gray-400"
+                  />
+                  <span class="text-[10px] text-gray-400">Bottom</span>
+                </div>
+              </div>
             </div>
 
             <div class="flex flex-col md:flex-row gap-4">

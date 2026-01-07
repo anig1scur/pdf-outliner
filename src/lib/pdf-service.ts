@@ -11,7 +11,6 @@ const TOC_LAYOUT = {
     MARGIN_BOTTOM: 50,
   },
   TITLE: {
-    Y_START_RATIO: 2 / 3,
     FONT_SIZE: 23,
     MARGIN_BOTTOM: 40,
   },
@@ -157,7 +156,8 @@ export class PDFService {
         insertionStartIndex + currentTocPageIndex.value, [width, height]);
     currentTocPageIndex.value++;
 
-    let yOffset = height * TOC_LAYOUT.TITLE.Y_START_RATIO;
+    const titleYRatio = typeof config.titleYStart === 'number' ? config.titleYStart : (2 / 3);
+    let yOffset = height * (1-titleYRatio);
     const titleText = items.some(i => /[\u4e00-\u9fa5]/.test(i.title)) ?
         '目录' :
         'Table of Contents';
