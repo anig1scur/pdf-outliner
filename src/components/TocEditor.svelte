@@ -242,7 +242,7 @@
     $tocItems = deleteItemRecursive($tocItems);
   };
 
-  $: promptTooltipText = `${$t('toc.prompt_intro')}:\n\n1 Food Categories I Love 1\n2 Fruits 2\n2.1 Strawberry 3\n\n${$t('toc.prompt_instruction')}\n\n\${YOUR_TOCS_COPY_FROM_ANYWHERE}`;
+  $: promptTooltipText = $t('toc.prompt_intro');
 </script>
 
 <div class="flex flex-col gap-4 mt-3">
@@ -250,7 +250,7 @@
     <div class="absolute -left-2 top-0">
       <Tooltip
         isTextCopiable
-        width="min-w-96"
+        width="w-[368px]"
         text={promptTooltipText}
         position="right"
         className="-ml-6"

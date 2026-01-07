@@ -34,8 +34,7 @@
     "end": "END"
   },
   "toc": {
-    "prompt_intro": "Prompt to get the target format",
-    "prompt_instruction": "organize the ToCs in below to the target format, remove useless comments",
+    "prompt_intro": "The 'AI Format' button in the bottom right is used when the book lacks a scanned table of contents. Paste the unformatted text into the box, and it will intelligently convert it to the target format.\n\nAlternatively, you can use the following prompt to generate the formatted text yourself:\n\n1 Food Categories I Love 1\n2 Fruits 2\n2.1 Strawberry 3\n\nReformat the table of contents below into the target format and remove unnecessary comments \n\n${YOUR_TOCS_COPY_FROM_ANYWHERE}",
     "new_section_default": "New Section",
     "new_item_default": "New Item"
   },
@@ -77,7 +76,7 @@
     "upload_new": "Upload a new PDF file",
     "switch_edit": "Switch to Edit Mode (Show Original PDF)",
     "switch_preview": "Switch to Preview Mode (Show Generated PDF)",
-    "ai_format": "Use AI to format the ToC text, use it when you can find text instead of visual ToC"
+    "ai_format": "Use AI to format the ToC text, when you can only find text instead of visual ToC"
   },
   "dropzone": {
     "drop_here": "Drop your PDF file here...",

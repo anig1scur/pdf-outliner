@@ -30,8 +30,7 @@
     "end": "结束"
   },
   "toc": {
-    "prompt_intro": "用于获取目标格式的提示词",
-    "prompt_instruction": "将下方的目录整理为目标格式，并移除无用的注释",
+    "prompt_intro": "右下角的 AI Format 按钮仅当书本没有影印目录，只能找文本内容时使用。将不符合格式的文本粘贴到框内，它将智能处理目录文本为目标格式。\n\n或者，你可以自行通过下列提示词获取目标文本:\n\n1 Food Categories I Love 1\n2 Fruits 2\n2.1 Strawberry 3\n\n将下方的目录整理为目标格式，并移除无用的注释\n${YOUR_TOCS_COPY_FROM_ANYWHERE}",
     "new_section_default": "新章节",
     "new_item_default": "新条目"
   },

@@ -266,7 +266,6 @@
       pdfState.newDoc = newDoc;
 
       if (isPreviewMode) {
-        updateViewerInstance();
         if (currentPageBackup <= pdfState.totalPages) {
           pdfState.currentPage = currentPageBackup;
         } else {

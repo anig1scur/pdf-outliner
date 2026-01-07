@@ -1,9 +1,7 @@
 <script lang="ts">
-  import {fade,slide} from 'svelte/transition';
+  import {fade, slide} from 'svelte/transition';
   import {t} from 'svelte-i18n';
   import {createEventDispatcher} from 'svelte';
-
-  import { DEFAULT_PREFIX_CONFIG, type LevelConfig } from '$lib/prefix-service';
 
   import Header from '../Header.svelte';
   import ApiSetting from '../settings/ApiSetting.svelte';
@@ -29,9 +27,7 @@
   export let tocPageCount: number;
   export let isPreviewMode: boolean;
 
-
   const dispatch = createEventDispatcher();
-
 </script>
 
 <div class="w-full lg:w-[35%]">
@@ -50,7 +46,6 @@
     on:toggleExpand={() => (isTocConfigExpanded = !isTocConfigExpanded)}
     on:updateField={(e) => dispatch('updateField', e.detail)}
     on:jumpToTocPage={() => dispatch('jumpToTocPage')}
-
   />
 
   {#if showNextStepHint && originalPdfInstance}
@@ -118,6 +113,6 @@
     pageOffset={config.pageOffset}
     insertAtPage={config.insertAtPage}
     apiConfig={customApiConfig}
-    tocPageCount={addPhysicalTocPage ? tocPageCount : 0}
+    {tocPageCount}
   />
 </div>

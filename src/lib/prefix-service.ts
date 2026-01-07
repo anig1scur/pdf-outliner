@@ -44,10 +44,23 @@ export const convertNum = (num: number, style: CounterStyle): string => {
     return roman;
   }
   if (style === 'chinese_simple') {
-    const chars =
-        ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-    return num <= 10 ? chars[num] : num.toString();
+    const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+
+    if (num === 0) return '零';
+    if (num <= 9) return digits[num];
+    if (num === 10) return '十';
+    if (num < 20) return `十${digits[num % 10]}`;
+    if (num < 100) {
+      const tens = Math.floor(num / 10);
+      const ones = num % 10;
+      return ones === 0 ? `${digits[tens]}十` :
+                          `${digits[tens]}十${digits[ones]}`;
+    }
+    if (num === 100) return '一百';
+
+    return num.toString();
   }
+
   return num.toString();
 };
 
