@@ -25,16 +25,27 @@
   let isProcessing = false;
   let debounceTimer;
 
+  let isDragging = false;
+  let textGenTimer;
+
   const unsubscribe = tocItems.subscribe((value) => {
     if (isUpdatingFromEditor) return;
+    if (isDragging) return;
 
-    const newText = generateText(value);
-    if (newText !== text) {
-      text = newText;
-    }
+    clearTimeout(textGenTimer);
+    textGenTimer = setTimeout(() => {
+      const newText = generateText(value);
+      if (newText !== text) {
+        text = newText;
+      }
+    }, 300);
   });
 
-  onDestroy(unsubscribe);
+  onDestroy(() => {
+    unsubscribe();
+    clearTimeout(textGenTimer);
+    clearTimeout(debounceTimer);
+  });
 
   function buildTree(items) {
     const root = [];
@@ -50,12 +61,10 @@
         open: true,
       };
 
-      // Update max page tracker
       if (item.page > $maxPage) $maxPage = item.page;
 
       const level = item.level;
 
-      // Adjust stack to find correct parent
       while (stack.length > 0 && stack[stack.length - 1].level >= level) {
         stack.pop();
       }
@@ -108,7 +117,6 @@
     }
   }
 
-  //  (Text -> Items) - Manual Parsing
   function parseText(text) {
     const lines = text
       .split('\n')
@@ -143,7 +151,6 @@
     return items;
   }
 
-  //  (Items -> Text)
   function generateText(items, prefix = '') {
     return items
       .map((item, index) => {
@@ -161,7 +168,6 @@
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      // 只有当手动输入符合 parseText 的正则时，才会更新 Items
       const parsed = parseText(text);
       if (parsed.length > 0) {
         $tocItems = parsed;
@@ -173,11 +179,17 @@
   }
 
   function handleDndConsider(e) {
+    isDragging = true;
     $tocItems = e.detail.items;
   }
 
   function handleDndFinalize(e) {
     $tocItems = e.detail.items;
+    tick().then(() => {
+      isDragging = false;
+      const newText = generateText($tocItems);
+      if (newText !== text) text = newText;
+    });
   }
 
   $: firstItemWithChildrenId = (() => {

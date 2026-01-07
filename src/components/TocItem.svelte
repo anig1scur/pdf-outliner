@@ -1,12 +1,10 @@
 <script>
-  import {ChevronRight, ChevronDown, Plus, Trash, CircleHelpIcon, GripVertical} from 'lucide-svelte';
-  import Tooltip from '../components/Tooltip.svelte';
+  import {ChevronRight, ChevronDown, Plus, Trash, GripVertical} from 'lucide-svelte';
   import ShortUniqueId from 'short-unique-id';
-  import Self from './TocItem.svelte'; // 递归引用
+  import Self from './TocItem.svelte';
   import {maxPage} from '../stores';
   import {createEventDispatcher} from 'svelte';
   import {t} from 'svelte-i18n';
-
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
 
@@ -58,7 +56,7 @@
       open: true,
     };
     const updatedChildren = [...(item.children || []), newChild];
-    onUpdate(item, {children: updatedChildren, open: true}); // 添加子项时自动展开
+    onUpdate(item, {children: updatedChildren, open: true});
   }
 
   function handleUpdateChild(childItem, updates) {
@@ -81,11 +79,13 @@
 
   function handleDndConsider(e) {
     item.children = e.detail.items;
+    item = item;
   }
 
   function handleDndFinalize(e) {
     item.children = e.detail.items;
-    onUpdate(item, {children: item.children});
+    item = item; // 强制更新
+    onUpdate(item, {children: item.children}); // 拖拽结束后才通知父级更新 Store
   }
 </script>
 
@@ -160,7 +160,7 @@
         use:dndzone={{
           items: item.children || [],
           flipDurationMs,
-          dropTargetStyle: item.children.length > 0 ? {outline: '2px dashed #000', borderRadius: '4px'} : {},
+          dropTargetStyle: item.children?.length > 0 ? {outline: '2px dashed #000', borderRadius: '4px'} : {},
         }}
         on:consider={handleDndConsider}
         on:finalize={handleDndFinalize}
