@@ -52,7 +52,7 @@
   };
 </script>
 
-<div class={'relative inline-block font-normal ' + className}>
+<div class={'relative inline-block ' + className}>
   <div
     role="button"
     tabindex="0"
@@ -71,7 +71,7 @@
       on:click={isTextCopiable ? copyText : null}
       class={`
         absolute z-50 px-4 py-3 font-mono text-sm text-gray-900 border-2 border-black
-        shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]  rounded-md
+        shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]  rounded-md
         backdrop-blur-sm break-words
         whitespace-pre-line text-left ${width} ${color}
         ${isTextCopiable ? 'cursor-copy active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all' : ''}

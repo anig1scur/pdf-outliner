@@ -24,34 +24,45 @@ const ratelimit = new Ratelimit({
   prefix: '@tocify/ratelimit',
 });
 
-
 const SYSTEM_PROMPT_VISION = `
 You are an expert PDF Table of Contents (ToC) parser.
 Your task is to analyze one or more images of a ToC and convert it into a single, structured JSON array.
 
 Follow these rules strictly:
 1.  **VISUAL LITERALISM**: Look at the page number EXACTLY as printed in the image.
-2.  **ROMAN NUMERAL BAN (PAGES ONLY)**:
-    - If the **PAGE NUMBER** (at the end of line) is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
+
+2.  **LAYOUT & READING ORDER (CRITICAL)**:
+    - **Auto-Detect Orientation**: First, determine if the text is Horizontal (Standard) or Vertical (Traditional Chinese/Japanese).
+    - **Horizontal Text**: Read lines from Top to Bottom. Page number is typically at the **Right** end of the line/dots.
+    - **Vertical Text**: Read columns from **Right to Left**. Within a column, read text Top to Bottom. The page number is typically at the **Bottom** of the column.
+    - **Mixed**: Treat the visual structure logically based on the detected orientation.
+
+3.  **ROMAN NUMERAL BAN (PAGES ONLY)**:
+    - Check the **PAGE NUMBER** specifically (usually at the end of the line or bottom of column).
+    - If the page number is a Roman numeral (e.g., i, ii, v, vii, ix, x), **DISCARD THE ENTIRE LINE**.
     - **DO NOT CONVERT** Roman page numbers to Arabic.
-    - If you see 'vii' as the page, output NOTHING for that line.
     - Note: Roman numerals in the **TITLE** (e.g., "Part II", "Chapter V") ARE ALLOWED and must be preserved.
-3.  **ARABIC PAGE NUMBERS ONLY**: Only extract lines where the printed page number is a digit (0-9).
-4.  **PAGE NUMBER FORMAT**: Even if the page is a number like 10, output it as a string "10".
+
+4.  **ARABIC PAGE NUMBERS ONLY**: Only extract lines where the printed page number is a digit (0-9).
+
+5.  **PAGE NUMBER FORMAT**: Even if the page is a number like 10, output it as a string "10".
     If there are multiple pages (e.g., 10-15 or 10, 12), put the whole text in the string.
-5.  **PRESERVE TITLE PREFIXES (CRITICAL)**:
+
+6.  **PRESERVE TITLE PREFIXES (CRITICAL)**:
     - The "title" field MUST include the numbering/prefix exactly as seen.
-    - Example: If image shows "1.1 Introduction", title is "1.1 Introduction" (NOT just "Introduction").
-    - Example: If image shows "Chapter 1: The Beginning", title is "Chapter 1: The Beginning".
+    - Example: "1.1 Introduction", "Chapter 1: The Beginning".
     - Do NOT strip "1.", "1.2", "A.", "Part I", etc.
-6.  **Inference**:
+    - Failure to preserve prefixes is a strict violation.
+
+7.  **Inference**:
     - Mentally stitch images together.
     - Analyze text indentation and numbering (e.g., 1 vs 1.1) to infer 'level' (1, 2, 3).
-7.  The output MUST be a valid JSON array ONLY, no markdown.
-    Format: [{"title": "String", "level": Number, "page": "String"}]
-8.  If unusable, return [].
-`;
+    - For Vertical text, "indentation" usually means vertical height difference or position relative to the top margin.
 
+8.  The output MUST be a valid JSON array ONLY, no markdown.
+    Format: [{"title": "String", "level": Number, "page": "String"}]
+9.  If unusable, return [].
+`;
 const SYSTEM_PROMPT_TEXT = `
 You are an expert Table of Contents text parser.
 Your task is to convert raw, unstructured ToC text (copied from websites like Amazon, Douban, etc.) into a structured JSON array.
