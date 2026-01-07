@@ -56,6 +56,7 @@
 
   let originalPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
   let previewPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
+
   let pdfState: PDFState = {
     doc: null,
     newDoc: null,
@@ -76,6 +77,9 @@
   let aiError: string | null = null;
   let config: TocConfig;
 
+  let lastPdfContentJson = '';
+  let lastInsertAtPage = 2;
+
   let customApiConfig = {
     provider: '',
     apiKey: '',
@@ -87,12 +91,19 @@
 
   onMount(() => {
     init('A-US-0422911470');
-
     trackEvent('app_started', {
       platform: window.__TAURI__ ? 'desktop' : 'web',
       version: '1.0.0',
     });
   });
+
+  function getPdfEffectiveData(items: TocItem[]): any[] {
+    return items.map((item) => ({
+      title: item.title,
+      to: item.to,
+      children: item.children ? getPdfEffectiveData(item.children) : [],
+    }));
+  }
 
   tocConfig.subscribe((value) => {
     config = value;
@@ -115,6 +126,10 @@
   $: {
     if (pdfState.doc && previousAddPhysicalTocPage !== addPhysicalTocPage && !isFileLoading) {
       previousAddPhysicalTocPage = addPhysicalTocPage;
+      if (!isPreviewMode) {
+        togglePreviewMode();
+      }
+      toggleShowInsertTocHint();
       if (isPreviewMode) {
         debouncedUpdatePDF();
       }
@@ -137,10 +152,9 @@
   }
 
   const debouncedUpdatePDF = debounce(updatePDF, 300);
-  tocItems.subscribe((items) => {
-    if (items.length > 0) showNextStepHint = false;
-    if (isFileLoading) return;
-    if (!hasShownTocHint && addPhysicalTocPage && items.length > 0) {
+
+  const toggleShowInsertTocHint = () => {
+    if (!hasShownTocHint && addPhysicalTocPage && $tocItems.length > 0) {
       toastProps = {
         show: true,
         message: `ToC pages will be inserted at page ${config.insertAtPage || 2}. You can change it in Settings.`,
@@ -148,15 +162,26 @@
       };
       setTimeout(() => {
         hasShownTocHint = true;
-      }, 3000);
+      }, 2000);
     }
-    if (!isPreviewMode) return;
-    debouncedUpdatePDF();
-  });
+  };
 
-  tocConfig.subscribe(() => {
+  tocItems.subscribe((items) => {
+    if (items.length > 0) showNextStepHint = false;
     if (isFileLoading) return;
+
     if (!isPreviewMode) return;
+
+    toggleShowInsertTocHint();
+
+    if (isDragging) return;
+    const currentContentJson = JSON.stringify(getPdfEffectiveData(items));
+
+    if (currentContentJson === lastPdfContentJson) {
+      return;
+    }
+
+    lastPdfContentJson = currentContentJson;
     debouncedUpdatePDF();
   });
 
@@ -209,13 +234,21 @@
       const settings = config.prefixSettings;
       const tocItems_ = settings.enabled ? applyCustomPrefix($tocItems, settings.configs) : $tocItems;
       const currentPageBackup = pdfState.currentPage;
+
       let newDoc = pdfState.doc;
 
+      const currentInsertPage = config.insertAtPage || 2;
       if (addPhysicalTocPage) {
-        const res = await $pdfService.createTocPage(pdfState.doc, tocItems_, config.insertAtPage);
+        if (currentInsertPage !== lastInsertAtPage) {
+          await $pdfService.initPreview(pdfState.doc);
+          lastInsertAtPage = currentInsertPage;
+        }
+
+        const res = await $pdfService.updateTocPages(tocItems_, config);
         newDoc = res.newDoc;
         tocPageCount = res.tocPageCount;
       } else {
+        newDoc = await pdfState.doc.copy();
         tocPageCount = 0;
       }
 
@@ -231,6 +264,7 @@
 
       previewPdfInstance = await loadingTask.promise;
       pdfState.newDoc = newDoc;
+
       if (isPreviewMode) {
         updateViewerInstance();
         if (currentPageBackup <= pdfState.totalPages) {
@@ -328,6 +362,12 @@
 
       pdfState.doc = await PDFDocument.load(uint8Array);
 
+      if ($pdfService) {
+        const initPage = config.insertAtPage || 2;
+        lastInsertAtPage = initPage;
+        await $pdfService.initPreview(pdfState.doc);
+      }
+
       const loadingTask = pdfjs.getDocument({
         data: uint8Array,
         worker: PDFService.sharedWorker,
@@ -367,6 +407,8 @@
           updateTocField('pageOffset', 0);
         }
       }
+
+      lastPdfContentJson = JSON.stringify(getPdfEffectiveData($tocItems));
     } catch (error) {
       console.error('Error loading PDF:', error);
       toastProps = {show: true, message: `Error loading PDF: ${error.message}`, type: 'error'};
@@ -404,12 +446,10 @@
       toastProps = {show: true, message: 'Exporting file...', type: 'info'};
 
       await updatePDF();
-
       if (!pdfState.newDoc) {
         toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
         return;
       }
-
       const pdfBytes = await pdfState.newDoc.save();
 
       if (isSupported && fileHandle) {
@@ -427,7 +467,6 @@
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
-
       toastProps = {show: true, message: 'Export Successful!', type: 'success'};
     } catch (error) {
       console.error('Error exporting PDF:', error);
