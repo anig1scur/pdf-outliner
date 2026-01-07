@@ -348,10 +348,23 @@
   on:click={handleBgClick}
 >
   <div class="absolute top-4 left-5 z-40 pointer-events-none select-none">
-    <div class="flex gap-2 text-gray-500 opacity-80">
-      <BookOpen size={32} />
-      <span class="font-serif text-xl tracking-wide">{title}</span>
-    </div>
+    {#if isFullscreen}
+      <div class="flex gap-2 text-gray-500 opacity-80">
+        <BookOpen size={32} />
+        <span class="font-serif text-xl tracking-wide">{title}</span>
+      </div>
+    {:else}
+      <div class="flex items-center gap-2 text-2xl font-['Patrick_Hand'] text-gray-400 opacity-60">
+        <BrainCircuit size={28} />
+        <span>KNOWLEDGE BOARD</span>
+
+        <span
+          class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"
+        >
+          BETA
+        </span>
+      </div>
+    {/if}
   </div>
 
   {#if items.length > 0}
@@ -433,7 +446,16 @@
     <div
       class="absolute bottom-4 left-4 font-['Patrick_Hand'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
     >
-      KNOWLEDGE BOARD
+      <div class="flex items-center gap-2">
+        <BrainCircuit size={28} />
+        <span>KNOWLEDGE BOARD</span>
+
+        <span
+          class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"
+        >
+          BETA
+        </span>
+      </div>
     </div>
   {/if}
 

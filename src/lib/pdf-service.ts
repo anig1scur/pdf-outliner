@@ -156,8 +156,9 @@ export class PDFService {
         insertionStartIndex + currentTocPageIndex.value, [width, height]);
     currentTocPageIndex.value++;
 
-    const titleYRatio = typeof config.titleYStart === 'number' ? config.titleYStart : (2 / 3);
-    let yOffset = height * (1-titleYRatio);
+    const titleYRatio =
+        typeof config.titleYStart === 'number' ? config.titleYStart : (1 / 3);
+    let yOffset = height * (1 - titleYRatio);
     const titleText = items.some(i => /[\u4e00-\u9fa5]/.test(i.title)) ?
         '目录' :
         'Table of Contents';

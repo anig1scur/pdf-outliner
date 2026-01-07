@@ -128,7 +128,7 @@
                     min="0.1"
                     max="0.9"
                     step="0.1"
-                    value={config.titleYStart ?? 0.66}
+                    value={config.titleYStart ?? 0.33}
                     on:input={(e) => updateField('titleYStart', parseFloat(e.target.value))}
                     class="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black border border-gray-300 hover:border-gray-400"
                   />
