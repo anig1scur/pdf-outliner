@@ -20,9 +20,22 @@
 
   let svg;
   let rc;
+  let viewportWidth = 0;
+  let viewportElement;
+  let contentWrapper;
 
   let canvasWidth = 400;
   let canvasHeight = 400;
+
+  // Zoom and Pan state
+  let scale = 1;
+  let viewX = 0;
+  let viewY = 0;
+  let isPanning = false;
+  let startPanMouse = {x: 0, y: 0};
+  let startPanView = {x: 0, y: 0};
+  const MIN_SCALE = 0.1;
+  const MAX_SCALE = 5;
 
   let dragTarget = null;
   let initialMouse = {x: 0, y: 0};
@@ -109,14 +122,50 @@
     });
   }
 
-  function handleBgClick(e) {
-    if (e.target === e.currentTarget) {
+  function handleContainerMouseDown(e) {
+    // Check if middle click or left click on background
+    // We check if the target is the viewport, the static background, or the transformed wrapper itself (if empty areas clicked)
+    const isBackground =
+      e.target === e.currentTarget || e.target.classList.contains('bg-grid-pattern') || e.target === contentWrapper;
+
+    if (e.button === 1 || (e.button === 0 && isBackground)) {
+      isPanning = true;
+      startPanMouse = {x: e.clientX, y: e.clientY};
+      startPanView = {x: viewX, y: viewY};
       activeNodeId = null;
       drawWall();
     }
   }
 
-  function handleMouseDown(e, node) {
+  function handleWheel(e) {
+    e.preventDefault();
+
+    // Browser standard: Pinch-to-zoom on trackpads usually fires wheel events with ctrlKey=true
+    if (e.ctrlKey) {
+      // ZOOM Code
+      const rect = viewportElement.getBoundingClientRect();
+      const xs = (e.clientX - rect.left - viewX) / scale;
+      const ys = (e.clientY - rect.top - viewY) / scale;
+
+      const delta = -e.deltaY;
+      const factor = delta > 0 ? 1.05 : 0.95; // Slower zoom for pinch control
+      let newScale = scale * factor;
+
+      if (newScale < MIN_SCALE) newScale = MIN_SCALE;
+      if (newScale > MAX_SCALE) newScale = MAX_SCALE;
+
+      viewX = e.clientX - rect.left - xs * newScale;
+      viewY = e.clientY - rect.top - ys * newScale;
+      scale = newScale;
+    } else {
+      // PAN Code (Trackpad two-finger scroll or regular mouse wheel)
+      viewX -= e.deltaX;
+      viewY -= e.deltaY;
+    }
+  }
+
+  function handleNodeMouseDown(e, node) {
+    e.stopPropagation(); // prevent panning
     if (e.target.closest('button')) return;
 
     activeNodeId = node.id;
@@ -130,10 +179,19 @@
   }
 
   function handleWindowMouseMove(e) {
+    if (isPanning) {
+      const dx = e.clientX - startPanMouse.x;
+      const dy = e.clientY - startPanMouse.y;
+      viewX = startPanView.x + dx;
+      viewY = startPanView.y + dy;
+      return;
+    }
+
     if (!isDragging || !dragTarget) return;
 
-    const dx = e.clientX - initialMouse.x;
-    const dy = e.clientY - initialMouse.y;
+    // Adjust dx/dy by scale to ensure 1:1 movement relative to mouse pointer *visually*
+    const dx = (e.clientX - initialMouse.x) / scale;
+    const dy = (e.clientY - initialMouse.y) / scale;
 
     if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
       hasMovedDuringDrag = true;
@@ -148,6 +206,7 @@
   }
 
   function handleWindowMouseUp() {
+    isPanning = false;
     if (isDragging) {
       isDragging = false;
       dragTarget = null;
@@ -228,8 +287,8 @@
             [midX, midY],
             [x2, y2],
           ],
-          options
-        )
+          options,
+        ),
       );
 
       drawArrowHead(parentGroup, midX, midY, x2, y2, isActive ? ACTIVE_COLOR : '#e2e8f0');
@@ -259,7 +318,7 @@
           stroke: strokeStyle,
           fillWeight: 1,
           strokeWidth: node.isInferred ? 1 : 1.5,
-        })
+        }),
       );
     });
 
@@ -272,13 +331,26 @@
 
   function centerContent() {
     if (graphData.nodes.length === 0) return;
-    const minX = Math.min(...graphData.nodes.map((n) => n.x));
-    const maxX = Math.max(...graphData.nodes.map((n) => n.x));
-    const graphWidth = maxX - minX + CARD_W;
-    const containerWidth = isFullscreen ? window.innerWidth : 400;
-    const targetMinX = Math.max(50, (containerWidth - graphWidth) / 2);
-    const offsetX = targetMinX - minX;
-    graphData.nodes.forEach((n) => (n.x += offsetX));
+
+    const contentMinX = Math.min(...graphData.nodes.map((n) => n.x));
+    const contentMaxX = Math.max(...graphData.nodes.map((n) => n.x)) + CARD_W;
+    const contentMinY = Math.min(...graphData.nodes.map((n) => n.y));
+    const contentMaxY = Math.max(...graphData.nodes.map((n) => n.y)) + CARD_H;
+
+    const contentWidth = contentMaxX - contentMinX;
+    const contentHeight = contentMaxY - contentMinY;
+
+    const containerWidth = isFullscreen ? window.innerWidth : viewportWidth || 400;
+    const containerHeight = isFullscreen ? window.innerHeight : 400; // approximation
+
+    scale = 1;
+    viewX = (containerWidth - contentWidth) / 2 - contentMinX;
+    viewY = (containerHeight - contentHeight) / 2 - contentMinY;
+
+    // Ensure we don't start with crazy values if empty
+    if (isNaN(viewX)) viewX = 0;
+    if (isNaN(viewY)) viewY = 0;
+
     graphData.nodes = graphData.nodes;
   }
 
@@ -303,8 +375,8 @@
           stroke: 'none',
           fillStyle: 'solid',
           roughness: 0.5,
-        }
-      )
+        },
+      ),
     );
   }
 
@@ -315,7 +387,7 @@
     t.setAttribute('x', x);
     t.setAttribute('y', y + 5);
     t.setAttribute('text-anchor', 'middle');
-    t.setAttribute('font-family', 'serif');
+    t.setAttribute('font-family', 'HuiwenMincho, serif');
     t.setAttribute('font-size', '14');
     t.setAttribute('fill', ACTIVE_COLOR);
     t.setAttribute('font-weight', 'bold');
@@ -335,17 +407,9 @@
   on:mouseup={handleWindowMouseUp}
 />
 
-<svelte:head>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap"
-    rel="stylesheet"
-  />
-</svelte:head>
-
 <div
   class="bg-[#f0f0f0] flex flex-col overflow-hidden mx-auto
 {isFullscreen ? ' fixed inset-0 z-[9999] w-screen h-screen rounded-none' : ' relative h-full rounded-xl '}"
-  on:click={handleBgClick}
 >
   <div class="absolute top-4 left-5 z-40 pointer-events-none select-none">
     {#if isFullscreen}
@@ -354,7 +418,7 @@
         <span class="font-serif text-xl tracking-wide">{title}</span>
       </div>
     {:else}
-      <div class="flex items-center gap-2 text-2xl font-['Patrick_Hand'] text-gray-400 opacity-60">
+      <div class="flex items-center gap-2 text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
         <BrainCircuit size={28} />
         <span>KNOWLEDGE BOARD</span>
 
@@ -372,7 +436,7 @@
       <button
         on:click={handleGenerateGraph}
         disabled={isLoading || items.length === 0}
-        class="flex items-center gap-2 text-white px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-400 to-cyan-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['Patrick_Hand'] text-xl shadow-lg"
+        class="flex items-center gap-2 text-white px-5 py-2 rounded-lg bg-gradient-to-r from-indigo-400 to-cyan-400 disabled:opacity-50 transition-all active:scale-95 border-2 border-transparent font-['HuiwenMincho'] text-xl shadow-lg"
       >
         {#if isLoading}
           <Loader2
@@ -388,25 +452,36 @@
     </div>
   {/if}
 
-  <div class="flex-1 overflow-auto relative w-full h-full bg-grid-pattern cursor-grab active:cursor-grabbing">
+  <div
+    bind:clientWidth={viewportWidth}
+    bind:this={viewportElement}
+    on:mousedown={handleContainerMouseDown}
+    on:wheel={handleWheel}
+    class="flex-1 overflow-hidden relative w-full h-full bg-[#f0f0f0] cursor-grab active:cursor-grabbing no-scrollbar block select-none"
+  >
+    <div class="absolute inset-0 z-0 bg-grid-pattern pointer-events-none"></div>
+
+    <!-- Render this div inside to apply transforms -->
+    <!-- Content Wrapper: content scales and moves -->
     <div
-      class="relative origin-top-left"
-      style="width: {canvasWidth}px; height: {canvasHeight}px;"
+      bind:this={contentWrapper}
+      class="origin-top-left absolute top-0 left-0 z-10"
+      style="width: {canvasWidth}px; height: {canvasHeight}px; transform: translate({viewX}px, {viewY}px) scale({scale});"
     >
       <svg
         bind:this={svg}
         width={canvasWidth}
         height={canvasHeight}
-        class="absolute inset-0 pointer-events-none z-10"
+        class="absolute inset-0 pointer-events-none z-0"
       ></svg>
 
-      <div class="absolute inset-0 z-20 pointer-events-none">
+      <div class="absolute inset-0 z-10 pointer-events-none">
         {#each graphData.nodes as node (node.id)}
           <GraphNode
             {node}
             {activeNodeId}
             isDragTarget={dragTarget && dragTarget.id === node.id}
-            on:mousedown={(e) => handleMouseDown(e, node)}
+            on:mousedown={(e) => handleNodeMouseDown(e, node)}
             on:click={() => handleNodeClick(node)}
           />
         {/each}
@@ -416,7 +491,7 @@
 
   {#if items.length === 0}
     <div
-      class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
+      class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 font-['HuiwenMincho'] opacity-50 pointer-events-none z-0"
     >
       <RefreshCw
         size={64}
@@ -426,7 +501,7 @@
     </div>
   {:else if !isLoading && items.length > 0 && graphData.nodes.length === 0}
     <div
-      class="absolute max-w-[80%] mx-auto text-center inset-0 flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
+      class="absolute max-w-[80%] mx-auto text-center inset-0 flex flex-col items-center justify-center text-gray-400 font-['HuiwenMincho'] opacity-50 pointer-events-none z-0"
     >
       <Sparkles
         size={64}
@@ -436,7 +511,7 @@
     </div>
   {:else if isLoading}
     <div
-      class="absolute inset-0 max-w-[80%] mx-auto text-center flex flex-col items-center justify-center text-gray-400 font-['Patrick_Hand'] opacity-50 pointer-events-none z-0"
+      class="absolute inset-0 max-w-[80%] mx-auto text-center flex flex-col items-center justify-center text-gray-400 font-['HuiwenMincho'] opacity-50 pointer-events-none z-0"
     >
       <span class="text-3xl animate-bounce">Generating the knowledge board...</span>
     </div>
@@ -444,7 +519,7 @@
 
   {#if isFullscreen}
     <div
-      class="absolute bottom-4 left-4 font-['Patrick_Hand'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
+      class="absolute bottom-4 left-4 font-['HuiwenMincho'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
     >
       <div class="flex items-center gap-2">
         <BrainCircuit size={28} />
@@ -477,5 +552,13 @@
     background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
       linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
     background-size: 20px 20px;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 </style>

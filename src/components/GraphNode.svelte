@@ -25,13 +25,13 @@
 >
   {#if node.isInferred}
     <div
-      class="absolute top-2 left-2 flex items-center gap-1 text-[9px] text-slate-400 uppercase font-bold tracking-widest bg-slate-100 px-1 rounded"
+      class="absolute top-2 left-2 flex items-center gap-1 text-[9px] text-slate-400 uppercase font-bold tracking-widest px-1 rounded"
     >
       <BrainCircuit size={10} />
     </div>
   {/if}
 
-  <div class="font-serif text-lg leading-5 font-bold text-gray-400 break-words line-clamp-3 w-full">
+  <div class="font-['HuiwenMincho'] text-lg leading-5 font-bold text-gray-400 break-words line-clamp-3 w-full">
     {node.title}
   </div>
 

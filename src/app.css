@@ -2,6 +2,12 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+@font-face {
+  font-family: 'HuiwenMincho';
+  src: url('/fonts/huiwen-mincho.ttf') format('truetype');
+  font-display: swap;
+}
+
 @layer base {
   body {
     @apply bg-[#f9f8f5] font-sans;
