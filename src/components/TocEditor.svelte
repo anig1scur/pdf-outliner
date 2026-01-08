@@ -232,23 +232,31 @@
     }, 300);
   }
 
-  function handleDndConsider(e) {
+  const handleDragStart = () => {
     if (!isDragging) {
       saveHistory();
       $autoSaveEnabled = false;
+      isDragging = true;
     }
-    isDragging = true;
-    $tocItems = e.detail.items;
-  }
+  };
 
-  function handleDndFinalize(e) {
-    $tocItems = e.detail.items;
+  const handleDragEnd = () => {
     tick().then(() => {
       isDragging = false;
       const newText = generateText($tocItems);
       if (newText !== text) text = newText;
       $autoSaveEnabled = true;
     });
+  };
+
+  function handleDndConsider(e) {
+    handleDragStart();
+    $tocItems = e.detail.items;
+  }
+
+  function handleDndFinalize(e) {
+    $tocItems = e.detail.items;
+    handleDragEnd();
   }
 
   $: firstItemWithChildrenId = (() => {
@@ -280,8 +288,10 @@
     ];
   };
 
-  const updateTocItem = (item, updates) => {
-    saveHistory();
+  const updateTocItem = (item, updates, skipHistory = false) => {
+    if (!skipHistory) {
+      saveHistory();
+    }
     const updateItemRecursive = (items) =>
       items.map((currentItem) => {
         if (currentItem.id === item.id) return {...currentItem, ...updates};
@@ -369,6 +379,8 @@
               showTooltip={item.id === firstItemWithChildrenId}
               onUpdate={updateTocItem}
               onDelete={deleteTocItem}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
               on:hoveritem
               {currentPage}
               {isPreview}

@@ -11,6 +11,9 @@
   export let item;
   export let onUpdate;
   export let onDelete;
+  export let onDragStart = () => {};
+  export let onDragEnd = () => {};
+
   export let currentPage = 1;
   export let isPreview = false;
   export let pageOffset = 0;
@@ -68,11 +71,11 @@
     onUpdate(item, {children: updatedChildren, open: true});
   }
 
-  function handleUpdateChild(childItem, updates) {
+  function handleUpdateChild(childItem, updates, skipHistory = false) {
     const updatedChildren = (item.children || []).map((child) =>
       child.id === childItem.id ? {...child, ...updates} : child,
     );
-    onUpdate(item, {children: updatedChildren});
+    onUpdate(item, {children: updatedChildren}, skipHistory);
   }
 
   function handleDeleteChild(childItem) {
@@ -87,14 +90,16 @@
   }
 
   function handleDndConsider(e) {
+    onDragStart();
     item.children = e.detail.items;
     item = item;
   }
 
   function handleDndFinalize(e) {
     item.children = e.detail.items;
-    item = item; // 强制更新
-    onUpdate(item, {children: item.children}); // 拖拽结束后才通知父级更新 Store
+    item = item;
+    onUpdate(item, {children: item.children}, true);
+    onDragEnd();
   }
 </script>
 
@@ -184,6 +189,8 @@
               item={child}
               onUpdate={handleUpdateChild}
               onDelete={handleDeleteChild}
+              {onDragStart}
+              {onDragEnd}
               on:hoveritem
               {currentPage}
               {isPreview}
