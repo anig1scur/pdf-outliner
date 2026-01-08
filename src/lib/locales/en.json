@@ -95,5 +95,26 @@
   "loading": {
     "extracting_range": "Extracting ToCs From Pages {start} to {end}...",
     "take_minutes": "This may take minutes"
+  },
+  "seo": {
+    "why_title": "Why Choose Tocify?",
+    "why_desc": "Tocify is the premier free online tool for adding bookmarks / Table of Contents (ToC) to your PDF files. Whether you have scanned documents or eBooks, our AI-powered solution formats and inserts bookmarks in seconds, making your PDFs easy to navigate.",
+    "features_title": "Key Features",
+    "feature_1_title": "AI-Powered Generation",
+    "feature_1_desc": "Automatically detect and format ToC structure from scanned pages.",
+    "feature_2_title": "Drag & Drop Editing",
+    "feature_2_desc": "Easily organize chapters with our intuitive drag-and-drop interface.",
+    "feature_3_title": "Privacy First",
+    "feature_3_desc": "Files are processed locally in your browser. No data is uploaded to our servers.",
+    "how_title": "How to Generate PDF ToC",
+    "how_step_1": "Upload your PDF file.",
+    "how_step_2": "Select the page range containing the directory.",
+    "how_step_3": "Click 'Generate' to let AI extract the structure.",
+    "how_step_4": "Edit manually if needed, then export your new PDF.",
+    "faq_title": "Frequently Asked Questions",
+    "faq_1_q": "Is Tocify free?",
+    "faq_1_a": "Yes, Tocify is completely free to use.",
+    "faq_2_q": "Is my data safe?",
+    "faq_2_a": "Yes. We process files locally using your browser's capabilities. Your confidential documents never leave your device."
   }
 }

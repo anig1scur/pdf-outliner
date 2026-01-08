@@ -11,11 +11,18 @@
     >
       Yanxin
     </a>
-    <span class="mx-2">
-     / (•̀ᴗ• ) ̑̑
+      ♩
+    <a
+      href="/about"
+      class="hover:text-black border-b border-transparent hover:border-black transition-all duration-300 mx-1"
+    >
+      About
+    </a>
+
+    
+      ♪ (•̀ᴗ• ) ̑̑
 
 
-    </span>
     <a
       href="https://github.com/anig1scur/tocify?tab=readme-ov-file#support-me"
       target="_blank"

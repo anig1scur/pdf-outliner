@@ -25,6 +25,7 @@
   import DownloadBanner from '../components/DownloadBanner.svelte';
   import SidebarPanel from '../components/panels/SidebarPanel.svelte';
   import PreviewPanel from '../components/panels/PreviewPanel.svelte';
+  import SeoJsonLd from '../components/SeoJsonLd.svelte';
 
   import TocRelation from '../components/KnowledgeBoard.svelte';
   import {ChevronRight, ChevronLeft} from 'lucide-svelte';
@@ -785,7 +786,11 @@
     </div>
   </div>
 
+
+
   <Footer />
+
+  <SeoJsonLd title={$t('meta.title')} />
 
   <AiLoadingModal
     {isAiLoading}

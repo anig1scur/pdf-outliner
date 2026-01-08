@@ -103,5 +103,26 @@
     "copy_cmd": "复制命令",
     "copied": "已复制",
     "snooze": "不再展示"
+  },
+  "seo": {
+    "why_title": "为什么选择 Tocify?",
+    "why_desc": "Tocify 是首选的免费在线 PDF 目录（书签）添加工具。无论您有扫描文档还是电子书，我们的 AI 驱动解决方案都能在几秒钟内格式化并插入书签，让您的 PDF 易于导航。",
+    "features_title": "核心功能",
+    "feature_1_title": "AI 智能生成",
+    "feature_1_desc": "自动从扫描页面检测并格式化目录结构。",
+    "feature_2_title": "拖拽编辑",
+    "feature_2_desc": "通过直观的拖拽界面轻松组织章节。",
+    "feature_3_title": "隐私至上",
+    "feature_3_desc": "文件在浏览器本地处理，数据不会上传到服务器。",
+    "how_title": "如何生成 PDF 目录",
+    "how_step_1": "上传您的 PDF 文件。",
+    "how_step_2": "选择包含目录的页面范围。",
+    "how_step_3": "点击“生成”让 AI 提取结构。",
+    "how_step_4": "如有需要可手动编辑，然后导出新 PDF。",
+    "faq_title": "常见问题",
+    "faq_1_q": "Tocify 是免费的吗？",
+    "faq_1_a": "是的，Tocify 完全免费使用。",
+    "faq_2_q": "我的数据安全吗？",
+    "faq_2_a": "安全。我们使用浏览器能力在本地处理文件。你的文档永远不会离开设备。"
   }
 }
