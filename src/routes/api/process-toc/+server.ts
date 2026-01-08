@@ -1,29 +1,13 @@
-import {env} from '$env/dynamic/private';
-import {GoogleGenerativeAI} from '@google/generative-ai';
-import {error, json} from '@sveltejs/kit';
-import {Ratelimit} from '@upstash/ratelimit';
-import {Redis} from '@upstash/redis';
-import {jsonrepair} from 'jsonrepair';
+import { env } from '$env/dynamic/private';
+import { checkRateLimit } from '$lib/server/ratelimit';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { error, json } from '@sveltejs/kit';
+import { jsonrepair } from 'jsonrepair';
 import OpenAI from 'openai';
 
-const LIMIT_CONFIG = {
-  MAX_REQUESTS_PER_DAY: 5,
-  MAX_IMAGES: 10,
-  MAX_TEXT_SIZE_KB: 128
-};
+import { LIMIT_CONFIG } from '$lib/server/ratelimit';
 
-const redis = new Redis({
-  url: env.UPSTASH_REDIS_REST_URL,
-  token: env.UPSTASH_REDIS_REST_TOKEN,
-});
-
-const ratelimit = new Ratelimit({
-  redis: redis,
-  limiter: Ratelimit.fixedWindow(LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '24 h'),
-  analytics: true,
-  prefix: '@tocify/ratelimit',
-});
-const SYSTEM_PROMPT_VISION  = `
+const SYSTEM_PROMPT_VISION = `
 Role: Expert PDF ToC Image Parser.
 Task: Parse image(s) into a structured JSON array.
 
@@ -66,16 +50,6 @@ Rules:
 7.  **JSON ONLY**: Return strictly a JSON array. No markdown.
     Format: [{"title": "String", "level": Number, "page": Number}]
 `;
-function getClientIp(request: Request): string {
-  const headers = request.headers;
-  const xForwardedFor = headers.get('x-forwarded-for');
-  if (xForwardedFor) {
-    return xForwardedFor.split(',')[0].trim();
-  }
-
-  return headers.get('x-real-ip') || headers.get('cf-connecting-ip') ||
-      headers.get('x-vercel-forwarded-for') || 'unknown';
-}
 
 function randomChoice<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
@@ -91,25 +65,25 @@ function normalizeToc(rawData: any[]): TocItem[] {
   if (!Array.isArray(rawData)) return [];
 
   return rawData
-      .map((item) => {
-        let cleanPage = 0;
+    .map((item) => {
+      let cleanPage = 0;
 
-        if (typeof item.page === 'string') {
-          const match = item.page.match(/(\d+)/);
-          if (match) {
-            cleanPage = parseInt(match[0], 10);
-          }
-        } else if (typeof item.page === 'number') {
-          cleanPage = item.page;
+      if (typeof item.page === 'string') {
+        const match = item.page.match(/(\d+)/);
+        if (match) {
+          cleanPage = parseInt(match[0], 10);
         }
+      } else if (typeof item.page === 'number') {
+        cleanPage = item.page;
+      }
 
-        return {
-          title: String(item.title || '').trim(),
-          level: typeof item.level === 'number' ? item.level : 1,
-          page: cleanPage
-        };
-      })
-      .filter(item => item.page > 0 && item.title.length > 0);
+      return {
+        title: String(item.title || '').trim(),
+        level: typeof item.level === 'number' ? item.level : 1,
+        page: cleanPage
+      };
+    })
+    .filter(item => item.page > 0 && item.title.length > 0);
 }
 
 function determineProvider(request: Request, userProvider?: string): string {
@@ -122,8 +96,8 @@ function determineProvider(request: Request, userProvider?: string): string {
   }
 
   const country = request.headers.get('x-vercel-ip-country') ||
-      request.headers.get('cf-ipcountry') ||
-      request.headers.get('x-country-code');
+    request.headers.get('cf-ipcountry') ||
+    request.headers.get('x-country-code');
 
   if (country === 'CN') {
     // return randomChoice(['gemini', 'qwen', 'doubao', 'zhipu']);
@@ -133,7 +107,7 @@ function determineProvider(request: Request, userProvider?: string): string {
   return 'gemini';
 }
 
-export async function POST({request}) {
+export async function POST({ request }) {
   const origin = request.headers.get('origin');
   const allowedOrigins = [
     'https://tocify.aeriszhu.com', 'https://tocify.vercel.app',
@@ -141,49 +115,30 @@ export async function POST({request}) {
   ];
 
   if (origin && !allowedOrigins.includes(origin)) {
-    return new Response('Forbidden', {status: 403});
+    return new Response('Forbidden', { status: 403 });
   }
 
-  const clientIp = getClientIp(request);
-  if (clientIp !== 'unknown') {
-    const today = new Date().toISOString().split('T')[0];
-
-    const identifier = `${clientIp}:${today}`;
-
-    const {success, limit, remaining} = await ratelimit.limit(identifier);
-    if (!success) {
-      return new Response(
-          JSON.stringify({
-            error: 'Rate limit exceeded',
-            message: `You have reached the daily limit of ${
-                LIMIT_CONFIG.MAX_REQUESTS_PER_DAY} requests.`
-          }),
-          {
-            status: 429,
-            headers: {
-              'Content-Type': 'application/json',
-              'X-RateLimit-Limit': limit.toString(),
-              'X-RateLimit-Remaining': remaining.toString()
-            }
-          });
-    }
+  const limitRes = await checkRateLimit(
+    request, LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '@tocify/ratelimit');
+  if (limitRes) {
+    return limitRes;
   }
 
   try {
-    const {images, text, apiKey, provider} = await request.json();
+    const { images, text, apiKey, provider } = await request.json();
 
     if ((!images || !Array.isArray(images) || images.length === 0) &&
-        (!text || typeof text !== 'string' || !text.trim())) {
+      (!text || typeof text !== 'string' || !text.trim())) {
       throw error(
-          400,
-          'Invalid request. Must provide either "images" array or "text" string.');
+        400,
+        'Invalid request. Must provide either "images" array or "text" string.');
     }
 
     if (images && Array.isArray(images)) {
       if (images.length > LIMIT_CONFIG.MAX_IMAGES) {
         throw error(
-            400,
-            `Too many pages. Maximum allowed is ${LIMIT_CONFIG.MAX_IMAGES}.`);
+          400,
+          `Too many pages. Maximum allowed is ${ LIMIT_CONFIG.MAX_IMAGES }.`);
       }
     }
 
@@ -193,32 +148,30 @@ export async function POST({request}) {
 
       if (byteLength > maxBytes) {
         throw error(
-            400,
-            `Text too large. Maximum allowed is ${
-                LIMIT_CONFIG.MAX_TEXT_SIZE_KB}KB.`);
+          400,
+          `Text too large. Maximum allowed is ${ LIMIT_CONFIG.MAX_TEXT_SIZE_KB }KB.`);
       }
     }
 
     const currentProvider = determineProvider(request, provider);
     const isTextMode = !!(text && text.trim());
 
-    console.log(`[ToC Parser] Provider: ${currentProvider} | Mode: ${
-        isTextMode ? 'TEXT' : 'VISION'} | IP: ${clientIp}`);
+    console.log(`[ToC Parser] Provider: ${ currentProvider } | Mode: ${ isTextMode ? 'TEXT' : 'VISION' }`);
 
     let jsonText = '';
 
     if (currentProvider === 'qwen') {
       jsonText =
-          await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
+        await processWithQwen(isTextMode ? text : images, apiKey, isTextMode);
     } else if (currentProvider === 'zhipu') {
       jsonText = await processWithZhipu(
-          isTextMode ? text : images, apiKey, isTextMode);
+        isTextMode ? text : images, apiKey, isTextMode);
     } else if (currentProvider === 'doubao') {
       jsonText = await processWithDoubao(
-          isTextMode ? text : images, apiKey, isTextMode);
+        isTextMode ? text : images, apiKey, isTextMode);
     } else {
       jsonText = await processWithGemini(
-          isTextMode ? text : images, apiKey, isTextMode);
+        isTextMode ? text : images, apiKey, isTextMode);
     }
 
     let rawString = jsonText.replace(/```json\n?|```/g, '').trim();
@@ -233,15 +186,15 @@ export async function POST({request}) {
       tocData = JSON.parse(rawString);
     } catch (e) {
       console.warn(
-          `[${currentProvider}] JSON strict parse failed, trying repair...`);
+        `[${ currentProvider }] JSON strict parse failed, trying repair...`);
       try {
         const repaired = jsonrepair(rawString);
         tocData = JSON.parse(repaired);
       } catch (repairError) {
-        console.error(`[${currentProvider}] JSON Repair failed:`, rawString);
+        console.error(`[${ currentProvider }] JSON Repair failed:`, rawString);
         throw error(
-            500,
-            'AI returned invalid JSON structure that could not be repaired.');
+          500,
+          'AI returned invalid JSON structure that could not be repaired.');
       }
     }
 
@@ -251,15 +204,15 @@ export async function POST({request}) {
   } catch (err: any) {
     console.error('API Error:', err);
     throw error(
-        err.status || 500,
-        err.message || err.body.message ||
-            'Failed to process ToC, please contact support.');
+      err.status || 500,
+      err.message || err.body.message ||
+      'Failed to process ToC, please contact support.');
   }
 }
 
 async function processWithGemini(
-    input: string[]|string, userKey?: string,
-    isTextMode: boolean = false): Promise<string> {
+  input: string[] | string, userKey?: string,
+  isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.GOOGLE_API_KEY;
 
   if (!apiKey) {
@@ -281,19 +234,19 @@ async function processWithGemini(
     const imageParts = images.map((img) => {
       const base64Data = img.includes('base64,') ? img.split(',')[1] : img;
       const mimeType = img.match(/data:(.*?);/)?.[1] || 'image/png';
-      return {inlineData: {data: base64Data, mimeType: mimeType}};
+      return { inlineData: { data: base64Data, mimeType: mimeType } };
     });
 
     const prompt =
-        'Analyze these Table of Contents images and return the single structured JSON.';
+      'Analyze these Table of Contents images and return the single structured JSON.';
     const result = await model.generateContent([prompt, ...imageParts]);
     return result.response.text();
   }
 }
 
 async function processWithQwen(
-    input: string[]|string, userKey?: string,
-    isTextMode: boolean = false): Promise<string> {
+  input: string[] | string, userKey?: string,
+  isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.DASHSCOPE_API_KEY;
 
   if (!apiKey) {
@@ -309,8 +262,8 @@ async function processWithQwen(
     const response = await client.chat.completions.create({
       model: 'qwen-plus',
       messages: [
-        {role: 'system', content: SYSTEM_PROMPT_TEXT},
-        {role: 'user', content: input as string}
+        { role: 'system', content: SYSTEM_PROMPT_TEXT },
+        { role: 'user', content: input as string }
       ]
     });
     return response.choices[0].message.content || '[]';
@@ -320,22 +273,22 @@ async function processWithQwen(
     const contentParts: any[] = [{
       type: 'text',
       text:
-          'Analyze these Table of Contents images and return the single structured JSON.'
+        'Analyze these Table of Contents images and return the single structured JSON.'
     }];
 
     images.forEach((img) => {
       let imageUrl = img;
       if (!img.startsWith('data:image/')) {
-        imageUrl = `data:image/png;base64,${img}`;
+        imageUrl = `data:image/png;base64,${ img }`;
       }
-      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
+      contentParts.push({ type: 'image_url', image_url: { url: imageUrl } });
     });
 
     const response = await client.chat.completions.create({
       model: 'qwen-vl-plus',
       messages: [
-        {role: 'system', content: SYSTEM_PROMPT_VISION},
-        {role: 'user', content: contentParts}
+        { role: 'system', content: SYSTEM_PROMPT_VISION },
+        { role: 'user', content: contentParts }
       ]
     });
 
@@ -344,8 +297,8 @@ async function processWithQwen(
 }
 
 async function processWithZhipu(
-    input: string[]|string, userKey?: string,
-    isTextMode: boolean = false): Promise<string> {
+  input: string[] | string, userKey?: string,
+  isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.ZHIPU_API_KEY;
 
   if (!apiKey) {
@@ -353,7 +306,7 @@ async function processWithZhipu(
   }
 
   const client = new OpenAI(
-      {apiKey: apiKey, baseURL: 'https://open.bigmodel.cn/api/paas/v4/'});
+    { apiKey: apiKey, baseURL: 'https://open.bigmodel.cn/api/paas/v4/' });
 
 
   if (isTextMode) {
@@ -361,8 +314,8 @@ async function processWithZhipu(
       model: 'glm-4-flash',
       max_completion_tokens: 4096,
       messages: [
-        {role: 'system', content: SYSTEM_PROMPT_TEXT},
-        {role: 'user', content: input as string}
+        { role: 'system', content: SYSTEM_PROMPT_TEXT },
+        { role: 'user', content: input as string }
       ]
     });
     return response.choices[0].message.content || '[]';
@@ -371,15 +324,15 @@ async function processWithZhipu(
     const contentParts: any[] = [{
       type: 'text',
       text:
-          'Analyze these Table of Contents images and return the single structured JSON.'
+        'Analyze these Table of Contents images and return the single structured JSON.'
     }];
 
     images.forEach((img) => {
       let imageUrl = img;
       if (!img.startsWith('data:image/')) {
-        imageUrl = `data:image/png;base64,${img}`;
+        imageUrl = `data:image/png;base64,${ img }`;
       }
-      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
+      contentParts.push({ type: 'image_url', image_url: { url: imageUrl } });
     });
 
     try {
@@ -388,8 +341,8 @@ async function processWithZhipu(
         // 这玩意没用
         max_completion_tokens: 4096,
         messages: [
-          {role: 'system', content: SYSTEM_PROMPT_VISION},
-          {role: 'user', content: contentParts}
+          { role: 'system', content: SYSTEM_PROMPT_VISION },
+          { role: 'user', content: contentParts }
         ]
       });
 
@@ -399,7 +352,7 @@ async function processWithZhipu(
       console.error('[Zhipu Vision Error]', err);
       if (err.message && err.message.includes('context_length_exceeded')) {
         throw new Error(
-            '图片总大小超出了智谱 Flash 模型的限制，请尝试减少图片数量或切换到付费模型 glm-4v');
+          '图片总大小超出了智谱 Flash 模型的限制，请尝试减少图片数量或切换到付费模型 glm-4v');
       }
       throw err;
     }
@@ -407,17 +360,16 @@ async function processWithZhipu(
 }
 
 async function processWithDoubao(
-    input: string[]|string, userKey?: string,
-    isTextMode: boolean = false): Promise<string> {
+  input: string[] | string, userKey?: string,
+  isTextMode: boolean = false): Promise<string> {
   const apiKey = userKey || env.DOUBAO_API_KEY;
   if (!apiKey) throw new Error('[Doubao] API Key is missing.');
 
   const modelName =
-      isTextMode ? env.DOUBAO_ENDPOINT_ID_TEXT : env.DOUBAO_ENDPOINT_ID_VISION;
+    isTextMode ? env.DOUBAO_ENDPOINT_ID_TEXT : env.DOUBAO_ENDPOINT_ID_VISION;
 
   if (!modelName) {
-    throw new Error(`[Doubao] Endpoint ID missing for ${
-        isTextMode ? 'TEXT' : 'VISION'} mode. Please check .env`);
+    throw new Error(`[Doubao] Endpoint ID missing for ${ isTextMode ? 'TEXT' : 'VISION' } mode. Please check .env`);
   }
 
   const client = new OpenAI({
@@ -430,8 +382,8 @@ async function processWithDoubao(
       model: modelName,
       max_completion_tokens: 4096,
       messages: [
-        {role: 'system', content: SYSTEM_PROMPT_TEXT},
-        {role: 'user', content: input as string}
+        { role: 'system', content: SYSTEM_PROMPT_TEXT },
+        { role: 'user', content: input as string }
       ]
     });
     return response.choices[0].message.content || '[]';
@@ -440,23 +392,23 @@ async function processWithDoubao(
     const contentParts: any[] = [{
       type: 'text',
       text:
-          'Analyze these Table of Contents images and return the structured JSON array.'
+        'Analyze these Table of Contents images and return the structured JSON array.'
     }];
 
     images.forEach((img) => {
       let imageUrl = img;
       if (!img.startsWith('data:image/')) {
-        imageUrl = `data:image/png;base64,${img}`;
+        imageUrl = `data:image/png;base64,${ img }`;
       }
-      contentParts.push({type: 'image_url', image_url: {url: imageUrl}});
+      contentParts.push({ type: 'image_url', image_url: { url: imageUrl } });
     });
 
     const response = await client.chat.completions.create({
       model: modelName,
       max_completion_tokens: 4096,
       messages: [
-        {role: 'system', content: SYSTEM_PROMPT_VISION},
-        {role: 'user', content: contentParts}
+        { role: 'system', content: SYSTEM_PROMPT_VISION },
+        { role: 'user', content: contentParts }
       ]
     });
 

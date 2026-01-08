@@ -6,7 +6,7 @@
   let isOpen = false;
   let copied = false;
 
-  let isVisible = true;
+  let isVisible = false;
   let autoCloseTimer: ReturnType<typeof setTimeout>;
   let hideTimer: ReturnType<typeof setTimeout>;
 
@@ -18,9 +18,10 @@
   onMount(() => {
     const hiddenUntil = localStorage.getItem(STORAGE_KEY);
     if (hiddenUntil && Date.now() < parseInt(hiddenUntil)) {
-      isVisible = false;
       return;
     }
+
+    isVisible = true;
 
     setTimeout(() => {
       isOpen = true;
@@ -77,7 +78,7 @@
 </script>
 
 <div
-  class="fixed top-0 right-4 z-[100] flex flex-col items-end transition-transform duration-300 ease-spring"
+  class="fixed top-0 right-4 z-[100] flex flex-col items-end transition-transform · ease-spring"
   class:translate-y-0={isVisible && isOpen}
   class:-translate-y-[calc(100%-28px)]={isVisible && !isOpen}
   class:md:-translate-y-[calc(100%-38px)]={isVisible && !isOpen}

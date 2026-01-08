@@ -1,6 +1,8 @@
-import {env} from '$env/dynamic/private';
-import {GoogleGenerativeAI} from '@google/generative-ai';
-import {json} from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
+import { checkRateLimit } from '$lib/server/ratelimit';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { json } from '@sveltejs/kit';
+import { LIMIT_CONFIG } from '$lib/server/ratelimit';
 
 const LAYOUT_CONFIG = {
   colWidth: 220,
@@ -48,33 +50,37 @@ Output JSON format:
 }
 `;
 
-export async function POST({request}) {
+export async function POST({ request }) {
+  const limitRes = await checkRateLimit(request, LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '@tocify/ratelimit');
+  if (limitRes) {
+    return limitRes;
+  }
+
   try {
-    const {tocItems, apiKey} = await request.json();
+    const { tocItems, apiKey } = await request.json();
 
     if (!tocItems || !Array.isArray(tocItems)) {
-      return json({error: 'Invalid tocItems'}, {status: 400});
+      return json({ error: 'Invalid tocItems' }, { status: 400 });
     }
 
     const googleApiKey = apiKey || env.GOOGLE_API_KEY;
     if (!googleApiKey) {
-      return json({error: 'No API Key provided'}, {status: 401});
+      return json({ error: 'No API Key provided' }, { status: 401 });
     }
 
     const tocText = tocItems
-                        .map(
-                            (item) => `[ID:${item.id}] ${item.title} (Page: ${
-                                item.page || 'N/A'})`)
-                        .join('\n');
+      .map(
+        (item) => `[ID:${ item.id }] ${ item.title } (Page: ${ item.page || 'N/A' })`)
+      .join('\n');
 
-    const fullPrompt = `${SYSTEM_PROMPT}\n\nToC Data:\n${tocText}`;
+    const fullPrompt = `${ SYSTEM_PROMPT }\n\nToC Data:\n${ tocText }`;
 
     const genAI = new GoogleGenerativeAI(googleApiKey);
-    const model = genAI.getGenerativeModel({model: 'gemini-2.5-flash'});
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const result = await model.generateContent({
-      contents: [{role: 'user', parts: [{text: fullPrompt}]}],
-      generationConfig: {responseMimeType: 'application/json'}
+      contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+      generationConfig: { responseMimeType: 'application/json' }
     });
 
     const responseText = result.response.text();
@@ -92,7 +98,7 @@ export async function POST({request}) {
       let match = tocItems.find((t) => String(t.id) === String(aiNode.id));
 
       const page =
-          aiNode.page !== undefined ? aiNode.page : (match ? match.page : null);
+        aiNode.page !== undefined ? aiNode.page : (match ? match.page : null);
 
       return {
         id: aiNode.id,
@@ -113,7 +119,7 @@ export async function POST({request}) {
     const edges = aiData.edges || [];
     const MAX_ITERATIONS = 5;
 
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
+    for (let i = 0;i < MAX_ITERATIONS;i++) {
       let changed = false;
       edges.forEach(edge => {
         const srcLevel = nodeLevels.get(edge.source) || 0;
@@ -143,7 +149,7 @@ export async function POST({request}) {
       levelNodes.forEach((node, idx) => {
         let gridX = startX + (idx * LAYOUT_CONFIG.colWidth) + 400;
         let gridY = LAYOUT_CONFIG.padding +
-            (levelIndex * (LAYOUT_CONFIG.rowHeight + 40));
+          (levelIndex * (LAYOUT_CONFIG.rowHeight + 40));
 
         const jitter = LAYOUT_CONFIG.jitter;
         const randomOffsetX = (Math.random() - 0.5) * jitter * 2;
@@ -154,10 +160,10 @@ export async function POST({request}) {
       });
     });
 
-    return json({nodes: finalGraphNodes, edges: edges});
+    return json({ nodes: finalGraphNodes, edges: edges });
 
   } catch (error) {
     console.error(error);
-    return json({error: error.message}, {status: 500});
+    return json({ error: error.message }, { status: 500 });
   }
 }
