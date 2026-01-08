@@ -21,10 +21,16 @@
   const flipDurationMs = 200;
 
   let editTitle = item ? item.title : '';
+  let editPage = item ? item.to : 1;
   let isFocused = false;
+  let isPageFocused = false;
 
   $: if (item && !isFocused && item.title !== editTitle) {
     editTitle = item.title;
+  }
+
+  $: if (item && !isPageFocused && item.to !== editPage) {
+    editPage = item.to;
   }
 
   $: physicalContentPage = item.to + pageOffset;
@@ -42,10 +48,12 @@
     onUpdate(item, {title: editTitle});
   }
 
-  function handlePageChange(e) {
-    const val = parseInt(e.target.value);
+  function handleUpdatePage() {
+    const val = parseInt(editPage);
     const page = isNaN(val) ? 1 : val;
-    onUpdate(item, {to: page});
+    if (page !== item.to) {
+      onUpdate(item, {to: page});
+    }
   }
 
   function handleAddChild() {
@@ -62,7 +70,7 @@
 
   function handleUpdateChild(childItem, updates) {
     const updatedChildren = (item.children || []).map((child) =>
-      child.id === childItem.id ? {...child, ...updates} : child
+      child.id === childItem.id ? {...child, ...updates} : child,
     );
     onUpdate(item, {children: updatedChildren});
   }
@@ -131,8 +139,13 @@
 
       <input
         type="number"
-        bind:value={item.to}
-        on:input={handlePageChange}
+        bind:value={editPage}
+        on:focus={() => (isPageFocused = true)}
+        on:blur={() => {
+          isPageFocused = false;
+          handleUpdatePage();
+        }}
+        on:keypress={(e) => e.key === 'Enter' && e.target.blur()}
         class="w-14 border-2 border-black rounded ml-1 pl-1.5 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 

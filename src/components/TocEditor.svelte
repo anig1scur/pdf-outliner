@@ -5,7 +5,7 @@
   import {t} from 'svelte-i18n';
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
-  import {tocItems, maxPage} from '../stores';
+  import {tocItems, maxPage, autoSaveEnabled} from '../stores';
 
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
@@ -24,6 +24,59 @@
   let isUpdatingFromEditor = false;
   let isProcessing = false;
   let debounceTimer;
+
+  // Undo/Redo State
+  let historyStack = [];
+  let futureStack = [];
+  const maxHistory = 20;
+
+  function saveHistory() {
+    const clone = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(clone);
+    if (historyStack.length > maxHistory) {
+      historyStack.shift();
+    }
+    futureStack = [];
+    historyStack = historyStack; // update
+  }
+
+  function undo() {
+    if (historyStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    futureStack.push(current);
+    const prev = historyStack.pop();
+    $tocItems = prev;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function redo() {
+    if (futureStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(current);
+    const next = futureStack.pop();
+    $tocItems = next;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function handleKeydown(e) {
+    const tagName = e.target.tagName;
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      if (e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else {
+        e.preventDefault();
+        undo();
+      }
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  }
 
   let isDragging = false;
   let textGenTimer;
@@ -111,6 +164,7 @@
     isProcessing = false;
 
     if (Array.isArray(aiResult) && aiResult.length > 0) {
+      saveHistory();
       $tocItems = buildTree(aiResult);
     } else {
       throw new Error('AI could not parse any ToC structure.');
@@ -179,6 +233,10 @@
   }
 
   function handleDndConsider(e) {
+    if (!isDragging) {
+      saveHistory();
+      $autoSaveEnabled = false;
+    }
     isDragging = true;
     $tocItems = e.detail.items;
   }
@@ -189,6 +247,7 @@
       isDragging = false;
       const newText = generateText($tocItems);
       if (newText !== text) text = newText;
+      $autoSaveEnabled = true;
     });
   }
 
@@ -207,6 +266,7 @@
   })();
 
   const addTocItem = () => {
+    saveHistory();
     const uid = new ShortUniqueId({length: 10});
     $tocItems = [
       ...$tocItems,
@@ -221,6 +281,7 @@
   };
 
   const updateTocItem = (item, updates) => {
+    saveHistory();
     const updateItemRecursive = (items) =>
       items.map((currentItem) => {
         if (currentItem.id === item.id) return {...currentItem, ...updates};
@@ -233,6 +294,7 @@
   };
 
   const deleteTocItem = (itemToDelete) => {
+    saveHistory();
     const deleteItemRecursive = (items) =>
       items.filter((item) => {
         if (item.id === itemToDelete.id) return false;
@@ -244,6 +306,8 @@
 
   $: promptTooltipText = $t('toc.prompt_intro');
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div class="flex flex-col gap-4 mt-3">
   <div class="h-48 relative group">
