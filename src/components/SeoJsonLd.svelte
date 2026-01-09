@@ -43,5 +43,9 @@
 </script>
 
 <svelte:head>
+  <title>{title}</title>
+  {#if description}
+    <meta name="description" content={description} />
+  {/if}
   {@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
 </svelte:head>

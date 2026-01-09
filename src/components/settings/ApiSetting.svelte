@@ -2,6 +2,7 @@
   import {createEventDispatcher, onMount} from 'svelte';
   import {slide} from 'svelte/transition';
   import {t} from 'svelte-i18n';
+  import {KeyRound} from 'lucide-svelte';
 
   export let isExpanded = false;
 
@@ -96,17 +97,19 @@
 
         <div class="border-black border-2 rounded-md p-2 w-full">
           <label
-            class="block font-bold mb-1 text-sm"
+            class="flex items-center gap-1.5 font-bold mb-1 text-sm"
             for="api_key"
+            title="Your LLM provider key (stored locally only)"
           >
-            API Key
-            <span class="font-normal text-gray-500 text-xs ml-1">{$t('settings.api_key_hint')}</span>
+            <KeyRound size={14} strokeWidth={3} />
+           Key
+            <span class="font-normal text-gray-500 text-xs">{$t('settings.api_key_hint')}</span>
           </label>
           <input
             id="api_key"
             type="password"
             class="w-full outline-none text-sm"
-            placeholder="paste your API key here"
+            placeholder="paste your key here"
             bind:value={config.apiKey}
             on:input={() => (isSaved = false)}
           />

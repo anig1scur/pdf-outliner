@@ -719,6 +719,10 @@
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-black border-t-transparent"></div>
   </div>
 {:else}
+  <p class="sr-only">
+    Generate clickable PDF bookmarks from scanned pages — AI-powered, private, and free.
+  </p>
+  
   <div
     class="flex flex-col mt-5 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
@@ -824,7 +828,7 @@
   />
   <meta
     name="keywords"
-    content="PDF Table of Contents, PDF Bookmarks, Scanned PDF outline, PDF 目录生成, PDF 加书签, 扫描版 PDF 目录, AI PDF 工具"
+    content="add bookmarks to PDF, PDF table of contents, clickable PDF outline, PDF bookmark editor, create PDF TOC, generate PDF outline, scanned PDF bookmark generator, PDF 目录生成, PDF 加书签, 扫描版 PDF 目录"
   />
   <meta
     property="og:title"

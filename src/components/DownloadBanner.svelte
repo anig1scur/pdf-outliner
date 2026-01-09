@@ -139,7 +139,7 @@
     <div class="flex items-start gap-3 border-gray-800 pt-3">
       <div class="flex flex-col w-full">
         <strong class="text-xs font-black uppercase text-black">
-          {$t('client.byo_title', {default: 'Bring Your Own API Key'})}
+          {$t('client.byo_title', {default: 'Bring Your Own Key'})}
         </strong>
         <p class="text-[11px] font-medium text-gray-500 mt-1 leading-6">
           Supports
