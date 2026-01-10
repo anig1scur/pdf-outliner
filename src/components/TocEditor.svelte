@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
   import {onDestroy, tick} from 'svelte';
   import ShortUniqueId from 'short-unique-id';
   import {CircleHelpIcon, Sparkles, Loader2} from 'lucide-svelte';
@@ -9,6 +9,8 @@
 
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
+
+  import {generateKnowledgeGraph, processToc} from '../lib/service';
 
   export let currentPage = 1;
   export let isPreview = false;
@@ -145,29 +147,25 @@
     }
 
     isProcessing = true;
-    const response = await fetch('/api/process-toc', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        text: text,
-        apiKey: apiConfig.apiKey,
-        provider: apiConfig.provider,
-      }),
-    });
+    try {
+        const aiResult = await processToc({
+            text: text,
+            apiKey: apiConfig.apiKey,
+            provider: apiConfig.provider
+        });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'AI processing failed');
-    }
+        isProcessing = false;
 
-    const aiResult = await response.json();
-    isProcessing = false;
+        if (Array.isArray(aiResult) && aiResult.length > 0) {
+            saveHistory();
+            $tocItems = buildTree(aiResult);
+        } else {
+            throw new Error('AI could not parse any ToC structure.');
+        }
+    } catch (err: any) {
+        isProcessing = false;
+        throw new Error(err.message || 'AI processing failed');
 
-    if (Array.isArray(aiResult) && aiResult.length > 0) {
-      saveHistory();
-      $tocItems = buildTree(aiResult);
-    } else {
-      throw new Error('AI could not parse any ToC structure.');
     }
   }
 
@@ -224,6 +222,7 @@
     debounceTimer = setTimeout(() => {
       const parsed = parseText(text);
       if (parsed.length > 0) {
+        saveHistory();
         $tocItems = parsed;
       }
       tick().then(() => {
@@ -327,6 +326,61 @@
   };
 
   $: promptTooltipText = $t('toc.prompt_intro');
+
+  // --- History / Undo / Redo ---
+  let historyStack = [];
+  let futureStack = [];
+  const maxHistory = 20;
+
+  function saveHistory() {
+    const clone = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(clone);
+    if (historyStack.length > maxHistory) {
+      historyStack.shift();
+    }
+    futureStack = [];
+    historyStack = historyStack; // update
+  }
+
+  function undo() {
+    if (historyStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    futureStack.push(current);
+    const prev = historyStack.pop();
+    $tocItems = prev;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function redo() {
+    if (futureStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(current);
+    const next = futureStack.pop();
+    $tocItems = next;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function handleKeydown(e) {
+    const tagName = e.target.tagName;
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      if (e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else {
+        e.preventDefault();
+        undo();
+      }
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  }
+
+
 </script>
 
 <svelte:window on:keydown={handleKeydown} />

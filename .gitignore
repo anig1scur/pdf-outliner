@@ -21,7 +21,8 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+src-tauri/target
+src-tauri/gen
 
 src-tauri
 
-.gemini

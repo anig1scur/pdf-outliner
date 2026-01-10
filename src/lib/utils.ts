@@ -3,6 +3,8 @@ import type * as PdfjsLibTypes from 'pdfjs-dist';
 import ShortUniqueId from 'short-unique-id';
 
 
+export const isTauri = () => typeof window !== 'undefined' && !!(window.__TAURI__ || window.__TAURI_INTERNALS__);
+
 export function buildTree(
     items: {title: string; level: number; page: number}[]): TocItem[] {
   const root: TocItem[] = [];

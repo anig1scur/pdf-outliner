@@ -1,12 +1,13 @@
-<script>
+<script lang="ts">
   import {tick} from 'svelte';
   import {t} from 'svelte-i18n';
   import rough from 'roughjs';
   import GraphNode from './GraphNode.svelte';
   import {Sparkles, Loader2, RefreshCw, Maximize2, Minimize2, BrainCircuit, BookOpen} from 'lucide-svelte';
   import {CARD_W, CARD_H, getRandomPaperColor, computeHierarchicalLayout, getClosestPoints} from '../lib/graph-utils';
+  import {generateKnowledgeGraph} from '../lib/service';
   export let items = [];
-  export let apiConfig = {apiKey: ''};
+  export let apiConfig = {provider: '', apiKey: ''};
 
   export let title = 'Untitled Book';
 
@@ -69,17 +70,15 @@
     }));
 
     try {
-      const response = await fetch('/api/generate-board', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          tocItems: simplifiedItems,
-          apiKey: apiConfig.apiKey,
-        }),
+      const data = await generateKnowledgeGraph({
+        tocItems: simplifiedItems,
+        apiKey: apiConfig.apiKey,
+        provider: apiConfig.provider,
+        doubaoConfig: apiConfig.provider === 'doubao' ? {
+             textEndpoint: apiConfig.textEndpoint,
+             visionEndpoint: apiConfig.visionEndpoint
+        } : undefined
       });
-
-      if (!response.ok) throw new Error('API Failed');
-      const data = await response.json();
 
       let nodes = data.nodes.map((n) => ({
         ...n,
@@ -527,7 +526,7 @@
 
   {#if isFullscreen}
     <div
-      class="absolute bottom-4 left-4 font-['HuiwenMincho'] text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
+      class="absolute bottom-4 left-4 font-['HuiwenMincho'] text-lg md:text-2xl text-gray-400 pointer-events-none z-30 opacity-60"
     >
       <div class="flex items-center gap-2">
         <BrainCircuit size={28} />
