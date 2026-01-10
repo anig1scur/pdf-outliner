@@ -17,8 +17,8 @@
   export let aiError: string | null = null;
   export let showNextStepHint = false;
 
-  export let tocStartPage: number;
-  export let tocEndPage: number;
+  export let tocRanges: {start: number; end: number; id: string}[];
+  export let activeRangeIndex: number;
   export let addPhysicalTocPage: boolean;
   export let isTocConfigExpanded: boolean;
 
@@ -70,9 +70,12 @@
   {#if originalPdfInstance}
     <div transition:fade={{duration: 200}}>
       <AiPageSelector
-        bind:tocStartPage
-        bind:tocEndPage
+        bind:tocRanges
+        bind:activeRangeIndex
         totalPages={pdfState.totalPages}
+        on:addRange
+        on:removeRange
+        on:setActiveRange
       />
     </div>
   {/if}

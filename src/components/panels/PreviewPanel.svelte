@@ -17,8 +17,8 @@
   export let isPreviewMode = false;
   export let isPreviewLoading = false;
 
-  export let tocStartPage: number;
-  export let tocEndPage: number;
+  export let tocRanges: {start: number; end: number; id: string}[];
+  export let activeRangeIndex: number;
   export let addPhysicalTocPage: boolean;
 
   export let jumpToTocPage: () => Promise<void>;
@@ -82,10 +82,9 @@
         <PDFViewer
           bind:pdfState
           mode={isPreviewMode ? 'single' : 'grid'}
-          {tocStartPage}
-          {tocEndPage}
-          on:setstartpage
-          on:setendpage
+          {tocRanges}
+          {activeRangeIndex}
+          on:updateActiveRange
           on:fileloaded={forwardFileLoadedEvent}
           {jumpToTocPage}
           {addPhysicalTocPage}
