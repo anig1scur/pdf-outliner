@@ -125,7 +125,7 @@ export async function POST({ request }) {
   }
 
   try {
-    const { images, text, apiKey, provider } = await request.json();
+    const { images, text, apiKey, provider, doubaoEndpointIdText, doubaoEndpointIdVision } = await request.json();
 
     if ((!images || !Array.isArray(images) || images.length === 0) &&
       (!text || typeof text !== 'string' || !text.trim())) {
@@ -166,9 +166,8 @@ export async function POST({ request }) {
     } else if (currentProvider === 'zhipu') {
       jsonText = await processWithZhipu(
         isTextMode ? text : images, apiKey, isTextMode);
-    } else if (currentProvider === 'doubao') {
       jsonText = await processWithDoubao(
-        isTextMode ? text : images, apiKey, isTextMode);
+        isTextMode ? text : images, apiKey, isTextMode, doubaoEndpointIdText, doubaoEndpointIdVision);
     } else {
       jsonText = await processWithGemini(
         isTextMode ? text : images, apiKey, isTextMode);
@@ -361,15 +360,15 @@ async function processWithZhipu(
 
 async function processWithDoubao(
   input: string[] | string, userKey?: string,
-  isTextMode: boolean = false): Promise<string> {
+  isTextMode: boolean = false, epText?: string, epVision?: string): Promise<string> {
   const apiKey = userKey || env.DOUBAO_API_KEY;
   if (!apiKey) throw new Error('[Doubao] API Key is missing.');
 
   const modelName =
-    isTextMode ? env.DOUBAO_ENDPOINT_ID_TEXT : env.DOUBAO_ENDPOINT_ID_VISION;
+    isTextMode ? (epText || env.DOUBAO_ENDPOINT_ID_TEXT) : (epVision || env.DOUBAO_ENDPOINT_ID_VISION);
 
   if (!modelName) {
-    throw new Error(`[Doubao] Endpoint ID missing for ${ isTextMode ? 'TEXT' : 'VISION' } mode. Please check .env`);
+    throw new Error(`[Doubao] Endpoint ID missing for ${ isTextMode ? 'TEXT' : 'VISION' } mode. Please check Settings or .env`);
   }
 
   const client = new OpenAI({

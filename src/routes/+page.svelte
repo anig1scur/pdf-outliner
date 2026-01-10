@@ -84,6 +84,8 @@
   let customApiConfig = {
     provider: '',
     apiKey: '',
+    doubaoEndpointIdText: '',
+    doubaoEndpointIdVision: '',
   };
 
   onMount(() => {
@@ -680,7 +682,7 @@
 >
   <div class="h-full w-[85vw] md:w-[540px] bg-white shadow-[10px_0_15px_-3px_rgba(0,0,0,0.1)] flex flex-col relative">
     <button
-      class="p-2 right-0 bottom-[50%] absolute z-10 inline text-gray-400"
+      class="p-2 right-0 bottom-[50%] absolute z-50 inline text-gray-400"
       on:click={() => (showGraphDrawer = false)}
     >
       <ChevronLeft class="w-8 h-8 hover:-translate-x-1 transition-transform" />

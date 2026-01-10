@@ -11,6 +11,8 @@
   let config = {
     provider: '',
     apiKey: '',
+    doubaoEndpointIdText: '',
+    doubaoEndpointIdVision: '',
   };
 
   let isSaved = false;
@@ -94,6 +96,44 @@
             <option value="zhipu">Zhipu</option>
           </select>
         </div>
+
+        {#if config.provider === 'doubao'}
+          <div
+            class="border-black border-2 rounded-md p-2 w-full"
+            transition:slide={{duration: 200}}
+          >
+            <label
+              class="block font-bold mb-1 text-sm"
+              for="doubao_ep_text">Endpoint ID (Text/Lite)</label
+            >
+            <input
+              id="doubao_ep_text"
+              type="text"
+              class="w-full outline-none text-sm placeholder-gray-400"
+              placeholder="ep-..."
+              bind:value={config.doubaoEndpointIdText}
+              on:input={() => (isSaved = false)}
+            />
+          </div>
+
+          <div
+            class="border-black border-2 rounded-md p-2 w-full"
+            transition:slide={{duration: 200}}
+          >
+            <label
+              class="block font-bold mb-1 text-sm"
+              for="doubao_ep_vision">Endpoint ID (Vision/Pro)</label
+            >
+            <input
+              id="doubao_ep_vision"
+              type="text"
+              class="w-full outline-none text-sm placeholder-gray-400"
+              placeholder="ep-..."
+              bind:value={config.doubaoEndpointIdVision}
+              on:input={() => (isSaved = false)}
+            />
+          </div>
+        {/if}
 
         <div class="border-black border-2 rounded-md p-2 w-full">
           <label

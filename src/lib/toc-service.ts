@@ -9,11 +9,13 @@ interface AiTocOptions {
   endPage: number;
   apiKey?: string;
   provider?: string;
+  doubaoEndpointIdText?: string;
+  doubaoEndpointIdVision?: string;
 }
 
 
 export async function generateToc(
-    {pdfInstance, startPage, endPage, apiKey, provider}: AiTocOptions) {
+  { pdfInstance, startPage, endPage, apiKey, provider, doubaoEndpointIdText, doubaoEndpointIdVision }: AiTocOptions) {
   if (endPage < startPage) {
     throw new Error('End page must be greater than or equal to start page.');
   }
@@ -52,6 +54,8 @@ export async function generateToc(
       images: imagesBase64,
       apiKey: apiKey,
       provider: provider,
+      doubaoEndpointIdText,
+      doubaoEndpointIdVision,
     }),
   });
 

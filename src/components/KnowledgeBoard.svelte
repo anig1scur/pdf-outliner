@@ -418,7 +418,7 @@
         <span class="font-serif text-xl tracking-wide">{title}</span>
       </div>
     {:else}
-      <div class="flex items-center gap-2 text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
+      <div class="flex items-center gap-2 text-lg md:text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
         <BrainCircuit size={28} />
         <span>KNOWLEDGE BOARD</span>
 
