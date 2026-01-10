@@ -68,8 +68,8 @@
     scale: 1.0,
   };
 
-  let tocStartPage = 1;
-  let tocEndPage = 1;
+  let tocRanges = [{start: 1, end: 1, id: 'default'}];
+  let activeRangeIndex = 0;
   let tocPageCount = 0;
   let addPhysicalTocPage = false;
   let isPreviewMode = false;
@@ -122,7 +122,7 @@
   }
 
   $: if (showOffsetModal) {
-    offsetPreviewPageNum = tocEndPage + 1;
+    offsetPreviewPageNum = tocRanges[0]?.end + 1 || 1;
   }
 
   let previousAddPhysicalTocPage = addPhysicalTocPage;
@@ -376,8 +376,8 @@
       isPreviewMode = false;
       tocPageCount = 0;
       pdfState.currentPage = 1;
-      tocStartPage = 1;
-      tocEndPage = 1;
+      tocRanges = [{start: 1, end: 1, id: 'default'}];
+      activeRangeIndex = 0;
 
       const session = localStorage.getItem(`toc_draft_${fingerprint}`);
 
@@ -486,8 +486,7 @@
     try {
       const res = await generateToc({
         pdfInstance: originalPdfInstance,
-        startPage: tocStartPage,
-        endPage: tocEndPage,
+        ranges: tocRanges,
         apiKey: customApiConfig.apiKey,
         provider: customApiConfig.provider,
       });
@@ -537,7 +536,7 @@
       const rootNode: TocItem = {
         id: `root-${Date.now()}`,
         title: rootTitle,
-        to: tocStartPage - offset,
+        to: (tocRanges[0]?.start || 1) - offset,
         children: [],
         open: true,
       };
@@ -548,6 +547,10 @@
     showOffsetModal = false;
     pendingTocItems = [];
     firstTocItem = null;
+
+    if (!isPreviewMode) {
+      await togglePreviewMode();
+    }
   };
 
   const debouncedJumpToPage = debounce((page: number) => {
@@ -563,20 +566,37 @@
     jumpToPage(logicalPage);
   };
 
-  const handleSetStartPage = (e: CustomEvent) => {
-    const newStartPage = e.detail.page;
-    tocStartPage = newStartPage;
-    if (tocEndPage < newStartPage) {
-      tocEndPage = newStartPage;
+  const handleUpdateActiveRange = (e: CustomEvent) => {
+    const {start, end} = e.detail;
+    if (activeRangeIndex >= 0 && activeRangeIndex < tocRanges.length) {
+      if (start !== undefined) tocRanges[activeRangeIndex].start = start;
+      if (end !== undefined) tocRanges[activeRangeIndex].end = end;
+      tocRanges = [...tocRanges];
     }
   };
 
-  const handleSetEndPage = (e: CustomEvent) => {
-    const newEndPage = e.detail.page;
-    if (newEndPage < tocStartPage) {
-      tocStartPage = newEndPage;
+  const handleAddRange = () => {
+    tocRanges = [
+      ...tocRanges,
+      {
+        start: pdfState.currentPage || 1,
+        end: pdfState.currentPage || 1,
+        id: `range-${Date.now()}`,
+      },
+    ];
+    activeRangeIndex = tocRanges.length - 1;
+  };
+
+  const handleRemoveRange = (e: CustomEvent) => {
+    const {index} = e.detail;
+    tocRanges = tocRanges.filter((_, i) => i !== index);
+    if (activeRangeIndex >= tocRanges.length) {
+      activeRangeIndex = Math.max(0, tocRanges.length - 1);
     }
-    tocEndPage = newEndPage;
+  };
+
+  const handleSetActiveRange = (e: CustomEvent) => {
+    activeRangeIndex = e.detail.index;
   };
 
   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -744,8 +764,8 @@
         {customApiConfig}
         {tocPageCount}
         {isPreviewMode}
-        bind:tocStartPage
-        bind:tocEndPage
+        bind:tocRanges
+        bind:activeRangeIndex
         bind:addPhysicalTocPage
         bind:isTocConfigExpanded
         on:prefixChange={handlePrefixChange}
@@ -758,10 +778,11 @@
         on:hoveritem={handleTocItemHover}
         on:fileselect={(e) => loadPdfFile(e.detail)}
         on:viewerMessage={handleViewerMessage}
-        on:setstartpage={handleSetStartPage}
-        on:setendpage={handleSetEndPage}
         on:togglePreview={togglePreviewMode}
         on:export={exportPDF}
+        on:addRange={handleAddRange}
+        on:removeRange={handleRemoveRange}
+        on:setActiveRange={handleSetActiveRange}
       />
     </div>
 
@@ -777,15 +798,14 @@
         {previewPdfInstance}
         {isPreviewMode}
         {isPreviewLoading}
-        {tocStartPage}
-        {tocEndPage}
+        {tocRanges}
+        {activeRangeIndex}
         {addPhysicalTocPage}
         {jumpToTocPage}
         bind:isDragging
         on:fileselect={(e) => loadPdfFile(e.detail)}
         on:viewerMessage={handleViewerMessage}
-        on:setstartpage={handleSetStartPage}
-        on:setendpage={handleSetEndPage}
+        on:updateActiveRange={handleUpdateActiveRange}
         on:togglePreview={togglePreviewMode}
         on:export={exportPDF}
       />
@@ -800,8 +820,7 @@
 
   <AiLoadingModal
     {isAiLoading}
-    {tocStartPage}
-    {tocEndPage}
+    {tocRanges}
   />
 
   <OffsetModal

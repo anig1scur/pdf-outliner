@@ -9,8 +9,8 @@
 
   export let pdfState: PDFState;
   export let mode: 'single' | 'grid' = 'single';
-  export let tocStartPage: number;
-  export let tocEndPage: number;
+  export let tocRanges: {start: number; end: number; id: string}[];
+  export let activeRangeIndex: number = 0;
 
   export let jumpToTocPage: (() => Promise<void>) | undefined = undefined;
   export let addPhysicalTocPage: boolean = false;
@@ -142,6 +142,24 @@
     }));
   }
 
+  async function autoScrollToActiveRange() {
+      if (mode !== 'grid' || !scrollContainer) return;
+      const range = tocRanges[activeRangeIndex];
+      if (!range) return;
+
+      const targetPage = range.start;
+      await tick(); 
+      
+      const pageEl = scrollContainer.querySelector(`[data-page-num="${targetPage}"]`) as HTMLElement;
+      if (pageEl) {
+          pageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+  }
+
+  $: if (activeRangeIndex >= 0 && mode === 'grid') { // React to activeRangeIndex changes
+      autoScrollToActiveRange();
+  }
+
   function scrollLoop() {
     if (autoScrollSpeed === 0 || !scrollContainer) {
       autoScrollFrameId = null;
@@ -181,8 +199,7 @@
   function handleMouseDown(pageNum: number) {
     isSelecting = true;
     selectionStartPage = pageNum;
-    dispatch('setstartpage', {page: pageNum});
-    dispatch('setendpage', {page: pageNum});
+    dispatch('updateActiveRange', {start: pageNum, end: pageNum});
   }
 
   function handleMouseEnter(pageNum: number) {
@@ -191,11 +208,9 @@
     const newStart = Math.min(selectionStartPage, pageNum);
     const newEnd = Math.max(selectionStartPage, pageNum);
 
-    if (newStart !== tocStartPage) {
-      dispatch('setstartpage', {page: newStart});
-    }
-    if (newEnd !== tocEndPage) {
-      dispatch('setendpage', {page: newEnd});
+    const currentRange = tocRanges[activeRangeIndex];
+    if (currentRange && (currentRange.start !== newStart || currentRange.end !== newEnd)) {
+      dispatch('updateActiveRange', {start: newStart, end: newEnd});
     }
   }
 
@@ -259,7 +274,7 @@
     }
   }
 
-  function observeViewport(node: HTMLElement) {
+  function observeViewport(node: HTMLElement, params?: any) {
     scrollContainer = node;
 
     intersectionObserver = new IntersectionObserver(
@@ -425,31 +440,43 @@
       on:mousemove={handleGridMouseMove}
     >
       {#each gridPages as page (page.pageNum)}
-        {@const isSelected = page.pageNum >= tocStartPage && page.pageNum <= tocEndPage}
+        {@const rangeIndex = tocRanges.findIndex(
+          (r) => page.pageNum >= r.start && page.pageNum <= r.end,
+        )}
+        {@const isSelected = rangeIndex !== -1}
+        {@const isActive = rangeIndex === activeRangeIndex}
+        {@const isStart = tocRanges.some((r) => r.start === page.pageNum)}
+        {@const isEnd = tocRanges.some((r) => r.end === page.pageNum)}
+
         <div
           data-page-num={page.pageNum}
           class="relative rounded-lg overflow-hidden border-t-[2px] border-l-[2px] cursor-pointer bg-white transition-all duration-150 transform border-2"
           class:shadow-[3px_3px_0px]={isSelected}
-          class:shadow-blue-400={isSelected}
-          class:border-blue-500={isSelected}
-          class:border-gray-500={!isSelected}
+          class:shadow-blue-400={isSelected && isActive}
+          class:shadow-gray-400={isSelected && !isActive}
+          class:border-blue-500={isSelected && isActive}
+          class:border-gray-500={isSelected && !isActive || !isSelected}
           class:scale-[1.02]={isSelected}
           on:mousedown={() => handleMouseDown(page.pageNum)}
           on:touchstart={() => handleTouchStart(page.pageNum)}
           on:mouseenter={() => handleMouseEnter(page.pageNum)}
           on:dragstart|preventDefault
         >
-          {#if page.pageNum === tocStartPage}
+          {#if isStart}
             <span
-              class="absolute -top-2.5 -left-2.5 z-10 rounded-full bg-blue-600 pr-2 pl-3 pt-3 text-xs font-bold text-white shadow-lg"
+              class="absolute -top-2.5 -left-2.5 z-10 rounded-full pr-2 pl-3 pt-3 text-xs font-bold text-white shadow-lg {isActive
+                ? 'bg-blue-600'
+                : 'bg-gray-500'}"
             >
               {$t('label.start')}
             </span>
           {/if}
 
-          {#if page.pageNum === tocEndPage}
+          {#if isEnd}
             <span
-              class="absolute -bottom-2.5 -right-2.5 z-10 rounded-full bg-blue-600 pl-2 pr-3 pb-[10px] pt-[2px] text-xs font-bold text-white shadow-lg"
+              class="absolute -bottom-2.5 -right-2.5 z-10 rounded-full pl-2 pr-3 pb-[10px] pt-[2px] text-xs font-bold text-white shadow-lg {isActive
+                ? 'bg-blue-600'
+                : 'bg-gray-500'}"
             >
               {$t('label.end')}
             </span>

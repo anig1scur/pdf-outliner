@@ -3,8 +3,7 @@
   import {t} from 'svelte-i18n';
 
   export let isAiLoading: boolean;
-  export let tocStartPage: number;
-  export let tocEndPage: number;
+  export let tocRanges: {start: number; end: number}[];
 </script>
 
 {#if isAiLoading}
@@ -17,8 +16,12 @@
     >
       <div class="text-xl text-center font-bold text-black">
         <span>
-          {$t('loading.extracting_range', {
-            values: {start: tocStartPage, end: tocEndPage},
+          {$t('loading.extracting_pages', {
+            values: {
+              ranges: tocRanges
+                .map((r) => (r.start === r.end ? `${r.start}` : `${r.start}-${r.end}`))
+                .join(', '),
+            }
           })}
         </span>
         <br />
