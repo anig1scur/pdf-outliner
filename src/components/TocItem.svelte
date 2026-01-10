@@ -14,6 +14,7 @@
   export let onDragStart = () => {};
   export let onDragEnd = () => {};
 
+
   export let currentPage = 1;
   export let isPreview = false;
   export let pageOffset = 0;

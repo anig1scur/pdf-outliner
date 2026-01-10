@@ -5,7 +5,10 @@
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
   import type * as PdfjsLibTypes from 'pdfjs-dist';
   import {init, trackEvent} from '@aptabase/web';
-
+  import { save } from '@tauri-apps/plugin-dialog';
+  import { writeFile } from '@tauri-apps/plugin-fs';
+  import { getVersion } from '@tauri-apps/api/app';
+  import { isTauri } from '$lib/utils';
   import '../lib/i18n';
   import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
@@ -23,7 +26,7 @@
   import HelpModal from '../components/modals/HelpModal.svelte';
   import StarRequestModal from '../components/modals/StarRequestModal.svelte';
 
-  import DownloadBanner from '../components/DownloadBanner.svelte';
+
   import SidebarPanel from '../components/panels/SidebarPanel.svelte';
   import PreviewPanel from '../components/panels/PreviewPanel.svelte';
   import SeoJsonLd from '../components/SeoJsonLd.svelte';
@@ -31,7 +34,6 @@
   import TocRelation from '../components/KnowledgeBoard.svelte';
   import {ChevronRight, ChevronLeft} from 'lucide-svelte';
 
-  injectAnalytics();
 
   let pdfjs: typeof PdfjsLibTypes | null = null;
   let PdfLib: typeof import('pdf-lib') | null = null;
@@ -94,11 +96,25 @@
     $pdfService = new PDFService();
   });
 
-  onMount(() => {
+  onMount(async () => {
     init('A-US-0422911470');
+
+    const isTauriEnv = isTauri();
+    let currentVersion = '1.0.0';
+
+    if (isTauriEnv) {
+      try {
+        currentVersion = await getVersion();
+      } catch (error) {
+        console.warn('Failed to get app version:', error);
+      }
+    } else {
+       injectAnalytics();
+    }
+
     trackEvent('app_started', {
-      platform: window.__TAURI__ ? 'desktop' : 'web',
-      version: '1.0.0',
+      platform: isTauriEnv ? 'desktop' : 'web',
+      version: currentVersion,
     });
   });
 
@@ -432,6 +448,37 @@
       let writable;
       const isSupported = 'showSaveFilePicker' in window;
 
+      if (isTauri()) {
+         try {
+           const filePath = await save({
+             defaultPath: pdfState.filename.replace('.pdf', '_outlined.pdf'),
+             filters: [{
+               name: 'PDF Document',
+               extensions: ['pdf']
+             }]
+           });
+           
+           if (!filePath) return;
+
+           toastProps = {show: true, message: 'Exporting file...', type: 'info'};
+           await updatePDF();
+           
+           if (!pdfState.newDoc) {
+             toastProps = {show: true, message: 'Error: No PDF document to export.', type: 'error'};
+             return;
+           }
+           
+           const pdfBytes = await pdfState.newDoc.save();
+           await writeFile(filePath, pdfBytes);
+           toastProps = {show: true, message: 'Export Successful!', type: 'success'};
+           return;
+         } catch(err) {
+            console.error('Tauri export error:', err);
+            toastProps = {show: true, message: `Error exporting PDF: ${err.message}`, type: 'error'};
+            return;
+         }
+      }
+
       if (isSupported) {
         try {
           fileHandle = await window.showSaveFilePicker({
@@ -682,14 +729,28 @@
 
   onMount(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
-      const msg = event.reason?.message || event.reason || 'Unknown Async Error';
-      toastProps = {show: true, message: msg, type: 'error'};
+      const reason = event.reason;
+      let msg = 'Unknown Async Error';
+      
+      if (reason instanceof Error) {
+        msg = `${reason.name}: ${reason.message}\nStack: ${reason.stack}`;
+      } else {
+        try {
+          msg = typeof reason === 'object' ? JSON.stringify(reason) : String(reason);
+        } catch {
+          msg = String(reason);
+        }
+      }
+      
+      console.error('Unhandled Rejection:', reason);
+      toastProps = {show: true, message: `ASYNC ERROR: ${msg}`, type: 'error'};
       event.preventDefault();
     };
 
     const handleSyncError = (event: ErrorEvent) => {
-      const msg = event.message || 'Unknown Error';
-      toastProps = {show: true, message: msg, type: 'error'};
+       const msg = `Error: ${event.message}\nFile: ${event.filename}:${event.lineno}:${event.colno}\nErrorObj: ${event.error ? event.error.stack : 'N/A'}`;
+       console.error('Sync Error:', event);
+       toastProps = {show: true, message: `SYNC ERROR: ${msg}`, type: 'error'};
     };
 
     window.addEventListener('unhandledrejection', handleRejection);
@@ -730,6 +791,7 @@
     <div class="flex-1 overflow-hidden relative w-full h-full bg-slate-50">
       <TocRelation
         items={$tocItems}
+        apiConfig={customApiConfig}
         onJumpToPage={jumpToPage}
         title={pdfState.filename ? `${pdfState.filename}`.replace('.pdf', '') : 'No file loaded'}
       />
@@ -745,7 +807,7 @@
   {/if}
 </div>
 
-<DownloadBanner />
+
 
 {#if toastProps.show}
   <Toast

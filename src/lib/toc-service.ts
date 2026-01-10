@@ -2,6 +2,7 @@ import type * as PdfjsLibTypes from 'pdfjs-dist';
 import {get} from 'svelte/store';
 
 import {pdfService} from '../stores';
+import { processToc } from './service';
 
 interface AiTocOptions {
   pdfInstance: PdfjsLibTypes.PDFDocumentProxy;
@@ -64,20 +65,14 @@ export async function generateToc(
     throw new Error('No valid pages selected.');
   }
 
-  const response = await fetch('/api/process-toc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
+  try {
+    const res = await processToc({
       images: imagesBase64,
-      apiKey: apiKey,
-      provider: provider,
-      doubaoEndpointIdText,
-      doubaoEndpointIdVision,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
+      apiKey: apiKey || '',
+      provider: provider || '',
+    });
+    return res;
+  } catch (err: any) {
     let friendlyMessage = err.message || 'AI processing failed.';
 
     if (friendlyMessage.includes('No valid ToC') ||
@@ -85,15 +80,14 @@ export async function generateToc(
         friendlyMessage.includes('structure')) {
       friendlyMessage =
           'The selected pages don\'t look like a ToC. Please try adjusting the page range.';
-    } else if (response.status === 413) {
+    } else if (err.status === 413) {
       friendlyMessage =
           'Request too large. Please reduce the page range or lower the resolution.';
-    } else if (response.status === 429) {
+    } else if (err.status === 429) {
       friendlyMessage =
           'Daily limit exceeded. Please try again tomorrow or download the client or deploy service with your own API key.';
     }
     throw new Error(friendlyMessage);
-  }
 
-  return await response.json();
+  }
 }

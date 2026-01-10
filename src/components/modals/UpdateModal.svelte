@@ -3,7 +3,7 @@
   import {Sparkles, Download, X, Loader2, AlertTriangle} from 'lucide-svelte';
 
   export let showUpdateModal: boolean = false;
-  export let updateData: {version: string; body: string; date?: string} | null = null;
+  export let updateData: {version: string; notes: string; date?: string} | null = null;
 
   export let onUpdate: () => Promise<void>;
   export let onCancel: () => void;
@@ -59,7 +59,7 @@
           </div>
           <div>
             <h2 class="text-2xl font-black italic tracking-tighter">NEW VERSION</h2>
-            <p class="text-xs font-bold ">v{updateData.version} is available!</p>
+            <p class="text-xs font-bold font-mono">v{updateData.version} is available!</p>
           </div>
         </div>
 
@@ -93,9 +93,9 @@
         <div class="prose prose-sm max-w-none">
           <p class="font-bold text-lg mb-2">✨ What's New:</p>
           <div
-            class="bg-gray-50 border-2 border-black rounded p-4  text-sm whitespace-pre-wrap leading-relaxed"
+            class="bg-gray-50 border-2 border-black rounded p-4 font-mono text-sm whitespace-pre-wrap leading-relaxed"
           >
-            {updateData.body || 'Bug fixes and performance improvements.'}
+            {updateData.notes || 'Bug fixes and performance improvements.'}
           </div>
         </div>
       </div>
@@ -104,7 +104,7 @@
         <button
           on:click={handleClose}
           disabled={isUpdating}
-          class="px-4 py-3 font-bold border-2 border-black rounded bg-white text-black hover:bg-gray-100 transition-all active:translate-x-[2px] active:translate-y-[2px] shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_rgba(0,0,0,1)] disabled:translate-x-0 disabled:translate-y-0"
+          class="px-4 py-3 font-bold border-2 border-black rounded bg-white text-black hover:bg-gray-100 transition-all active:translate-x-[2px] active:translate-y-[2px] shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_rgba(0,0,0,1)] disabled:translate-x-0 disabled:translate-y-0"
         >
           Later
         </button>
@@ -112,7 +112,7 @@
         <button
           on:click={handleUpdateClick}
           disabled={isUpdating}
-          class="flex items-center justify-center gap-2 px-4 py-3 font-bold border-2 border-black rounded bg-green-400 text-black transition-all active:translate-x-[2px] active:translate-y-[2px] shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-green-300 active:shadow-none disabled:bg-green-200 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_rgba(0,0,0,1)] disabled:translate-x-0 disabled:translate-y-0"
+          class="flex items-center justify-center gap-2 px-4 py-3 font-bold border-2 border-black rounded bg-green-400 text-black transition-all active:translate-x-[2px] active:translate-y-[2px] shadow-[4px_4px_0px_rgba(0,0,0,1)] hover:shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:bg-green-300 active:shadow-none disabled:bg-green-200 disabled:cursor-not-allowed disabled:shadow-[4px_4px_0px_rgba(0,0,0,1)] disabled:translate-x-0 disabled:translate-y-0"
         >
           {#if isUpdating}
             <Loader2
