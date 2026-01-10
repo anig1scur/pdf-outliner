@@ -42,8 +42,13 @@ export const tocConfig = writable({
   },
 });
 
+
+export const autoSaveEnabled = writable(true);
+
 if (browser) {
   const saveSession = () => {
+    if (!get(autoSaveEnabled)) return;
+
     const fingerprint = get(curFileFingerprint);
     const items = get(tocItems);
 
@@ -53,7 +58,11 @@ if (browser) {
         items,
         pageOffset: config.pageOffset,
       };
-      localStorage.setItem(`toc_draft_${fingerprint}`, JSON.stringify(session));
+      try {
+        localStorage.setItem(`toc_draft_${ fingerprint }`, JSON.stringify(session));
+      } catch (e) {
+        console.error('Failed to save session:', e);
+      }
     }
   };
 

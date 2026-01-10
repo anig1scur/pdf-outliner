@@ -32,7 +32,7 @@
   {/if}
 
   <div class="font-['HuiwenMincho'] text-lg leading-5 font-bold text-gray-400 break-words line-clamp-3 w-full">
-    {node.title}
+    {node.label}
   </div>
 
   {#if node.page}

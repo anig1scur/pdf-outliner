@@ -1,14 +1,16 @@
-<script>
+<script lang="ts">
   import {onDestroy, tick} from 'svelte';
   import ShortUniqueId from 'short-unique-id';
   import {CircleHelpIcon, Sparkles, Loader2} from 'lucide-svelte';
   import {t} from 'svelte-i18n';
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
-  import {tocItems, maxPage} from '../stores';
+  import {tocItems, maxPage, autoSaveEnabled} from '../stores';
 
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
+
+  import {generateKnowledgeGraph, processToc} from '../lib/service';
 
   export let currentPage = 1;
   export let isPreview = false;
@@ -92,28 +94,26 @@
     }
 
     isProcessing = true;
-    const response = await fetch('/api/process-toc', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        text: text,
-        apiKey: apiConfig.apiKey,
-        provider: apiConfig.provider,
-      }),
-    });
+    try {
+        const aiResult = await processToc({
+            text: text,
+            apiKey: apiConfig.apiKey,
+            provider: apiConfig.provider
+        });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.message || 'AI processing failed');
-    }
+        isProcessing = false;
 
-    const aiResult = await response.json();
-    isProcessing = false;
-
-    if (Array.isArray(aiResult) && aiResult.length > 0) {
-      $tocItems = buildTree(aiResult);
-    } else {
-      throw new Error('AI could not parse any ToC structure.');
+        if (Array.isArray(aiResult) && aiResult.length > 0) {
+            saveHistory();
+            $tocItems = buildTree(aiResult);
+        } else {
+            throw new Error('AI could not parse any ToC structure.');
+        }
+    } catch (err: any) {
+        isProcessing = false;
+        // const errData = await response.json().catch(() => ({})); 
+        // response is not available here
+        throw new Error(err.message || 'AI processing failed');
     }
   }
 
@@ -170,6 +170,7 @@
     debounceTimer = setTimeout(() => {
       const parsed = parseText(text);
       if (parsed.length > 0) {
+        saveHistory();
         $tocItems = parsed;
       }
       tick().then(() => {
@@ -178,18 +179,31 @@
     }, 300);
   }
 
+  const handleDragStart = () => {
+    if (!isDragging) {
+      saveHistory();
+      $autoSaveEnabled = false;
+      isDragging = true;
+    }
+  };
+
+  const handleDragEnd = () => {
+    tick().then(() => {
+      isDragging = false;
+      const newText = generateText($tocItems);
+      if (newText !== text) text = newText;
+      $autoSaveEnabled = true;
+    });
+  };
+
   function handleDndConsider(e) {
-    isDragging = true;
+    handleDragStart();
     $tocItems = e.detail.items;
   }
 
   function handleDndFinalize(e) {
     $tocItems = e.detail.items;
-    tick().then(() => {
-      isDragging = false;
-      const newText = generateText($tocItems);
-      if (newText !== text) text = newText;
-    });
+    handleDragEnd();
   }
 
   $: firstItemWithChildrenId = (() => {
@@ -207,20 +221,22 @@
   })();
 
   const addTocItem = () => {
+    saveHistory();
     const uid = new ShortUniqueId({length: 10});
-    $tocItems = [
-      ...$tocItems,
-      {
+    const newItem = {
         id: uid.randomUUID(),
         title: $t('toc.new_section_default'),
         to: $maxPage + 1,
         children: [],
         open: true,
-      },
-    ];
+    };
+    $tocItems = [...$tocItems, newItem];
   };
 
-  const updateTocItem = (item, updates) => {
+  const updateTocItem = (item, updates, skipHistory = false) => {
+    if (!skipHistory) {
+      saveHistory();
+    }
     const updateItemRecursive = (items) =>
       items.map((currentItem) => {
         if (currentItem.id === item.id) return {...currentItem, ...updates};
@@ -233,6 +249,7 @@
   };
 
   const deleteTocItem = (itemToDelete) => {
+    saveHistory();
     const deleteItemRecursive = (items) =>
       items.filter((item) => {
         if (item.id === itemToDelete.id) return false;
@@ -243,7 +260,64 @@
   };
 
   $: promptTooltipText = $t('toc.prompt_intro');
+
+  // --- History / Undo / Redo ---
+  let historyStack = [];
+  let futureStack = [];
+  const maxHistory = 20;
+
+  function saveHistory() {
+    const clone = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(clone);
+    if (historyStack.length > maxHistory) {
+      historyStack.shift();
+    }
+    futureStack = [];
+    historyStack = historyStack; // update
+  }
+
+  function undo() {
+    if (historyStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    futureStack.push(current);
+    const prev = historyStack.pop();
+    $tocItems = prev;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function redo() {
+    if (futureStack.length === 0) return;
+    const current = JSON.parse(JSON.stringify($tocItems));
+    historyStack.push(current);
+    const next = futureStack.pop();
+    $tocItems = next;
+    historyStack = historyStack;
+    futureStack = futureStack;
+  }
+
+  function handleKeydown(e) {
+    const tagName = e.target.tagName;
+    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
+      if (e.shiftKey) {
+        e.preventDefault();
+        redo();
+      } else {
+        e.preventDefault();
+        undo();
+      }
+    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
+      e.preventDefault();
+      redo();
+    }
+  }
+
+
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div class="flex flex-col gap-4 mt-3">
   <div class="h-48 relative group">
@@ -305,6 +379,8 @@
               showTooltip={item.id === firstItemWithChildrenId}
               onUpdate={updateTocItem}
               onDelete={deleteTocItem}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
               on:hoveritem
               {currentPage}
               {isPreview}

@@ -2,6 +2,7 @@ import type * as PdfjsLibTypes from 'pdfjs-dist';
 import {get} from 'svelte/store';
 
 import {pdfService} from '../stores';
+import { processToc } from './service';
 
 interface AiTocOptions {
   pdfInstance: PdfjsLibTypes.PDFDocumentProxy;
@@ -45,34 +46,15 @@ export async function generateToc(
     imagesBase64.push(image);
   }
 
-  const response = await fetch('/api/process-toc', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
+  try {
+    const res = await processToc({
       images: imagesBase64,
-      apiKey: apiKey,
-      provider: provider,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.json();
-    let friendlyMessage = err.message || 'AI processing failed.';
-
-    if (friendlyMessage.includes('No valid ToC') ||
-        friendlyMessage.includes('parsing error') ||
-        friendlyMessage.includes('structure')) {
-      friendlyMessage =
-          'The selected pages don\'t look like a ToC. Please try adjusting the page range.';
-    } else if (response.status === 413) {
-      friendlyMessage =
-          'Request too large. Please reduce the page range or lower the resolution.';
-    } else if (response.status === 429) {
-      friendlyMessage =
-          'Daily limit exceeded. Please try again tomorrow or download the client or deploy service with your own API key.';
-    }
-    throw new Error(friendlyMessage);
+      apiKey: apiKey || '',
+      provider: provider || '',
+      // TODO: Add doubaoConfig when available in UI settings
+    });
+    return res;
+  } catch (err: any) {
+    throw new Error(err.message || 'AI processing failed.');
   }
-
-  return await response.json();
 }

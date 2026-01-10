@@ -10,6 +10,8 @@
   let config = {
     provider: '',
     apiKey: '',
+    textEndpoint: '',
+    visionEndpoint: ''
   };
 
   let isSaved = false;
@@ -86,7 +88,6 @@
             bind:value={config.provider}
             on:change={() => (isSaved = false)}
           >
-            <option value="">Auto</option>
             <option value="gemini">Gemini</option>
             <option value="qwen">Qwen</option>
             <option value="doubao">Doubao</option>
@@ -111,6 +112,29 @@
             on:input={() => (isSaved = false)}
           />
         </div>
+
+        {#if config.provider === 'doubao'}
+          <div class="border-black border-2 rounded-md p-2 w-full" transition:slide>
+            <label class="block font-bold mb-1 text-sm" for="doubao_text_ep">Doubao Text Endpoint</label>
+            <input
+              id="doubao_text_ep"
+              class="w-full outline-none text-sm"
+              placeholder="ep-..."
+              bind:value={config.textEndpoint}
+              on:input={() => (isSaved = false)}
+            />
+          </div>
+          <div class="border-black border-2 rounded-md p-2 w-full" transition:slide>
+            <label class="block font-bold mb-1 text-sm" for="doubao_vision_ep">Doubao Vision Endpoint</label>
+            <input
+              id="doubao_vision_ep"
+              class="w-full outline-none text-sm"
+              placeholder="ep-..."
+              bind:value={config.visionEndpoint}
+              on:input={() => (isSaved = false)}
+            />
+          </div>
+        {/if}
 
         <button
           class="w-full font-bold transition-all duration-200 text-black border-2 border-black rounded px-3 py-2

@@ -11,6 +11,8 @@
   export let item;
   export let onUpdate;
   export let onDelete;
+  export let onDragStart = () => {};
+  export let onDragEnd = () => {};
   export let currentPage = 1;
   export let isPreview = false;
   export let pageOffset = 0;
@@ -21,10 +23,16 @@
   const flipDurationMs = 200;
 
   let editTitle = item ? item.title : '';
+  let editPage = item ? item.to : 1;
   let isFocused = false;
+  let isPageFocused = false;
 
   $: if (item && !isFocused && item.title !== editTitle) {
     editTitle = item.title;
+  }
+
+  $: if (item && !isPageFocused && item.to !== editPage) {
+    editPage = item.to;
   }
 
   $: physicalContentPage = item.to + pageOffset;
@@ -42,10 +50,12 @@
     onUpdate(item, {title: editTitle});
   }
 
-  function handlePageChange(e) {
-    const val = parseInt(e.target.value);
+  function handleUpdatePage() {
+    const val = parseInt(editPage);
     const page = isNaN(val) ? 1 : val;
-    onUpdate(item, {to: page});
+    if (page !== item.to) {
+      onUpdate(item, {to: page});
+    }
   }
 
   function handleAddChild() {
@@ -60,11 +70,11 @@
     onUpdate(item, {children: updatedChildren, open: true});
   }
 
-  function handleUpdateChild(childItem, updates) {
+  function handleUpdateChild(childItem, updates, skipHistory = false) {
     const updatedChildren = (item.children || []).map((child) =>
-      child.id === childItem.id ? {...child, ...updates} : child
+      child.id === childItem.id ? {...child, ...updates} : child,
     );
-    onUpdate(item, {children: updatedChildren});
+    onUpdate(item, {children: updatedChildren}, skipHistory);
   }
 
   function handleDeleteChild(childItem) {
@@ -79,14 +89,16 @@
   }
 
   function handleDndConsider(e) {
+    onDragStart();
     item.children = e.detail.items;
     item = item;
   }
 
   function handleDndFinalize(e) {
     item.children = e.detail.items;
-    item = item; // 强制更新
-    onUpdate(item, {children: item.children}); // 拖拽结束后才通知父级更新 Store
+    item = item;
+    onUpdate(item, {children: item.children}, true);
+    onDragEnd();
   }
 </script>
 
@@ -131,8 +143,13 @@
 
       <input
         type="number"
-        bind:value={item.to}
-        on:input={handlePageChange}
+        bind:value={editPage}
+        on:focus={() => (isPageFocused = true)}
+        on:blur={() => {
+          isPageFocused = false;
+          handleUpdatePage();
+        }}
+        on:keypress={(e) => e.key === 'Enter' && e.target.blur()}
         class="w-14 border-2 border-black rounded ml-1 pl-1.5 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
@@ -171,6 +188,8 @@
               item={child}
               onUpdate={handleUpdateChild}
               onDelete={handleDeleteChild}
+              {onDragStart}
+              {onDragEnd}
               on:hoveritem
               {currentPage}
               {isPreview}
