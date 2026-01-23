@@ -37,6 +37,8 @@
   let currentRenderTask: RenderTask | null = null;
   let lastRenderedPage = 0;
   let lastRenderedScale = 0;
+  let containerWidth = 0;
+  let containerHeight = 0;
 
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
@@ -74,13 +76,24 @@
       const page = await instance.getPage(currentPage);
 
       const dpr = window.devicePixelRatio || 1;
-      const viewport = page.getViewport({scale: scale});
+      const viewport = page.getViewport({scale: 1.0});
+      const availableWidth = Math.max(0, containerWidth - 32); // p-4
+      const availableHeight = Math.max(0, containerHeight - 32);
+      
+      if (availableWidth <= 0 || availableHeight <= 0) return;
 
-      canvas.width = Math.floor(viewport.width * dpr);
-      canvas.height = Math.floor(viewport.height * dpr);
+      const scaleX = availableWidth / viewport.width;
+      const scaleY = availableHeight / viewport.height;
+      const baseScale = Math.min(scaleX, scaleY);
+      
+      const effectiveScale = baseScale * scale;
+      const renderViewport = page.getViewport({scale: effectiveScale});
 
-      canvas.style.width = `${Math.floor(viewport.width)}px`;
-      canvas.style.height = `${Math.floor(viewport.height)}px`;
+      canvas.width = Math.floor(renderViewport.width * dpr);
+      canvas.height = Math.floor(renderViewport.height * dpr);
+
+      canvas.style.width = `${Math.floor(renderViewport.width)}px`;
+      canvas.style.height = `${Math.floor(renderViewport.height)}px`;
 
       const canvasContext = canvas.getContext('2d');
       if (!canvasContext) return;
@@ -89,7 +102,7 @@
 
       const renderContext = {
         canvasContext,
-        viewport,
+        viewport: renderViewport,
       };
 
       currentRenderTask = page.render(renderContext);
@@ -107,7 +120,7 @@
     }
   }
 
-  $: if (mode === 'single' && instance && currentPage && scale) {
+  $: if (mode === 'single' && instance && currentPage && scale && containerWidth && containerHeight) {
     renderCurrentPage();
   }
 
@@ -122,7 +135,6 @@
       pdfState.currentPage -= 1;
     }
   };
-
   const zoomIn = () => {
     pdfState.scale = Math.min(scale + 0.15, 2.0);
   };
@@ -403,26 +415,32 @@
         </div>
       </div>
 
-      <div class="relative flex items-center justify-center w-full flex-1 overflow-auto bg-gray-50">
+      <div 
+        class="relative flex-1 overflow-hidden bg-gray-50"
+        bind:clientWidth={containerWidth}
+        bind:clientHeight={containerHeight}
+      >
         <button
           on:click={goToPrevPage}
           disabled={currentPage <= 1}
-          class="absolute left-2 p-1 md:left-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
+          class="absolute left-2 top-1/2 -translate-y-1/2 p-1 md:left-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
         >
           <ChevronLeft size={24} />
         </button>
 
-        <div class="overflow-auto max-w-full p-4">
-          <canvas
-            class="max-w-full"
-            id="pdf-canvas"
-          ></canvas>
+        <div class="w-full h-full overflow-auto flex">
+          <div class="m-auto p-4 max-w-full">
+            <canvas
+              class="max-w-full block"
+              id="pdf-canvas"
+            ></canvas>
+          </div>
         </div>
 
         <button
           on:click={goToNextPage}
           disabled={currentPage >= totalPages}
-          class="absolute right-2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-10 border-2 border-black"
+          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
         >
           <ChevronRight size={24} />
         </button>

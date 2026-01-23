@@ -115,11 +115,6 @@
     }
   }
 
-  $: {
-    if (pdfState.instance && pdfState.currentPage && $pdfService && isPreviewMode) {
-      $pdfService.renderPage(pdfState.instance, pdfState.currentPage, pdfState.scale);
-    }
-  }
 
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocRanges[0]?.end + 1 || 1;
