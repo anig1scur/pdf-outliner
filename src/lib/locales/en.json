@@ -118,5 +118,13 @@
     "faq_1_a": "Yes, Tocify is completely free to use.",
     "faq_2_q": "Is my data safe?",
     "faq_2_a": "Yes. We process files locally using your browser's capabilities. Your confidential documents never leave your device."
+  },
+  "star_request": {
+    "title": "Enjoying Tocify?",
+    "body": "If this tool helped you, please consider giving us a star on GitHub or sharing your feedback!",
+    "btn_star": "Star on GitHub",
+    "btn_feedback": "Give Feedback",
+    "btn_maybe_later": "Maybe Later",
+    "btn_dont_show": "Don't show again"
   }
 }

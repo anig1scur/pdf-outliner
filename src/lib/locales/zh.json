@@ -126,5 +126,13 @@
     "faq_1_a": "是的，Tocify 完全免费使用。",
     "faq_2_q": "我的数据安全吗？",
     "faq_2_a": "安全。我们使用浏览器能力在本地处理文件。你的文档永远不会离开设备。"
+  },
+  "star_request": {
+    "title": "喜欢 Tocify 吗？",
+    "body": "如果这个工具对你有帮助，请考虑在 GitHub 上给我们一个 star，或者分享你的反馈建议！",
+    "btn_star": "去 GitHub 给个 Star",
+    "btn_feedback": "反馈建议",
+    "btn_maybe_later": "以后再说",
+    "btn_dont_show": "不再展示"
   }
 }

@@ -21,6 +21,7 @@
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
+  import StarRequestModal from '../components/modals/StarRequestModal.svelte';
 
   import DownloadBanner from '../components/DownloadBanner.svelte';
   import SidebarPanel from '../components/panels/SidebarPanel.svelte';
@@ -47,6 +48,7 @@
 
   let showOffsetModal = false;
   let showHelpModal = false;
+  let showStarRequestModal = false;
   let offsetPreviewPageNum = 1;
 
   let toastProps = {
@@ -461,6 +463,13 @@
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
       toastProps = {show: true, message: 'Export Successful!', type: 'success'};
+
+      setTimeout(() => {
+        const isDismissed = localStorage.getItem('tocify_hide_star_request') === 'true';
+        if (!isDismissed) {
+          showStarRequestModal = true;
+        }
+      }, 1000);
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toastProps = {show: true, message: `Error exporting PDF: ${error.message}`, type: 'error'};
@@ -827,6 +836,8 @@
   />
 
   <HelpModal bind:showHelpModal />
+
+  <StarRequestModal bind:show={showStarRequestModal} />
 {/if}
 
 <svelte:window on:beforeunload={handleBeforeUnload} />
