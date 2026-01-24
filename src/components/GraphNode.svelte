@@ -1,5 +1,6 @@
 <script>
   import {BrainCircuit} from 'lucide-svelte';
+  import {t} from 'svelte-i18n';
   import {createEventDispatcher} from 'svelte';
   import {CARD_W, CARD_H} from '../lib/graph-utils';
 
@@ -38,7 +39,7 @@
   {#if node.page}
     <button
       class="absolute bottom-2 right-2 text-xs font-mono text-gray-400 bg-white/50 px-1 rounded border border-transparent hover:text-yellow-400 transition-colors"
-      title="Jump to page {node.page}"
+      title={$t('knowledge_board.jump_to_page', {values: {page: node.page}})}
       on:click|stopPropagation={() => dispatch('jump', node.page)}
     >
       p.{node.page}

@@ -134,5 +134,15 @@
     "btn_feedback": "反馈建议",
     "btn_maybe_later": "以后再说",
     "btn_dont_show": "不再展示"
+  },
+  "knowledge_board": {
+    "title": "知识看板",
+    "btn_investigate": "探索",
+    "btn_connecting": "正在连接...",
+    "msg_generate_toc": "生成目录以开始...",
+    "msg_investigate": "点击探索以生成知识看板",
+    "msg_generating": "正在生成知识看板...",
+    "error_failed": "生成看板失败",
+    "jump_to_page": "跳转到第 {page} 页"
   }
 }
