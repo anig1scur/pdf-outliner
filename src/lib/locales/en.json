@@ -126,5 +126,15 @@
     "btn_feedback": "Give Feedback",
     "btn_maybe_later": "Maybe Later",
     "btn_dont_show": "Don't show again"
+  },
+  "knowledge_board": {
+    "title": "KNOWLEDGE BOARD",
+    "btn_investigate": "Investigate",
+    "btn_connecting": "Connecting...",
+    "msg_generate_toc": "Generate ToC to start...",
+    "msg_investigate": "Investigate to generate the knowledge board",
+    "msg_generating": "Generating the knowledge board...",
+    "error_failed": "Failed to generate board",
+    "jump_to_page": "Jump to page {page}"
   }
 }

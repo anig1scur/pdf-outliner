@@ -37,6 +37,7 @@
   let currentRenderTask: RenderTask | null = null;
   let lastRenderedPage = 0;
   let lastRenderedScale = 0;
+  let lastRenderedInstance: any = null;
   let containerWidth = 0;
   let containerHeight = 0;
 
@@ -56,7 +57,7 @@
 
   async function renderCurrentPage() {
     if (!instance || !currentPage || !scale) return;
-    if (lastRenderedPage === currentPage && lastRenderedScale === scale) {
+    if (lastRenderedPage === currentPage && lastRenderedScale === scale && lastRenderedInstance === instance) {
       return;
     }
 
@@ -111,6 +112,7 @@
 
       lastRenderedPage = currentPage;
       lastRenderedScale = scale;
+      lastRenderedInstance = instance;
       currentRenderTask = null;
     } catch (e: any) {
       if (e?.name !== 'RenderingCancelledException') {

@@ -1,5 +1,6 @@
 <script>
   import {tick} from 'svelte';
+  import {t} from 'svelte-i18n';
   import rough from 'roughjs';
   import GraphNode from './GraphNode.svelte';
   import {Sparkles, Loader2, RefreshCw, Maximize2, Minimize2, BrainCircuit, BookOpen} from 'lucide-svelte';
@@ -91,7 +92,7 @@
       drawWall();
     } catch (e) {
       console.error(e);
-      alert('Failed to generate board.');
+      alert($t('knowledge_board.error_failed'));
     } finally {
       isLoading = false;
     }
@@ -420,7 +421,7 @@
     {:else}
       <div class="flex items-center gap-2 text-lg md:text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
         <BrainCircuit size={28} />
-        <span>KNOWLEDGE BOARD</span>
+        <span>{$t('knowledge_board.title')}</span>
 
         <span
           class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"
@@ -443,10 +444,10 @@
             class="animate-spin"
             size={20}
           />
-          <span>Connecting...</span>
+          <span>{$t('knowledge_board.btn_connecting')}</span>
         {:else}
           <Sparkles size={20} />
-          <span>Investigate</span>
+          <span>{$t('knowledge_board.btn_investigate')}</span>
         {/if}
       </button>
     </div>
@@ -461,8 +462,6 @@
   >
     <div class="absolute inset-0 z-0 bg-grid-pattern pointer-events-none"></div>
 
-    <!-- Render this div inside to apply transforms -->
-    <!-- Content Wrapper: content scales and moves -->
     <div
       bind:this={contentWrapper}
       class="origin-top-left absolute top-0 left-0 z-10"
@@ -497,7 +496,7 @@
         size={64}
         class="mb-6"
       />
-      <span class="text-3xl">Generate ToC to start...</span>
+      <span class="text-3xl">{$t('knowledge_board.msg_generate_toc')}</span>
     </div>
   {:else if !isLoading && items.length > 0 && graphData.nodes.length === 0}
     <div
@@ -507,13 +506,13 @@
         size={64}
         class="mb-6"
       />
-      <span class="text-3xl">Investigate to generate the knowledge board</span>
+      <span class="text-3xl">{$t('knowledge_board.msg_investigate')}</span>
     </div>
   {:else if isLoading}
     <div
       class="absolute inset-0 max-w-[80%] mx-auto text-center flex flex-col items-center justify-center text-gray-400 font-['HuiwenMincho'] opacity-50 pointer-events-none z-0"
     >
-      <span class="text-3xl animate-bounce">Generating the knowledge board...</span>
+      <span class="text-3xl animate-bounce">{$t('knowledge_board.msg_generating')}</span>
     </div>
   {/if}
 
@@ -523,7 +522,7 @@
     >
       <div class="flex items-center gap-2">
         <BrainCircuit size={28} />
-        <span>KNOWLEDGE BOARD</span>
+        <span>{$t('knowledge_board.title')}</span>
 
         <span
           class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"

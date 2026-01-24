@@ -3,6 +3,8 @@ import fontkit from '@pdf-lib/fontkit';
 import {PDFDocument, type PDFFont, PDFName, type PDFPage, rgb, StandardFonts} from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 
+const CJK_REGEX = /[\u4e00-\u9fa5]/;
+
 import {type TocConfig} from '../stores';
 
 const TOC_LAYOUT = {
@@ -21,10 +23,13 @@ const TOC_LAYOUT = {
     ANNOT_Y_PADDING: 2,
     DOT_LEADER: {
       GAP_TITLE: 5,
-      RIGHT_PADDING: 15,
+      RIGHT_PAD: 15,
       SPACING_STEP: 5,
       SIZE_RATIO: 0.8,
+      RESERVE_COUNT: 2,
     },
+    RIGHT_PAD: 100,
+    DEFAULT_TITLE_Y_RATIO: 1 / 3,
   },
 };
 
@@ -157,9 +162,9 @@ export class PDFService {
     currentTocPageIndex.value++;
 
     const titleYRatio =
-        typeof config.titleYStart === 'number' ? config.titleYStart : (1 / 3);
+        typeof config.titleYStart === 'number' ? config.titleYStart : TOC_LAYOUT.ITEM.DEFAULT_TITLE_Y_RATIO;
     let yOffset = height * (1 - titleYRatio);
-    const titleText = items.some(i => /[\u4e00-\u9fa5]/.test(i.title)) ?
+    const titleText = items.some(i => CJK_REGEX.test(i.title)) ?
         '目录' :
         'Table of Contents';
 
@@ -216,18 +221,8 @@ export class PDFService {
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
 
-      // 换页检查
-      if (yOffset < TOC_LAYOUT.PAGE.MARGIN_BOTTOM) {
-        currentWorkingPage = doc.insertPage(
-            insertionStartIndex + currentTocPageIndex.value,
-            [pageWidth, pageHeight]);
-        currentTocPageIndex.value++;
-        yOffset = pageHeight - TOC_LAYOUT.PAGE.MARGIN_BOTTOM;
-      }
-
       const isFirstLevel = level === 0;
       const levelConfig = isFirstLevel ? config.firstLevel : config.otherLevels;
-
       const {fontSize, dotLeader, color, lineSpacing} = levelConfig;
 
       const parsedColor =
@@ -239,22 +234,40 @@ export class PDFService {
       const lineHeight = fontSize * lineSpacing;
       const title = `${item.title}`.trim();
       const titleX = TOC_LAYOUT.PAGE.MARGIN_X + indentation;
+      const maxWidth = pageWidth - TOC_LAYOUT.ITEM.RIGHT_PAD - indentation;
+      const currentFont = isFirstLevel ? boldFont : regularFont;
+
+      const lines = this.splitTextIntoLines(title, fontSize, currentFont, maxWidth);
+      const totalHeadingHeight = lines.length * lineHeight;
+
+      // 换页检查
+      if (yOffset - totalHeadingHeight < TOC_LAYOUT.PAGE.MARGIN_BOTTOM) {
+        currentWorkingPage = doc.insertPage(
+          insertionStartIndex + currentTocPageIndex.value,
+          [pageWidth, pageHeight]);
+        currentTocPageIndex.value++;
+        yOffset = pageHeight - TOC_LAYOUT.PAGE.MARGIN_BOTTOM;
+      }
 
       if (isFirstLevel) {
         yOffset -= TOC_LAYOUT.ITEM.LINE_HEIGHT_ADJUST;
       }
 
-      const currentFont = isFirstLevel ? boldFont : regularFont;
+      const startYAnnot = yOffset + fontSize;
 
-      // 绘制标题
-      currentWorkingPage.drawText(title, {
-        x: titleX,
-        y: yOffset,
-        size: fontSize,
-        font: currentFont,
-        color: parsedColor,
-        maxWidth: pageWidth - 100 - indentation,
-      });
+      // 绘制标题每一行
+      for (let j = 0;j < lines.length;j++) {
+        currentWorkingPage.drawText(lines[j], {
+          x: titleX,
+          y: yOffset,
+          size: fontSize,
+          font: currentFont,
+          color: parsedColor,
+        });
+        if (j < lines.length - 1) {
+          yOffset -= lineHeight;
+        }
+      }
 
       // 绘制页码
       const pageNumText = String(item.to);
@@ -272,11 +285,12 @@ export class PDFService {
 
       // 绘制点线 (Dot Leader)
       if (dotLeader) {
-        const titleWidth = currentFont.widthOfTextAtSize(title, fontSize);
+        const lastLineTitle = lines[lines.length - 1];
+        const titleWidth = currentFont.widthOfTextAtSize(lastLineTitle, fontSize);
         const dotsXStart =
             titleX + titleWidth + TOC_LAYOUT.ITEM.DOT_LEADER.GAP_TITLE;
         const dotsXEnd = pageWidth - TOC_LAYOUT.PAGE.MARGIN_X -
-            TOC_LAYOUT.ITEM.DOT_LEADER.RIGHT_PADDING;
+            TOC_LAYOUT.ITEM.DOT_LEADER.RIGHT_PAD;
         const maxDotsWidth = dotsXEnd - dotsXStart;
 
         if (maxDotsWidth > 0) {
@@ -287,7 +301,7 @@ export class PDFService {
           if (count > 0) {
             const oneDotWidth = regularFont.widthOfTextAtSize('.', dotSize);
             const numDots = Math.floor(maxDotsWidth / oneDotWidth);
-            const finalDots = '.'.repeat(Math.max(0, numDots - 2));
+            const finalDots = '.'.repeat(Math.max(0, numDots - TOC_LAYOUT.ITEM.DOT_LEADER.RESERVE_COUNT));
 
             currentWorkingPage.drawText(finalDots, {
               x: dotsXStart,
@@ -305,7 +319,7 @@ export class PDFService {
         titleX,
         yOffset - TOC_LAYOUT.ITEM.ANNOT_Y_PADDING,
         pageWidth - TOC_LAYOUT.PAGE.MARGIN_X,
-        yOffset + fontSize,
+        startYAnnot,
       ];
 
       pendingAnnots.push({
@@ -326,6 +340,28 @@ export class PDFService {
     }
 
     return {currentPage: currentWorkingPage, yOffset};
+  }
+
+  private splitTextIntoLines(
+    text: string, size: number, font: PDFFont, maxWidth: number): string[] {
+    const lines: string[] = [];
+    const words = text.split('');
+    let currentLine = '';
+
+    for (const char of words) {
+      const testLine = currentLine + char;
+      const width = font.widthOfTextAtSize(testLine, size);
+      if (width > maxWidth && currentLine !== '') {
+        lines.push(currentLine);
+        currentLine = char;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine !== '') {
+      lines.push(currentLine);
+    }
+    return lines;
   }
 
   private applyLinkAnnotations(
