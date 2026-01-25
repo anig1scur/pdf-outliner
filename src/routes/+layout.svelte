@@ -47,10 +47,19 @@
   });
 </script>
 
-{@render children()}
-<UpdateModal 
-  showUpdateModal={showUpdateModal}
-  updateData={updateData}
-  onUpdate={handleUpdate}
-  onCancel={handleCancel}
-/>
+<div class={isTauri() ? "window-frame" : ""}>
+  {#if isTauri()}
+    <div class="custom-titlebar">
+       <div class="drag-region" data-tauri-drag-region></div>
+    </div>
+  {/if}
+  <div class={isTauri() ? "window-content" : ""}>
+    {@render children()}
+    <UpdateModal 
+      showUpdateModal={showUpdateModal}
+      updateData={updateData}
+      onUpdate={handleUpdate}
+      onCancel={handleCancel}
+    />
+  </div>
+</div>

@@ -12,6 +12,42 @@
   body {
     @apply bg-[#f9f8f5] font-sans;
   }
+        :root {
+          --window-border: #60A6FA;
+          --titlebar-height: 32px;
+        }
+    
+        .window-frame {
+          @apply h-screen w-screen overflow-hidden flex flex-col bg-white;
+          box-sizing: border-box;
+        }
+    
+        .custom-titlebar {
+          height: var(--titlebar-height);
+          background-color: var(--window-border);
+          flex-shrink: 0;
+          z-index: 100;
+        }
+    
+        .window-content {
+          @apply flex-1 overflow-auto bg-[#f9f8f5];
+          position: relative;
+        }
+        }
+    
+        .drag-region {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: var(--titlebar-height);
+          -webkit-app-region: drag;
+          z-index: 101;
+        }
+    
+        /* Ensure children can still be interactive if needed, but drag region is on top */
+        .drag-region[data-tauri-drag-region] {
+          pointer-events: auto;
 }
 
 button {

@@ -30,7 +30,10 @@
         "center": true,      
         "resizable": true,
         "fullscreen": false,
-        "decorations": true
+        "decorations": true,
+        "transparent": true,
+        "shadow": true,
+        "titleBarStyle": "Overlay"
       }
     ],
     "security": {

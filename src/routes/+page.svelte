@@ -8,6 +8,7 @@
   import { save } from '@tauri-apps/plugin-dialog';
   import { writeFile } from '@tauri-apps/plugin-fs';
   import { getVersion } from '@tauri-apps/api/app';
+  import { getCurrentWindow } from '@tauri-apps/api/window';
   import { isTauri } from '$lib/utils';
   import '../lib/i18n';
   import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
@@ -95,6 +96,11 @@
   onMount(() => {
     $pdfService = new PDFService();
   });
+  
+  $: if (isTauri()) {
+    const title = pdfState.filename ? `${pdfState.filename.replace('.pdf', '')} - Tocify` : 'Tocify';
+    getCurrentWindow().setTitle(title).catch(err => console.error('Failed to set title:', err));
+  }
 
   onMount(async () => {
     init('A-US-0422911470');
@@ -824,7 +830,7 @@
   </p>
   
   <div
-    class="flex flex-col mt-5 lg:flex-row lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
+    class="flex flex-col mt-2 lg:flex-row p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
       in:fly={{y: 20, duration: 300, delay: 100}}

@@ -18,6 +18,9 @@
     "fs:default",
     "os:default",
     "fs:allow-write-file",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-maximize",
     {
       "identifier": "fs:scope",
       "allow": ["$HOME/**"]
