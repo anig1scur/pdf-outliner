@@ -13,11 +13,19 @@
   const macCommand = 'sudo xattr -r -d com.apple.quarantine /Applications/Tocify.app';
 
   const STORAGE_KEY = 'tocify_client_promo_hidden_until';
-  const HIDE_DAYS = 7;
+  const HIDE_DAYS = 30;
 
   onMount(() => {
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      return;
+    }
+
     const hiddenUntil = localStorage.getItem(STORAGE_KEY);
     if (hiddenUntil && Date.now() < parseInt(hiddenUntil)) {
+      return;
+    }
+
+    if (Math.random() > 0.5) {
       return;
     }
 
@@ -185,13 +193,13 @@
       <button
         on:click={dismissForWeek}
         class="flex items-center gap-1.5 text-[10px] font-bold uppercase text-gray-400 hover:text-red-500 transition-colors"
-        title="Don't show this for 7 days"
+        title="Don't show this"
       >
         <EyeOff
           size={12}
           strokeWidth={2.5}
         />
-        {$t('client.snooze', {default: 'Hide for 7 days'})}
+        {$t('client.snooze', {default: 'Hide'})}
       </button>
     </div>
   </div>
