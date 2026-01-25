@@ -135,6 +135,7 @@
     "msg_investigate": "Investigate to generate the knowledge board",
     "msg_generating": "Generating the knowledge board...",
     "error_failed": "Failed to generate board",
-    "jump_to_page": "Jump to page {page}"
+    "jump_to_page": "Jump to page {page}",
+    "beta": "It's beta now, maybe beta forever"
   }
 }

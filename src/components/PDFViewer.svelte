@@ -33,6 +33,8 @@
 
   let autoScrollSpeed = 0;
   let autoScrollFrameId: number | null = null;
+  let lastMouseX = 0;
+  let lastMouseY = 0;
 
   let currentRenderTask: RenderTask | null = null;
   let lastRenderedPage = 0;
@@ -180,7 +182,32 @@
       return;
     }
     scrollContainer.scrollTop += autoScrollSpeed;
+    
+    if (isSelecting) {
+      updateSelectionFromPoint(lastMouseX, lastMouseY);
+    }
+    
     autoScrollFrameId = requestAnimationFrame(scrollLoop);
+  }
+
+  function updateSelectionFromPoint(clientX: number, clientY: number) {
+    if (!scrollContainer) return;
+
+    const rect = scrollContainer.getBoundingClientRect();
+    
+    const clampedX = Math.max(rect.left + 5, Math.min(rect.right - 5, clientX));
+    const clampedY = Math.max(rect.top + 5, Math.min(rect.bottom - 5, clientY));
+
+    const targetElement = document.elementFromPoint(clampedX, clampedY);
+    if (!targetElement) return;
+
+    const pageItem = targetElement.closest('[data-page-num]') as HTMLElement;
+    if (pageItem && pageItem.dataset.pageNum) {
+      const pageNum = parseInt(pageItem.dataset.pageNum, 10);
+      if (!isNaN(pageNum)) {
+        handleMouseEnter(pageNum);
+      }
+    }
   }
 
   function stopAutoScroll() {
@@ -235,8 +262,12 @@
   }
 
   function handleGridMouseMove(e: MouseEvent) {
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+    
     if (!isSelecting) return;
     checkAutoScroll(e.clientY);
+    updateSelectionFromPoint(e.clientX, e.clientY);
   }
 
   function handleTouchStart(pageNum: number) {
@@ -358,6 +389,11 @@
   }
 </script>
 
+<svelte:window
+  on:mousemove={handleGridMouseMove}
+  on:mouseup={handleMouseUp}
+/>
+
 <div
   class="h-[85vh] rounded-lg"
   class:overflow-auto={mode === 'grid'}
@@ -452,12 +488,9 @@
     <div
       class="grid grid-cols-2 gap-3 p-3 select-none md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
       class:cursor-grabbing={isSelecting}
-      on:mouseup={handleMouseUp}
-      on:mouseleave={handleMouseUp}
       on:touchmove={handleTouchMove}
       on:touchend={handleTouchEnd}
       on:touchcancel={handleTouchEnd}
-      on:mousemove={handleGridMouseMove}
     >
       {#each gridPages as page (page.pageNum)}
         {@const rangeIndex = tocRanges.findIndex(

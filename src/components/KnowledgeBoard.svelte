@@ -34,7 +34,7 @@
   let viewY = 0;
   let isPanning = false;
   let startPanMouse = {x: 0, y: 0};
-  let startPanView = {x: 0, y: 0};
+  let startPanView = {x: viewX, y: viewY};
   const MIN_SCALE = 0.1;
   const MAX_SCALE = 5;
 
@@ -412,19 +412,20 @@
   class="bg-[#f0f0f0] flex flex-col overflow-hidden mx-auto
 {isFullscreen ? ' fixed inset-0 z-[9999] w-screen h-screen rounded-none' : ' relative h-full rounded-xl '}"
 >
-  <div class="absolute top-4 left-5 z-40 pointer-events-none select-none">
+  <div class="absolute top-4 left-5 z-50 pointer-events-none select-none">
     {#if isFullscreen}
       <div class="flex gap-2 text-gray-500 opacity-80">
         <BookOpen size={32} />
         <span class="font-serif text-xl tracking-wide">{title}</span>
       </div>
     {:else}
-      <div class="flex items-center gap-2 text-lg md:text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
+      <div class="flex items-center gap-2 text-lg z-50 md:text-2xl font-['HuiwenMincho'] text-gray-400 opacity-60">
         <BrainCircuit size={28} />
         <span>{$t('knowledge_board.title')}</span>
 
         <span
-          class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"
+          title={$t('knowledge_board.beta')}
+          class="hover:cursor-help ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900 pointer-events-auto"
         >
           BETA
         </span>
@@ -525,7 +526,8 @@
         <span>{$t('knowledge_board.title')}</span>
 
         <span
-          class="ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900"
+          title={$t('knowledge_board.beta')}
+          class="hover:cursor-help ml-2 px-1 py-0 text-xs bg-yellow-300 text-yellow-900 font-bold rounded-full border-2 border-yellow-900 pointer-events-auto"
         >
           BETA
         </span>

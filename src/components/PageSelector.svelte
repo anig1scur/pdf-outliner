@@ -20,6 +20,10 @@
   function setActiveRange(index: number) {
     dispatch('setActiveRange', {index});
   }
+
+  function handleRangeChange() {
+    dispatch('rangeChange');
+  }
 </script>
 
 <div class="border-black border-2 rounded-lg p-3 my-4 bg-blue-100 shadow-[2px_2px_0px_rgba(0,0,0,1)]">
@@ -67,6 +71,7 @@
               type="number"
               id={`start-${range.id}`}
               bind:value={range.start}
+              on:input={handleRangeChange}
               min={1}
               max={totalPages}
               class="border-2 border-black rounded px-2 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -81,6 +86,7 @@
               type="number"
               id={`end-${range.id}`}
               bind:value={range.end}
+              on:input={handleRangeChange}
               min={range.start}
               max={totalPages}
               class="border-2 border-black rounded px-2 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

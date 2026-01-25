@@ -143,6 +143,7 @@
     "msg_investigate": "点击探索以生成知识看板",
     "msg_generating": "正在生成知识看板...",
     "error_failed": "生成看板失败",
-    "jump_to_page": "跳转到第 {page} 页"
+    "jump_to_page": "跳转到第 {page} 页",
+    "beta": "现在是 beta, 或许永远是 beta"
   }
 }

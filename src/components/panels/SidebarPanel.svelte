@@ -76,6 +76,7 @@
         on:addRange
         on:removeRange
         on:setActiveRange
+        on:rangeChange={() => dispatch('rangeChange')}
       />
     </div>
   {/if}

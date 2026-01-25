@@ -404,6 +404,17 @@
       }
 
       lastPdfContentJson = JSON.stringify(getPdfEffectiveData($tocItems));
+
+      // auto detect TOC pages
+      if ($pdfService && originalPdfInstance) {
+        const detected = await $pdfService.detectTocPages(originalPdfInstance);
+        if (detected.length > 0) {
+          const start = Math.min(...detected);
+          const end = Math.max(...detected);
+          tocRanges = [{start, end, id: 'detected'}];
+          activeRangeIndex = 0;
+        }
+      }
     } catch (error) {
       console.error('Error loading PDF:', error);
       toastProps = {show: true, message: `Error loading PDF: ${error.message}`, type: 'error'};
@@ -603,6 +614,10 @@
     activeRangeIndex = e.detail.index;
   };
 
+  const handleRangeChange = () => {
+    tocRanges = [...tocRanges];
+  };
+
   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
     if ($tocItems.length > 0) {
       e.preventDefault();
@@ -787,6 +802,8 @@
         on:addRange={handleAddRange}
         on:removeRange={handleRemoveRange}
         on:setActiveRange={handleSetActiveRange}
+        on:rangeChange={handleRangeChange}
+        on:updateActiveRange={handleUpdateActiveRange}
       />
     </div>
 
@@ -855,7 +872,7 @@
   />
   <meta
     name="keywords"
-    content="add bookmarks to PDF, PDF table of contents, clickable PDF outline, PDF bookmark editor, create PDF TOC, generate PDF outline, scanned PDF bookmark generator, PDF 目录生成, PDF 加书签, 扫描版 PDF 目录"
+    content="add bookmarks to PDF, PDF table of contents, clickable PDF outline, PDF bookmark editor, create PDF TOC, generate PDF outline, PDF 目录生成, PDF 添加书签, 扫描版 PDF 目录, PDF 在线免费工具"
   />
   <meta
     property="og:title"

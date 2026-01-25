@@ -489,4 +489,39 @@ export class PDFService {
 
     return canvas.toDataURL('image/jpeg', 0.9);
   }
+
+  /**
+   * Automatically detect potential TOC pages in the PDF.
+   * Scans first 20 pages for keywords and patterns.
+   */
+  async detectTocPages(pdf: pdfjsLib.PDFDocumentProxy): Promise<number[]> {
+    const maxScanPages = Math.min(20, pdf.numPages);
+    const tocKeywords = ['contents', 'table of contents', '目录', '目次'];
+    const detectedPages: number[] = [];
+
+    for (let pageNum = 1;pageNum <= maxScanPages;pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      const text = content.items
+        .map((item: any) => item.str)
+        .join(' ')
+        .toLowerCase();
+
+      const hasKeyword = tocKeywords.some(keyword => text.includes(keyword));
+
+      let patternMatches = 0;
+      const lines = content.items.map((item: any) => item.str.trim()).filter(s => s.length > 0);
+
+      for (const line of lines) {
+        if (/.*\s+(\.{3,}|_{3,}|-{3,})\s*\d+$/.test(line) || /.*\s+\d+$/.test(line)) {
+          patternMatches++;
+        }
+      }
+      if (hasKeyword || patternMatches >= 5) {
+        detectedPages.push(pageNum);
+      }
+    }
+
+    return detectedPages;
+  }
 }
