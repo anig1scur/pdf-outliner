@@ -327,58 +327,8 @@
 
   $: promptTooltipText = $t('toc.prompt_intro');
 
-  // --- History / Undo / Redo ---
-  let historyStack = [];
-  let futureStack = [];
-  const maxHistory = 20;
 
-  function saveHistory() {
-    const clone = JSON.parse(JSON.stringify($tocItems));
-    historyStack.push(clone);
-    if (historyStack.length > maxHistory) {
-      historyStack.shift();
-    }
-    futureStack = [];
-    historyStack = historyStack; // update
-  }
 
-  function undo() {
-    if (historyStack.length === 0) return;
-    const current = JSON.parse(JSON.stringify($tocItems));
-    futureStack.push(current);
-    const prev = historyStack.pop();
-    $tocItems = prev;
-    historyStack = historyStack;
-    futureStack = futureStack;
-  }
-
-  function redo() {
-    if (futureStack.length === 0) return;
-    const current = JSON.parse(JSON.stringify($tocItems));
-    historyStack.push(current);
-    const next = futureStack.pop();
-    $tocItems = next;
-    historyStack = historyStack;
-    futureStack = futureStack;
-  }
-
-  function handleKeydown(e) {
-    const tagName = e.target.tagName;
-    if (tagName === 'INPUT' || tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
-      if (e.shiftKey) {
-        e.preventDefault();
-        redo();
-      } else {
-        e.preventDefault();
-        undo();
-      }
-    } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') {
-      e.preventDefault();
-      redo();
-    }
-  }
 
 
 </script>

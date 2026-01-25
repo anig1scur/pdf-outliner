@@ -11,8 +11,8 @@
   let config = {
     provider: '',
     apiKey: '',
-    doubaoEndpointIdText: '',
-    doubaoEndpointIdVision: '',
+    textEndpoint: '',
+    visionEndpoint: '',
 
   };
 
@@ -104,14 +104,14 @@
           >
             <label
               class="block font-bold mb-1 text-sm"
-              for="doubao_ep_text">Endpoint ID (Text/Lite)</label
+              for="doubao_ep_text">Doubao Endpoint ID (Text/Lite)</label
             >
             <input
               id="doubao_ep_text"
               type="text"
               class="w-full outline-none text-sm placeholder-gray-400"
               placeholder="ep-..."
-              bind:value={config.doubaoEndpointIdText}
+              bind:value={config.textEndpoint}
               on:input={() => (isSaved = false)}
             />
           </div>
@@ -122,14 +122,14 @@
           >
             <label
               class="block font-bold mb-1 text-sm"
-              for="doubao_ep_vision">Endpoint ID (Vision/Pro)</label
+              for="doubao_ep_vision">Doubao Endpoint ID (Vision/Pro)</label
             >
             <input
               id="doubao_ep_vision"
               type="text"
               class="w-full outline-none text-sm placeholder-gray-400"
               placeholder="ep-..."
-              bind:value={config.doubaoEndpointIdVision}
+              bind:value={config.visionEndpoint}
               on:input={() => (isSaved = false)}
             />
           </div>
@@ -155,28 +155,7 @@
           />
         </div>
 
-        {#if config.provider === 'doubao'}
-          <div class="border-black border-2 rounded-md p-2 w-full" transition:slide>
-            <label class="block font-bold mb-1 text-sm" for="doubao_text_ep">Doubao Text Endpoint</label>
-            <input
-              id="doubao_text_ep"
-              class="w-full outline-none text-sm"
-              placeholder="ep-..."
-              bind:value={config.textEndpoint}
-              on:input={() => (isSaved = false)}
-            />
-          </div>
-          <div class="border-black border-2 rounded-md p-2 w-full" transition:slide>
-            <label class="block font-bold mb-1 text-sm" for="doubao_vision_ep">Doubao Vision Endpoint</label>
-            <input
-              id="doubao_vision_ep"
-              class="w-full outline-none text-sm"
-              placeholder="ep-..."
-              bind:value={config.visionEndpoint}
-              on:input={() => (isSaved = false)}
-            />
-          </div>
-        {/if}
+
 
         <button
           class="w-full font-bold transition-all duration-200 text-black border-2 border-black rounded px-3 py-2
