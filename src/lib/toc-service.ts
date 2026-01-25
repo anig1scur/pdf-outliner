@@ -11,12 +11,12 @@ interface AiTocOptions {
   endPage?: number;
   apiKey?: string;
   provider?: string;
-  doubaoEndpointIdText?: string;
-  doubaoEndpointIdVision?: string;
+  textEndpoint?: string;
+  visionEndpoint?: string;
 }
 
 export async function generateToc(
-  { pdfInstance, ranges, startPage, endPage, apiKey, provider, doubaoEndpointIdText, doubaoEndpointIdVision }: AiTocOptions) {
+  { pdfInstance, ranges, startPage, endPage, apiKey, provider, textEndpoint, visionEndpoint }: AiTocOptions) {
 
   // Normalize ranges
   let finalRanges: { start: number; end: number }[] = [];
@@ -70,8 +70,13 @@ export async function generateToc(
       images: imagesBase64,
       apiKey: apiKey || '',
       provider: provider || '',
+      doubaoConfig: {
+        textEndpoint: textEndpoint || '',
+        visionEndpoint: visionEndpoint || '',
+      }
     });
     return res;
+
   } catch (err: any) {
     let friendlyMessage = err.message || 'AI processing failed.';
 
@@ -79,11 +84,11 @@ export async function generateToc(
         friendlyMessage.includes('parsing error') ||
         friendlyMessage.includes('structure')) {
       friendlyMessage =
-          'The selected pages don\'t look like a ToC. Please try adjusting the page range.';
-    } else if (err.status === 413) {
+          "The selected pages don't look like a ToC. Please try adjusting the page range.";
+    } else if (err.status === 413 || friendlyMessage.includes('Request too large')) {
       friendlyMessage =
           'Request too large. Please reduce the page range or lower the resolution.';
-    } else if (err.status === 429) {
+    } else if (err.status === 429 || friendlyMessage.includes('Daily limit exceeded')) {
       friendlyMessage =
           'Daily limit exceeded. Please try again tomorrow or download the client or deploy service with your own API key.';
     }

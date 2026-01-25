@@ -24,7 +24,7 @@
   import AiLoadingModal from '../components/modals/AiLoadingModal.svelte';
   import OffsetModal from '../components/modals/OffsetModal.svelte';
   import HelpModal from '../components/modals/HelpModal.svelte';
-  import StarRequestModal from '../components/modals/StarRequestModal.svelte';
+
 
 
   import SidebarPanel from '../components/panels/SidebarPanel.svelte';
@@ -50,7 +50,7 @@
 
   let showOffsetModal = false;
   let showHelpModal = false;
-  let showStarRequestModal = false;
+
   let offsetPreviewPageNum = 1;
 
   let toastProps = {
@@ -88,8 +88,8 @@
   let customApiConfig = {
     provider: '',
     apiKey: '',
-    doubaoEndpointIdText: '',
-    doubaoEndpointIdVision: '',
+    textEndpoint: '',
+    visionEndpoint: '',
   };
 
   onMount(() => {
@@ -522,12 +522,7 @@
       }
       toastProps = {show: true, message: 'Export Successful!', type: 'success'};
 
-      setTimeout(() => {
-        const isDismissed = localStorage.getItem('tocify_hide_star_request') === 'true';
-        if (!isDismissed) {
-          showStarRequestModal = true;
-        }
-      }, 1000);
+
     } catch (error) {
       console.error('Error exporting PDF:', error);
       toastProps = {show: true, message: `Error exporting PDF: ${error.message}`, type: 'error'};
@@ -550,8 +545,10 @@
         pdfInstance: originalPdfInstance,
         ranges: tocRanges,
         apiKey: customApiConfig.apiKey,
-        provider: customApiConfig.provider,
-      });
+      provider: customApiConfig.provider,
+      textEndpoint: customApiConfig.textEndpoint,
+      visionEndpoint: customApiConfig.visionEndpoint,
+    });
 
       if (!res || res.length === 0) {
         aiError = 'We could not find a valid ToC on these pages.';
@@ -916,7 +913,7 @@
 
   <HelpModal bind:showHelpModal />
 
-  <StarRequestModal bind:show={showStarRequestModal} />
+
 {/if}
 
 <svelte:window on:beforeunload={handleBeforeUnload} />

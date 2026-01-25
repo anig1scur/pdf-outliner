@@ -7,7 +7,7 @@
   import {CARD_W, CARD_H, getRandomPaperColor, computeHierarchicalLayout, getClosestPoints} from '../lib/graph-utils';
   import {generateKnowledgeGraph} from '../lib/service';
   export let items = [];
-  export let apiConfig = {provider: '', apiKey: ''};
+  export let apiConfig = {provider: '', apiKey: '', textEndpoint: '', visionEndpoint: ''};
 
   export let title = 'Untitled Book';
 
