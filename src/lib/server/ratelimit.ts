@@ -26,7 +26,6 @@ export function getClientIp(request: Request): string {
 
 /**
  * Checks rate limit for a request.
- * Returns a Response if limit is exceeded, otherwise null.
  */
 export async function checkRateLimit(
   request: Request, limitCount: number, prefix: string): Promise<Response | null> {
@@ -62,4 +61,22 @@ export async function checkRateLimit(
   }
 
   return null;
+}
+/**
+ * A Higher-Order Function (HOF) to wrap SvelteKit route handlers with rate limiting.
+ */
+export function withRateLimit(
+  handler: (event: any) => Promise<Response>
+) {
+  return async (event: any) => {
+    const limitRes = await checkRateLimit(
+      event.request,
+      LIMIT_CONFIG.MAX_REQUESTS_PER_DAY,
+      '@tocify/ratelimit'
+    );
+    if (limitRes) {
+      return limitRes;
+    }
+    return handler(event);
+  };
 }

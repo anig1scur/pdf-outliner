@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { checkRateLimit } from '$lib/server/ratelimit';
+import { withRateLimit } from '$lib/server/ratelimit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { json } from '@sveltejs/kit';
-import { LIMIT_CONFIG } from '$lib/server/ratelimit';
 
 const LAYOUT_CONFIG = {
   colWidth: 220,
@@ -50,11 +49,7 @@ Output JSON format:
 }
 `;
 
-export async function POST({ request }) {
-  const limitRes = await checkRateLimit(request, LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '@tocify/ratelimit');
-  if (limitRes) {
-    return limitRes;
-  }
+export const POST = withRateLimit(async ({ request }) => {
 
   try {
     const { tocItems, apiKey } = await request.json();
@@ -166,4 +161,4 @@ export async function POST({ request }) {
     console.error(error);
     return json({ error: error.message }, { status: 500 });
   }
-}
+});

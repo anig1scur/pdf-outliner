@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import { checkRateLimit } from '$lib/server/ratelimit';
+import { withRateLimit } from '$lib/server/ratelimit';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { error, json } from '@sveltejs/kit';
 import { jsonrepair } from 'jsonrepair';
@@ -107,7 +107,7 @@ function determineProvider(request: Request, userProvider?: string): string {
   return 'gemini';
 }
 
-export async function POST({ request }) {
+export const POST = withRateLimit(async ({ request }) => {
   const origin = request.headers.get('origin');
   const allowedOrigins = [
     'https://tocify.aeriszhu.com', 'https://tocify.vercel.app',
@@ -118,11 +118,6 @@ export async function POST({ request }) {
     return new Response('Forbidden', { status: 403 });
   }
 
-  const limitRes = await checkRateLimit(
-    request, LIMIT_CONFIG.MAX_REQUESTS_PER_DAY, '@tocify/ratelimit');
-  if (limitRes) {
-    return limitRes;
-  }
 
   try {
     const { images, text, apiKey, provider, doubaoEndpointIdText, doubaoEndpointIdVision } = await request.json();
@@ -207,7 +202,7 @@ export async function POST({ request }) {
       err.message || err.body.message ||
       'Failed to process ToC, please contact support.');
   }
-}
+});
 
 async function processWithGemini(
   input: string[] | string, userKey?: string,

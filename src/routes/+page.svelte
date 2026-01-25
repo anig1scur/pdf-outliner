@@ -750,7 +750,7 @@
   </p>
   
   <div
-    class="flex flex-col mt-5 lg:flex-row lg:mt-10 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
+    class="flex flex-col mt-5 lg:flex-row lg:mt-8 p-2 md:p-4 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
     <div
       in:fly={{y: 20, duration: 300, delay: 100}}
