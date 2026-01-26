@@ -1,0 +1,16 @@
+name: Duplicate Issue Detector
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  detect-duplicate:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    steps:
+      - uses: platisd/duplicate-issue-detector@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
