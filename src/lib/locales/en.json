@@ -8,6 +8,7 @@
     "toggle_expand": "Toggle Expand/Collapse",
     "add_physical_page": "Add physical ToC page",
     "insert_at_page": "Insert At Page #",
+    "title_y_start": "Title Vertical Position",
     "page_offset": "Page Number Offset",
     "offset_hint": "(Physical Num #) - (Labeled Num #)",
     "first_level": "First Level",

@@ -3,8 +3,8 @@
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
   import {t} from 'svelte-i18n';
 
-  import {pdfService} from '../stores';
-  import {type PDFService, type PDFState} from '../lib/pdf-service';
+  import {pdfService, tocItems, tocConfig} from '../stores';
+  import {type PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import type {RenderTask} from 'pdfjs-dist';
 
   export let pdfState: PDFState;
@@ -46,6 +46,33 @@
   pdfService.subscribe((val) => (pdfServiceInstance = val));
 
   $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
+
+  // Path finding
+  function findActiveTocPath(items: TocItem[], current: number, currentPath: TocItem[] = []): TocItem[] {
+    let bestPath: TocItem[] = [];
+
+    for (const item of items) {
+
+      const itemPage = item.to + ($tocConfig.pageOffset || 0);
+      
+      if (itemPage <= current) {
+         const childPath = findActiveTocPath(item.children || [], current, [...currentPath, item]);
+         
+         if (childPath.length > 0) {
+            bestPath = childPath; 
+         } else {
+            bestPath = [...currentPath, item];
+         }
+      } else {
+         break;
+      }
+    }
+    return bestPath;
+  }
+  
+  let currentTocPath: TocItem[] = [];
+  $: currentTocPath = findActiveTocPath($tocItems, currentPage);
+
 
   $: if (instance && filename && filename !== loadedFilename) {
     loadedFilename = filename;
@@ -408,7 +435,24 @@
           <div class="text-gray-600 font-serif flex gap-1 sm:gap-2 items-center text-sm md:text-base md:gap-3">
             <span class="truncate max-w-20 md:max-w-xs">{filename}</span>
             <span class="text-gray-300">|</span>
-            <span>{currentPage} / {totalPages}</span>
+            <div class="flex items-center gap-1">
+              <input
+                type="number"
+                min="1"
+                max={totalPages}
+                value={currentPage}
+                on:change={(e) => {
+                  const val = parseInt(e.currentTarget.value, 10);
+                  if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                    pdfState.currentPage = val;
+                  } else {
+                    e.currentTarget.value = currentPage.toString();
+                  }
+                }}
+                class="w-15 text-center border-b border-gray-300 focus:border-black outline-none bg-transparent p-0 text-gray-800"
+              />
+              <span>/ {totalPages}</span>
+            </div>
 
             {#if addPhysicalTocPage && jumpToTocPage && hasPreview}
               <button
@@ -453,11 +497,30 @@
         </div>
       </div>
 
-      <div 
+
+      <div
         class="relative flex-1 overflow-hidden bg-gray-50"
         bind:clientWidth={containerWidth}
         bind:clientHeight={containerHeight}
       >
+        {#if currentTocPath.length > 0}
+          <div class="absolute z-30 pointer-events-none max-w-[70%] md:max-w-[60%]">
+             <div class="backdrop-blur-sm border border-gray-200 p-2 text-xs  rounded-[0_0_20px_0] backdrop-blur-sm bg-white/20 text-gray-600 font-mono space-y-0.5">
+                {#each currentTocPath as item, i}
+                  <div
+                     class="truncate flex items-center gap-2"
+                     style="padding-left: {i * 12}px;"
+                  >
+                      {#if i > 0}
+                       <div class="w-[3px] h-[3px] bg-gray-500 shrink-0"></div>
+                      {/if}
+                      <span>{item.title}</span>
+                  </div>
+                {/each}
+             </div>
+          </div>
+        {/if}
+
         <button
           on:click={goToPrevPage}
           disabled={currentPage <= 1}

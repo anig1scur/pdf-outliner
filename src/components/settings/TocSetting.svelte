@@ -116,7 +116,9 @@
                 <div class="flex justify-between items-center">
                   <label
                     class="text-sm"
-                    for="title_y_start">Title Vertical Position</label
+                    for="title_y_start">
+                    {$t('settings.title_y_start')}
+                    </label
                   >
                 </div>
 
@@ -137,7 +139,7 @@
               </div>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex flex-col sm:flex-row gap-4">
               <div class="w-full md:w-1/2">
                 <h3 class="my-3 font-bold">{$t('settings.first_level')}</h3>
 
