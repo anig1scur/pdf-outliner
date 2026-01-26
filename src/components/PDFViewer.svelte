@@ -48,19 +48,28 @@
   $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
 
   // Path finding
-  function findActiveTocPath(items: TocItem[], current: number, currentPath: TocItem[] = []): TocItem[] {
+  function findActiveTocPath(
+    items: TocItem[],
+    current: number,
+    pageOffset: number,
+    currentPath: TocItem[] = [],
+  ): TocItem[] {
     let bestPath: TocItem[] = [];
 
     for (const item of items) {
+      const itemPage = item.to + pageOffset;
 
-      const itemPage = item.to + ($tocConfig.pageOffset || 0);
-      
       if (itemPage <= current) {
-         const childPath = findActiveTocPath(item.children || [], current, [...currentPath, item]);
-         
-         if (childPath.length > 0) {
-            bestPath = childPath; 
-         } else {
+        const childPath = findActiveTocPath(
+          item.children || [],
+          current,
+          pageOffset,
+          [...currentPath, item],
+        );
+
+        if (childPath.length > 0) {
+          bestPath = childPath;
+        } else {
             bestPath = [...currentPath, item];
          }
       } else {
@@ -71,7 +80,11 @@
   }
   
   let currentTocPath: TocItem[] = [];
-  $: currentTocPath = findActiveTocPath($tocItems, currentPage);
+  $: currentTocPath = findActiveTocPath(
+    $tocItems,
+    currentPage,
+    $tocConfig.pageOffset || 0,
+  );
 
 
   $: if (instance && filename && filename !== loadedFilename) {
