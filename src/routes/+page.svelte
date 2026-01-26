@@ -356,6 +356,7 @@
       const uint8Array = new Uint8Array(arrayBuffer);
 
       pdfState.doc = await PDFDocument.load(uint8Array);
+      PDFService.sanitizePdfMetadata(pdfState.doc);
 
       if ($pdfService) {
         const initPage = config.insertAtPage || 2;

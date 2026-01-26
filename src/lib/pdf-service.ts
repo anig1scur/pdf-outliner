@@ -91,6 +91,23 @@ export class PDFService {
   static regularFontBytes: ArrayBuffer|null = null;
   static boldFontBytes: ArrayBuffer|null = null;
 
+  static sanitizePdfMetadata(doc: PDFDocument) {
+    try {
+      // Try accessing dates to see if they throw
+      doc.getCreationDate();
+    } catch (e) {
+      console.warn('Invalid CreationDate in PDF metadata, resetting to current date.');
+      doc.setCreationDate(new Date());
+    }
+
+    try {
+      doc.getModificationDate();
+    } catch (e) {
+      console.warn('Invalid ModificationDate in PDF metadata, resetting to current date.');
+      doc.setModificationDate(new Date());
+    }
+  }
+
   private sourceDoc: PDFDocument|null = null;
 
   constructor() {
