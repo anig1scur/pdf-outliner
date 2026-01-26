@@ -80,7 +80,11 @@ export async function generateToc(
     const err = await response.json();
     let friendlyMessage = err.message || 'AI processing failed.';
 
-    if (friendlyMessage.includes('No valid ToC') ||
+    if (response.status >= 500 && response.status < 600) {
+      const p = provider || 'Unknown Provider';
+      const providerName = p.charAt(0).toUpperCase() + p.slice(1);
+      friendlyMessage = `${ providerName }: ${ friendlyMessage } You can try other model in API settings.`;
+    } else if (friendlyMessage.includes('No valid ToC') ||
         friendlyMessage.includes('parsing error') ||
         friendlyMessage.includes('structure')) {
       friendlyMessage =
