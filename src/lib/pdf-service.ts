@@ -473,6 +473,8 @@ export class PDFService {
 
     renderTask.promise.then(() => {
       page.cleanup();
+    }).catch(() => {
+      page.cleanup();
     });
 
     return renderTask;
@@ -509,7 +511,7 @@ export class PDFService {
           viewport,
     });
 
-    await renderTask.promise.then(() => page.cleanup());
+    await renderTask.promise.then(() => page.cleanup()).catch(() => page.cleanup());
 
     return canvas.toDataURL('image/jpeg', 0.9);
   }
@@ -544,6 +546,8 @@ export class PDFService {
       if (hasKeyword || patternMatches >= 5) {
         detectedPages.push(pageNum);
       }
+
+      page.cleanup();
     }
 
     return detectedPages;

@@ -1,16 +1,17 @@
 import type {TocItem} from '$lib/pdf-service';
 import type * as PdfjsLibTypes from 'pdfjs-dist';
+import ShortUniqueId from 'short-unique-id';
 
 
 export function buildTree(
     items: {title: string; level: number; page: number}[]): TocItem[] {
   const root: TocItem[] = [];
   const stack: {node: TocItem; level: number}[] = [];
-  let idCounter = 0;
+  const uid = new ShortUniqueId({ length: 10 });
 
   items.forEach((item) => {
     const newItem: TocItem = {
-      id: `item-${idCounter++}`,
+      id: uid.randomUUID(),
       title: item.title,
       to: item.page,
       children: [],
@@ -41,7 +42,7 @@ export function buildTree(
  */
 export async function convertPdfJsOutlineToTocItems(
     outline: any[], doc: PdfjsLibTypes.PDFDocumentProxy): Promise<TocItem[]> {
-  let idCounter = 0;
+  const uid = new ShortUniqueId({ length: 10 });
 
   const processNode = async(node: any): Promise<TocItem> => {
     let pageNum = 1;
@@ -71,7 +72,7 @@ export async function convertPdfJsOutlineToTocItems(
         [];
 
     return {
-      id: `imported-${Date.now()}-${idCounter++}`,
+      id: `imported-${ uid.randomUUID() }`,
       title: node.title,
       to: pageNum,
       children: children,

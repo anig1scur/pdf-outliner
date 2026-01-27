@@ -7,7 +7,7 @@
   import {init, trackEvent} from '@aptabase/web';
 
   import '../lib/i18n';
-  import {pdfService, tocItems, curFileFingerprint, tocConfig, type TocConfig} from '../stores';
+  import {pdfService, tocItems, curFileFingerprint, tocConfig, autoSaveEnabled, type TocConfig} from '../stores';
   import {PDFService, type PDFState, type TocItem} from '../lib/pdf-service';
   import {setOutline} from '../lib/pdf-outliner';
   import {debounce} from '../lib';
@@ -59,6 +59,7 @@
 
   let originalPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
   let previewPdfInstance: PdfjsLibTypes.PDFDocumentProxy | null = null;
+  let offsetRenderTask: PdfjsLibTypes.RenderTask | null = null;
 
   let pdfState: PDFState = {
     doc: null,
@@ -138,6 +139,19 @@
 
   $: if (showOffsetModal) {
     offsetPreviewPageNum = tocRanges[0]?.end + 1 || 1;
+    cleanupOffsetRenderTask();
+  } else {
+    cleanupOffsetRenderTask();
+  }
+
+  function cleanupOffsetRenderTask() {
+    if (offsetRenderTask) {
+      try {
+        offsetRenderTask.cancel();
+      } catch (e) {
+      }
+      offsetRenderTask = null;
+    }
   }
 
   let previousAddPhysicalTocPage = addPhysicalTocPage;
@@ -341,6 +355,9 @@
 
   const renderOffsetPreviewPage = async (pageNum: number) => {
     if (!originalPdfInstance || !$pdfService || !showOffsetModal) return;
+    
+    cleanupOffsetRenderTask();
+
     const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
     if (canvas) {
       const dpr = window.devicePixelRatio || 1;
@@ -349,7 +366,16 @@
         setTimeout(() => renderOffsetPreviewPage(pageNum), 100);
         return;
       }
-      await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
+      
+      const task = await $pdfService.renderPageToCanvas(originalPdfInstance, pageNum, canvas, renderWidth);
+      if (task) {
+        offsetRenderTask = task;
+        task.promise.finally(() => {
+          if (offsetRenderTask === task) {
+            offsetRenderTask = null;
+          }
+        });
+      }
     }
   };
 
@@ -362,9 +388,15 @@
     localStorage.setItem('tocify_last_fingerprint', fingerprint);
 
     isFileLoading = true;
+    autoSaveEnabled.set(false);
     showNextStepHint = false;
     hasShownTocHint = false;
+    showOffsetModal = false;
+    cleanupOffsetRenderTask();
     
+    pendingTocItems = [];
+    firstTocItem = null;
+
     tocItems.set([]);
     await tick();
 
@@ -473,6 +505,7 @@
       await tick();
       isFileLoading = false;
       showNextStepHint = true;
+      autoSaveEnabled.set(true);
     }
   };
 

@@ -14,7 +14,7 @@ export type TocConfig = {
 };
 
 type TocSession = {
-  items: any[]; pageOffset: number;
+  items: any[]; pageOffset: number; updatedAt?: number;
 };
 
 export const maxPage = writable(0);
@@ -57,10 +57,47 @@ if (browser) {
         const session: TocSession = {
           items,
           pageOffset: config.pageOffset,
+          updatedAt: Date.now(),
         };
         try {
           localStorage.setItem(`toc_draft_${ fingerprint }`, JSON.stringify(session));
-        } catch (e) {
+        } catch (e: any) {
+          if (e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014) {
+            // Storage full, try to clear old drafts
+            try {
+              const drafts: { key: string; date: number }[] = [];
+              for (let i = 0;i < localStorage.length;i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('toc_draft_') && key !== `toc_draft_${ fingerprint }`) {
+                  try {
+                    const val = JSON.parse(localStorage.getItem(key) || '{}');
+                    drafts.push({ key, date: val.updatedAt || 0 });
+                  } catch {
+                    drafts.push({ key, date: 0 });
+                  }
+                }
+              }
+
+              // Sort by oldest first
+              drafts.sort((a, b) => a.date - b.date);
+
+              // Delete oldest until we have space or no more drafts
+              while (drafts.length > 0) {
+                const toDelete = drafts.shift();
+                if (toDelete) localStorage.removeItem(toDelete.key);
+
+                try {
+                  localStorage.setItem(`toc_draft_${ fingerprint }`, JSON.stringify(session));
+                  // If success, break loop
+                  return;
+                } catch (retryErr) {
+                  // Still full, continue deleting
+                }
+              }
+            } catch (cleanupErr) {
+              console.error('Failed to cleanup storage:', cleanupErr);
+            }
+          }
           console.error('Failed to save session:', e);
         }
       } else {
