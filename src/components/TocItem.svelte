@@ -2,7 +2,7 @@
   import {ChevronRight, ChevronDown, Plus, Trash, GripVertical} from 'lucide-svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
-  import {maxPage} from '../stores';
+  import {maxPage, tocConfig} from '../stores';
   import {createEventDispatcher} from 'svelte';
   import {t} from 'svelte-i18n';
   import {dndzone} from 'svelte-dnd-action';
@@ -19,6 +19,10 @@
   export let pageOffset = 0;
   export let insertAtPage = 2;
   export let tocPageCount = 0;
+  
+  // Numbering props
+  export let prefix = '';
+  export let index = 0;
 
   const dispatch = createEventDispatcher();
   const flipDurationMs = 200;
@@ -27,6 +31,8 @@
   let editPage = item ? item.to : 1;
   let isFocused = false;
   let isPageFocused = false;
+  
+  $: currentNumber = prefix ? `${prefix}.${index}` : `${index}`;
 
   $: if (item && !isFocused && item.title !== editTitle) {
     editTitle = item.title;
@@ -60,14 +66,24 @@
   }
 
   function handleAddChild() {
+    const currentChildren = item.children || [];
+    let startPage;
+
+    if (currentChildren.length > 0) {
+      startPage = Math.max(...currentChildren.map((c) => c.to)) + 1;
+    } else {
+      startPage = item.to + 1;
+    }
+
     const newChild = {
       id: new ShortUniqueId({length: 10}),
       title: $t('toc.new_item_default') || 'New Item',
-      to: $maxPage + 1,
+      to: startPage,
       children: [],
       open: true,
     };
-    const updatedChildren = [...(item.children || []), newChild];
+    
+    const updatedChildren = [...currentChildren, newChild];
     onUpdate(item, {children: updatedChildren, open: true});
   }
 
@@ -130,6 +146,12 @@
         {/if}
       </button>
 
+      {#if $tocConfig.prefixSettings.enabled}
+        <span class="text-xs text-gray-600 font-mono select-none pr-1">
+          {currentNumber}
+        </span>
+      {/if}
+
       <input
         type="text"
         bind:value={editTitle}
@@ -183,7 +205,7 @@
         on:consider={handleDndConsider}
         on:finalize={handleDndFinalize}
       >
-        {#each item.children || [] as child (child.id)}
+        {#each item.children || [] as child, i (child.id)}
           <div animate:flip={{duration: flipDurationMs}}>
             <Self
               item={child}
@@ -197,6 +219,8 @@
               {pageOffset}
               {insertAtPage}
               {tocPageCount}
+              prefix={currentNumber}
+              index={i + 1}
             />
           </div>
         {/each}
