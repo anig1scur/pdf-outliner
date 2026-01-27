@@ -15,6 +15,13 @@
   };
 
   let graphData = {nodes: [], edges: []};
+
+  // Reset graph when new file loaded
+  $: {
+    if (items) {
+      graphData = {nodes: [], edges: []};
+    }
+  }
   let isLoading = false;
   let isFullscreen = false;
   let activeNodeId = null;
@@ -55,7 +62,7 @@
     isLoading = true;
     activeNodeId = null;
 
-    const simplifiedItems = items.map((item) => ({
+  const simplifiedItems = items.map((item) => ({
       id: item.id,
       title: item.title,
       page: item.to || null,

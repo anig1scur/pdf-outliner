@@ -438,12 +438,12 @@ export class PDFService {
       const context = canvas.getContext('2d');
       if (!context) return;
 
-      await page
-          .render({
+      const renderTask = page.render({
             canvasContext: context,
             viewport,
-          })
-          .promise;
+      });
+
+      await renderTask.promise.then(() => page.cleanup()).catch(() => page.cleanup());
     } catch (e) {
       console.error(`Error rendering page ${pageNum}:`, e);
     }
@@ -451,7 +451,7 @@ export class PDFService {
 
   async renderPageToCanvas(
       pdfDoc: pdfjsLib.PDFDocumentProxy, pageNumber: number,
-      canvas: HTMLCanvasElement, width: number) {
+    canvas: HTMLCanvasElement, width: number): Promise<pdfjsLib.RenderTask | undefined> {
     const page = await pdfDoc.getPage(pageNumber);
     const viewport = page.getViewport({scale: 1.0});
     const scale = width / viewport.width;
@@ -461,14 +461,21 @@ export class PDFService {
     canvas.height = scaledViewport.height;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      page.cleanup();
+      return;
+    }
 
-    await page
-        .render({
-          canvasContext: ctx,
-          viewport: scaledViewport,
-        })
-        .promise;
+    const renderTask = page.render({
+      canvasContext: ctx,
+      viewport: scaledViewport,
+    });
+
+    renderTask.promise.then(() => {
+      page.cleanup();
+    });
+
+    return renderTask;
   }
 
 
@@ -497,12 +504,12 @@ export class PDFService {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Could not create 2D context');
 
-    await page
-        .render({
+    const renderTask = page.render({
           canvasContext: context,
           viewport,
-        })
-        .promise;
+    });
+
+    await renderTask.promise.then(() => page.cleanup());
 
     return canvas.toDataURL('image/jpeg', 0.9);
   }

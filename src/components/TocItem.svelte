@@ -76,7 +76,7 @@
     }
 
     const newChild = {
-      id: new ShortUniqueId({length: 10}),
+      id: new ShortUniqueId({length: 10}).randomUUID(),
       title: $t('toc.new_item_default') || 'New Item',
       to: startPage,
       children: [],

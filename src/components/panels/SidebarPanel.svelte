@@ -9,6 +9,7 @@
   import AiPageSelector from '../PageSelector.svelte';
   import TocEditor from '../TocEditor.svelte';
   import {Sparkles} from 'lucide-svelte';
+  import {curFileFingerprint} from '../../stores';
 
   export let pdfState: any;
   export let originalPdfInstance: any;
@@ -110,13 +111,15 @@
     </div>
   {/if}
 
-  <TocEditor
-    on:hoveritem
-    currentPage={pdfState.currentPage}
-    isPreview={isPreviewMode}
-    pageOffset={config.pageOffset}
-    insertAtPage={config.insertAtPage}
-    apiConfig={customApiConfig}
-    {tocPageCount}
-  />
+  {#key $curFileFingerprint}
+    <TocEditor
+      on:hoveritem
+      currentPage={pdfState.currentPage}
+      isPreview={isPreviewMode}
+      pageOffset={config.pageOffset}
+      insertAtPage={config.insertAtPage}
+      apiConfig={customApiConfig}
+      {tocPageCount}
+    />
+  {/key}
 </div>

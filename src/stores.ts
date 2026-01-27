@@ -51,16 +51,21 @@ if (browser) {
     const fingerprint = get(curFileFingerprint);
     const items = get(tocItems);
 
-    if (fingerprint && items.length > 0) {
-      const config = get(tocConfig);
-      const session: TocSession = {
-        items,
-        pageOffset: config.pageOffset,
-      };
-      try {
-        localStorage.setItem(`toc_draft_${ fingerprint }`, JSON.stringify(session));
-      } catch (e) {
-        console.error('Failed to save session:', e);
+    if (fingerprint) {
+      if (items.length > 0) {
+        const config = get(tocConfig);
+        const session: TocSession = {
+          items,
+          pageOffset: config.pageOffset,
+        };
+        try {
+          localStorage.setItem(`toc_draft_${ fingerprint }`, JSON.stringify(session));
+        } catch (e) {
+          console.error('Failed to save session:', e);
+        }
+      } else {
+        // Clear storage if items are empty
+        localStorage.removeItem(`toc_draft_${ fingerprint }`);
       }
     }
   };

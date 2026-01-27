@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {onMount, tick} from 'svelte';
+  import {onMount, onDestroy, tick} from 'svelte';
   import {slide, fade, fly} from 'svelte/transition';
   import {t, isLoading} from 'svelte-i18n';
   import {injectAnalytics} from '@vercel/analytics/sveltekit';
@@ -102,6 +102,24 @@
     });
   });
 
+  onDestroy(async () => {
+    unsubscribeTocItems();
+    if (originalPdfInstance) {
+      try {
+        await originalPdfInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying original instance:', e);
+      }
+    }
+    if (previewPdfInstance && previewPdfInstance !== originalPdfInstance) {
+      try {
+        await previewPdfInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying preview instance:', e);
+      }
+    }
+  });
+
   function getPdfEffectiveData(items: TocItem[]): any[] {
     return items.map((item) => ({
       title: item.title,
@@ -166,7 +184,7 @@
     }
   };
 
-  tocItems.subscribe((items) => {
+  const unsubscribeTocItems = tocItems.subscribe((items) => {
     if (items.length > 0) showNextStepHint = false;
     if (isFileLoading) return;
 
@@ -261,7 +279,17 @@
         worker: PDFService.sharedWorker,
       });
 
-      previewPdfInstance = await loadingTask.promise;
+      const newPreviewInstance = await loadingTask.promise;
+
+      if (previewPdfInstance && previewPdfInstance !== originalPdfInstance) {
+        try {
+          await previewPdfInstance.destroy();
+        } catch (e) {
+          console.warn('Error destroying old preview instance:', e);
+        }
+      }
+
+      previewPdfInstance = newPreviewInstance;
       pdfState.newDoc = newDoc;
 
       if (isPreviewMode) {
@@ -336,12 +364,33 @@
     isFileLoading = true;
     showNextStepHint = false;
     hasShownTocHint = false;
-    pdfState.filename = file.name;
+    
+    tocItems.set([]);
+    await tick();
+
+    if (originalPdfInstance) {
+      try {
+        await originalPdfInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying original instance:', e);
+      }
+    }
+    if (previewPdfInstance && previewPdfInstance !== originalPdfInstance) {
+      try {
+        await previewPdfInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying preview instance:', e);
+      }
+    }
+
     pdfState.instance = null;
-    pdfState.totalPages = 0;
     originalPdfInstance = null;
     previewPdfInstance = null;
     pdfState = {...pdfState};
+    await tick();
+
+    pdfState.filename = file.name;
+    pdfState.totalPages = 0;
 
     try {
       await loadPdfLibraries();
@@ -768,70 +817,70 @@
   <div
     class="flex flex-col mt-5 lg:flex-row lg:mt-8 p-2 md:p-4 md:pr-3 gap-4 lg:gap-8 mx-auto w-[95%] md:w-[90%] xl:w-[80%] 3xl:w-[75%] justify-between"
   >
-    <div
-      in:fly={{y: 20, duration: 300, delay: 100}}
-      out:fade
-      class="contents"
-    >
-      <SidebarPanel
-        {pdfState}
-        {originalPdfInstance}
-        {previewPdfInstance}
-        {isAiLoading}
-        {aiError}
-        {showNextStepHint}
-        {config}
-        {customApiConfig}
-        {tocPageCount}
-        {isPreviewMode}
-        bind:tocRanges
-        bind:activeRangeIndex
-        bind:addPhysicalTocPage
-        bind:isTocConfigExpanded
-        on:prefixChange={handlePrefixChange}
-        on:openhelp={() => (showHelpModal = true)}
-        on:apiConfigChange={handleApiConfigChange}
-        on:apiConfigSave={handleApiConfigSave}
-        on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
-        on:jumpToTocPage={jumpToTocPage}
-        on:generateAi={generateTocFromAI}
-        on:hoveritem={handleTocItemHover}
-        on:fileselect={(e) => loadPdfFile(e.detail)}
-        on:viewerMessage={handleViewerMessage}
-        on:togglePreview={togglePreviewMode}
-        on:export={exportPDF}
-        on:addRange={handleAddRange}
-        on:removeRange={handleRemoveRange}
-        on:setActiveRange={handleSetActiveRange}
-        on:rangeChange={handleRangeChange}
-        on:updateActiveRange={handleUpdateActiveRange}
-      />
-    </div>
+      <div
+        in:fly={{y: 20, duration: 300, delay: 100}}
+        out:fade
+        class="contents"
+      >
+        <SidebarPanel
+          {pdfState}
+          {originalPdfInstance}
+          {previewPdfInstance}
+          {isAiLoading}
+          {aiError}
+          {showNextStepHint}
+          {config}
+          {customApiConfig}
+          {tocPageCount}
+          {isPreviewMode}
+          bind:tocRanges
+          bind:activeRangeIndex
+          bind:addPhysicalTocPage
+          bind:isTocConfigExpanded
+          on:prefixChange={handlePrefixChange}
+          on:openhelp={() => (showHelpModal = true)}
+          on:apiConfigChange={handleApiConfigChange}
+          on:apiConfigSave={handleApiConfigSave}
+          on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
+          on:jumpToTocPage={jumpToTocPage}
+          on:generateAi={generateTocFromAI}
+          on:hoveritem={handleTocItemHover}
+          on:fileselect={(e) => loadPdfFile(e.detail)}
+          on:viewerMessage={handleViewerMessage}
+          on:togglePreview={togglePreviewMode}
+          on:export={exportPDF}
+          on:addRange={handleAddRange}
+          on:removeRange={handleRemoveRange}
+          on:setActiveRange={handleSetActiveRange}
+          on:rangeChange={handleRangeChange}
+          on:updateActiveRange={handleUpdateActiveRange}
+        />
+      </div>
 
-    <div
-      in:fly={{y: 20, duration: 300, delay: 200}}
-      out:fade
-      class="contents"
-    >
-      <PreviewPanel
-        {isFileLoading}
-        {pdfState}
-        {originalPdfInstance}
-        {previewPdfInstance}
-        {isPreviewMode}
-        {isPreviewLoading}
-        {tocRanges}
-        {activeRangeIndex}
-        {addPhysicalTocPage}
-        {jumpToTocPage}
-        bind:isDragging
-        on:fileselect={(e) => loadPdfFile(e.detail)}
-        on:viewerMessage={handleViewerMessage}
-        on:updateActiveRange={handleUpdateActiveRange}
-        on:togglePreview={togglePreviewMode}
-        on:export={exportPDF}
-      />
-    </div>
+      <div
+        in:fly={{y: 20, duration: 300, delay: 200}}
+        out:fade
+        class="contents"
+      >
+        <PreviewPanel
+          {isFileLoading}
+          {pdfState}
+          {originalPdfInstance}
+          {previewPdfInstance}
+          {isPreviewMode}
+          {isPreviewLoading}
+          {tocRanges}
+          {activeRangeIndex}
+          {addPhysicalTocPage}
+          {jumpToTocPage}
+          bind:isDragging
+          on:fileselect={(e) => loadPdfFile(e.detail)}
+          on:viewerMessage={handleViewerMessage}
+          on:updateActiveRange={handleUpdateActiveRange}
+          on:togglePreview={togglePreviewMode}
+          on:export={exportPDF}
+        />
+      </div>
   </div>
 
 

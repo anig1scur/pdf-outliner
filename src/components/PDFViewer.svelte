@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {createEventDispatcher, tick} from 'svelte';
+  import {createEventDispatcher, tick, onDestroy} from 'svelte';
   import {ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, ListOrdered} from 'lucide-svelte';
   import {t} from 'svelte-i18n';
 
@@ -43,7 +43,44 @@
   let containerWidth = 0;
   let containerHeight = 0;
 
-  pdfService.subscribe((val) => (pdfServiceInstance = val));
+  const activeRenderTasks = new Map<number, {task: RenderTask}>();
+
+  const unsubscribePdfService = pdfService.subscribe((val) => (pdfServiceInstance = val));
+
+  function safeCancel(task: RenderTask | null | undefined) {
+    if (!task) return;
+    try {
+      task.cancel();
+    } catch (e) {
+      // Ignore cancellation errors
+    }
+  }
+
+  function cleanupRenderTasks() {
+    safeCancel(currentRenderTask);
+    currentRenderTask = null;
+
+    activeRenderTasks.forEach(({task}) => safeCancel(task));
+    activeRenderTasks.clear();
+  }
+
+  function cleanupObservers() {
+    if (intersectionObserver) {
+      intersectionObserver.disconnect();
+      intersectionObserver = null;
+    }
+    stopAutoScroll();
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }
+
+  onDestroy(() => {
+    unsubscribePdfService();
+    cleanupRenderTasks();
+    cleanupObservers();
+  });
 
   $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
 
@@ -60,32 +97,22 @@
       const itemPage = item.to + pageOffset;
 
       if (itemPage <= current) {
-        const childPath = findActiveTocPath(
-          item.children || [],
-          current,
-          pageOffset,
-          [...currentPath, item],
-        );
+        const childPath = findActiveTocPath(item.children || [], current, pageOffset, [...currentPath, item]);
 
         if (childPath.length > 0) {
           bestPath = childPath;
         } else {
-            bestPath = [...currentPath, item];
-         }
+          bestPath = [...currentPath, item];
+        }
       } else {
-         break;
+        break;
       }
     }
     return bestPath;
   }
-  
-  let currentTocPath: TocItem[] = [];
-  $: currentTocPath = findActiveTocPath(
-    $tocItems,
-    currentPage,
-    $tocConfig.pageOffset || 0,
-  );
 
+  let currentTocPath: TocItem[] = [];
+  $: currentTocPath = findActiveTocPath($tocItems, currentPage, $tocConfig.pageOffset || 0);
 
   $: if (instance && filename && filename !== loadedFilename) {
     loadedFilename = filename;
@@ -104,10 +131,7 @@
     }
 
     if (currentRenderTask) {
-      try {
-        currentRenderTask.cancel();
-      } catch (e) {
-      }
+      safeCancel(currentRenderTask);
       currentRenderTask = null;
     }
 
@@ -122,13 +146,13 @@
       const viewport = page.getViewport({scale: 1.0});
       const availableWidth = Math.max(0, containerWidth - 32); // p-4
       const availableHeight = Math.max(0, containerHeight - 32);
-      
+
       if (availableWidth <= 0 || availableHeight <= 0) return;
 
       const scaleX = availableWidth / viewport.width;
       const scaleY = availableHeight / viewport.height;
       const baseScale = Math.min(scaleX, scaleY);
-      
+
       const effectiveScale = baseScale * scale;
       const renderViewport = page.getViewport({scale: effectiveScale});
 
@@ -150,7 +174,7 @@
 
       currentRenderTask = page.render(renderContext);
 
-      await currentRenderTask?.promise;
+      await currentRenderTask?.promise.then(() => page.cleanup()).catch(() => page.cleanup());
 
       lastRenderedPage = currentPage;
       lastRenderedScale = scale;
@@ -191,29 +215,51 @@
     pdfState.scale = 1.0;
   };
 
-  $: if (instance && mode === 'grid') {
-    gridPages = Array.from({length: totalPages}, (_, i) => ({
-      pageNum: i + 1,
-      canvasId: `thumb-canvas-${i + 1}`,
-    }));
+  $: if (instance) {
+    if (gridPages.length !== totalPages || lastRenderedInstance !== instance) {
+      cleanupRenderTasks();
+
+      gridPages = Array.from({length: totalPages}, (_, i) => ({
+        pageNum: i + 1,
+        canvasId: `thumb-canvas-${i + 1}`,
+      }));
+      
+      lastRenderedInstance = instance;
+    }
+  } else {
+    // Full reset when no instance
+    gridPages = [];
+    lastRenderedInstance = null;
+    lastRenderedPage = 0;
+    cleanupRenderTasks();
+    cleanupObservers();
   }
 
   async function autoScrollToActiveRange() {
-      if (mode !== 'grid' || !scrollContainer) return;
-      const range = tocRanges[activeRangeIndex];
-      if (!range) return;
+    if (mode !== 'grid' || !scrollContainer) return;
+    const range = tocRanges[activeRangeIndex];
+    if (!range) return;
 
-      const targetPage = range.start;
-      await tick(); 
-      
-      const pageEl = scrollContainer.querySelector(`[data-page-num="${targetPage}"]`) as HTMLElement;
-      if (pageEl) {
-          pageEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    const targetPage = range.start;
+    await tick();
+
+    const pageEl = scrollContainer.querySelector(`[data-page-num="${targetPage}"]`) as HTMLElement;
+    if (pageEl) {
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const elementRect = pageEl.getBoundingClientRect();
+      const relativeTop = elementRect.top - containerRect.top;
+      const targetScrollTop =
+        scrollContainer.scrollTop + relativeTop - scrollContainer.clientHeight / 2 + pageEl.clientHeight / 2;
+
+      scrollContainer.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth',
+      });
+    }
   }
 
-  $: if (activeRangeIndex >= 0 && mode === 'grid') { // React to activeRangeIndex changes
-      autoScrollToActiveRange();
+  $: if (activeRangeIndex >= 0 && mode === 'grid') {
+    autoScrollToActiveRange();
   }
 
   function scrollLoop() {
@@ -222,11 +268,11 @@
       return;
     }
     scrollContainer.scrollTop += autoScrollSpeed;
-    
+
     if (isSelecting) {
       updateSelectionFromPoint(lastMouseX, lastMouseY);
     }
-    
+
     autoScrollFrameId = requestAnimationFrame(scrollLoop);
   }
 
@@ -234,7 +280,7 @@
     if (!scrollContainer) return;
 
     const rect = scrollContainer.getBoundingClientRect();
-    
+
     const clampedX = Math.max(rect.left + 5, Math.min(rect.right - 5, clientX));
     const clampedY = Math.max(rect.top + 5, Math.min(rect.bottom - 5, clientY));
 
@@ -304,8 +350,9 @@
   function handleGridMouseMove(e: MouseEvent) {
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
-    
+
     if (!isSelecting) return;
+
     checkAutoScroll(e.clientY);
     updateSelectionFromPoint(e.clientX, e.clientY);
   }
@@ -327,8 +374,6 @@
     }
 
     if (!isSelecting) return;
-
-    e.preventDefault();
 
     const touch = e.touches[0];
     if (!touch) return;
@@ -359,8 +404,10 @@
     }
   }
 
-  function observeViewport(node: HTMLElement, params?: any) {
+  function observeViewport(node: HTMLElement) {
     scrollContainer = node;
+
+    if (intersectionObserver) intersectionObserver.disconnect();
 
     intersectionObserver = new IntersectionObserver(
       (entries) => {
@@ -372,6 +419,8 @@
             if (pageNum > 0 && instance && pdfServiceInstance) {
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
+
+              if (activeRenderTasks.has(pageNum)) return;
 
               pdfServiceInstance.renderPageToCanvas(instance, pageNum, canvas, canvasWidth * dpr);
 
@@ -388,7 +437,7 @@
       {
         root: node,
         rootMargin: '300px',
-      }
+      },
     );
 
     canvasesToObserve.forEach((canvas) => {
@@ -434,133 +483,137 @@
   on:mouseup={handleMouseUp}
 />
 
-<div
-  class="h-[85vh] rounded-lg"
-  class:overflow-auto={mode === 'grid'}
-  use:observeViewport={mode === 'grid' ? observeViewport : undefined}
-  class:overflow-hidden={mode === 'single'}
-  class:bg-gray-50={mode === 'grid'}
->
-  {#if mode === 'single'}
-    <div class="flex flex-col h-full">
-      <div class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white border-b-2 border-black">
-        <div class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto">
-          <div class="text-gray-600 font-serif flex gap-1 sm:gap-2 items-center text-sm md:text-base md:gap-3">
-            <span class="truncate max-w-20 md:max-w-xs">{filename}</span>
-            <span class="text-gray-300">|</span>
-            <div class="flex items-center gap-1">
-              <input
-                type="number"
-                min="1"
-                max={totalPages}
-                value={currentPage}
-                on:change={(e) => {
-                  const val = parseInt(e.currentTarget.value, 10);
-                  if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                    pdfState.currentPage = val;
-                  } else {
-                    e.currentTarget.value = currentPage.toString();
-                  }
-                }}
-                class="w-15 text-center border-b border-gray-300 focus:border-black outline-none bg-transparent p-0 text-gray-800"
-              />
-              <span>/ {totalPages}</span>
-            </div>
-
-            {#if addPhysicalTocPage && jumpToTocPage && hasPreview}
-              <button
-                on:click={jumpToTocPage}
-                class="p-1 rounded-lg hover:bg-gray-100 text-black border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-                title={$t('tooltip.jump_toc')}
-              >
-                <ListOrdered
-                  size={12}
-                  class="hidden md:inline-block"
-                /> ToC
-              </button>
-            {/if}
-          </div>
-
+<div class="h-[85vh] rounded-lg relative bg-white">
+  <div
+    class="flex flex-col h-full absolute inset-0 z-10 bg-white rounded-md"
+    class:hidden={mode !== 'single'}
+  >
+    <div
+      class="flex items-center flex-col justify-start w-full max-w-4xl px-4 py-3 bg-white border-b-2 border-black rounded-t-md"
+    >
+      <div class="flex z-10 items-center justify-between w-full max-w-full overflow-x-auto">
+        <div class="text-gray-600 font-serif flex gap-1 sm:gap-2 items-center text-sm md:text-base md:gap-3">
+          <span class="truncate max-w-20 md:max-w-xs">{filename}</span>
+          <span class="text-gray-300">|</span>
           <div class="flex items-center gap-1">
-            <button
-              on:click={zoomOut}
-              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title={$t('tooltip.zoom_out')}
-            >
-              <ZoomOut size={20} />
-            </button>
-            <span class="min-w-[30px] text-center text-gray-600 text-sm md:text-base md:min-w-[40px]">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              on:click={zoomIn}
-              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title={$t('tooltip.zoom_in')}
-            >
-              <ZoomIn size={20} />
-            </button>
-            <button
-              on:click={resetZoom}
-              class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-              title={$t('tooltip.reset')}
-            >
-              <RotateCw size={20} />
-            </button>
+            <input
+              type="number"
+              min="1"
+              max={totalPages}
+              value={currentPage}
+              on:change={(e) => {
+                const val = parseInt(e.currentTarget.value, 10);
+                if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                  pdfState.currentPage = val;
+                } else {
+                  e.currentTarget.value = currentPage.toString();
+                }
+              }}
+              class="w-15 text-center border-b border-gray-300 focus:border-black outline-none bg-transparent p-0 text-gray-800"
+            />
+            <span>/ {totalPages}</span>
           </div>
-        </div>
-      </div>
 
-
-      <div
-        class="relative flex-1 overflow-hidden bg-gray-50"
-        bind:clientWidth={containerWidth}
-        bind:clientHeight={containerHeight}
-      >
-        {#if currentTocPath.length > 0}
-          <div class="absolute z-30 pointer-events-none max-w-[70%] md:max-w-[60%]">
-             <div class="backdrop-blur-sm border border-gray-200 p-2 text-xs  rounded-[0_0_20px_0] backdrop-blur-sm bg-white/20 text-gray-600 font-mono space-y-0.5">
-                {#each currentTocPath as item, i}
-                  <div
-                     class="truncate flex items-center gap-2"
-                     style="padding-left: {i * 12}px;"
-                  >
-                      {#if i > 0}
-                       <div class="w-[3px] h-[3px] bg-gray-500 shrink-0"></div>
-                      {/if}
-                      <span>{item.title}</span>
-                  </div>
-                {/each}
-             </div>
-          </div>
-        {/if}
-
-        <button
-          on:click={goToPrevPage}
-          disabled={currentPage <= 1}
-          class="absolute left-2 top-1/2 -translate-y-1/2 p-1 md:left-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
-        >
-          <ChevronLeft size={24} />
-        </button>
-
-        <div class="w-full h-full overflow-auto flex">
-          <div class="m-auto p-4 max-w-full">
-            <canvas
-              class="max-w-full block"
-              id="pdf-canvas"
-            ></canvas>
-          </div>
+          {#if addPhysicalTocPage && jumpToTocPage && hasPreview}
+            <button
+              on:click={jumpToTocPage}
+              class="p-1 rounded-lg hover:bg-gray-100 text-black border-2 border-black shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+              title={$t('tooltip.jump_toc')}
+            >
+              <ListOrdered
+                size={12}
+                class="hidden md:inline-block"
+              /> ToC
+            </button>
+          {/if}
         </div>
 
-        <button
-          on:click={goToNextPage}
-          disabled={currentPage >= totalPages}
-          class="absolute right-2 top-1/2 -translate-y-1/2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
-        >
-          <ChevronRight size={24} />
-        </button>
+        <div class="flex items-center gap-1">
+          <button
+            on:click={zoomOut}
+            class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            title={$t('tooltip.zoom_out')}
+          >
+            <ZoomOut size={20} />
+          </button>
+          <span class="min-w-[30px] text-center text-gray-600 text-sm md:text-base md:min-w-[40px]">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            on:click={zoomIn}
+            class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            title={$t('tooltip.zoom_in')}
+          >
+            <ZoomIn size={20} />
+          </button>
+          <button
+            on:click={resetZoom}
+            class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+            title={$t('tooltip.reset')}
+          >
+            <RotateCw size={20} />
+          </button>
+        </div>
       </div>
     </div>
-  {:else if mode === 'grid'}
+
+    <div
+      class="relative flex-1 overflow-hidden bg-gray-50 single-view-container"
+      bind:clientWidth={containerWidth}
+      bind:clientHeight={containerHeight}
+    >
+      {#if currentTocPath.length > 0}
+        <div class="absolute z-30 pointer-events-none max-w-[70%] md:max-w-[60%]">
+          <div
+            class="backdrop-blur-sm border border-gray-200 p-2 text-xs rounded-[0_0_20px_0] backdrop-blur-sm bg-white/20 text-gray-600 font-mono space-y-0.5"
+          >
+            {#each currentTocPath as item, i}
+              <div
+                class="truncate flex items-center gap-2"
+                style="padding-left: {i * 12}px;"
+              >
+                {#if i > 0}
+                  <div class="w-[3px] h-[3px] bg-gray-500 shrink-0"></div>
+                {/if}
+                <span>{item.title}</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      <button
+        on:click={goToPrevPage}
+        disabled={currentPage <= 1}
+        class="absolute left-2 top-1/2 -translate-y-1/2 p-1 md:left-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
+      >
+        <ChevronLeft size={24} />
+      </button>
+
+      <div class="w-full h-full overflow-auto flex">
+        <div class="m-auto p-4 max-w-full">
+          <canvas
+            class="max-w-full block"
+            id="pdf-canvas"
+          ></canvas>
+        </div>
+      </div>
+
+      <button
+        on:click={goToNextPage}
+        disabled={currentPage >= totalPages}
+        class="absolute right-2 top-1/2 -translate-y-1/2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
+      >
+        <ChevronRight size={24} />
+      </button>
+    </div>
+  </div>
+
+  <div
+    class="absolute inset-0 z-0 bg-gray-50 overflow-auto rounded-md"
+    class:hidden={mode !== 'grid'}
+    use:observeViewport
+  >
     <div
       class="grid grid-cols-2 gap-3 p-3 select-none md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
       class:cursor-grabbing={isSelecting}
@@ -569,9 +622,7 @@
       on:touchcancel={handleTouchEnd}
     >
       {#each gridPages as page (page.pageNum)}
-        {@const rangeIndex = tocRanges.findIndex(
-          (r) => page.pageNum >= r.start && page.pageNum <= r.end,
-        )}
+        {@const rangeIndex = tocRanges.findIndex((r) => page.pageNum >= r.start && page.pageNum <= r.end)}
         {@const isSelected = rangeIndex !== -1}
         {@const isActive = rangeIndex === activeRangeIndex}
         {@const isStart = tocRanges.some((r) => r.start === page.pageNum)}
@@ -584,7 +635,7 @@
           class:shadow-blue-400={isSelected && isActive}
           class:shadow-gray-400={isSelected && !isActive}
           class:border-blue-500={isSelected && isActive}
-          class:border-gray-500={isSelected && !isActive || !isSelected}
+          class:border-gray-500={(isSelected && !isActive) || !isSelected}
           class:scale-[1.02]={isSelected}
           on:mousedown={() => handleMouseDown(page.pageNum)}
           on:touchstart={() => handleTouchStart(page.pageNum)}
@@ -624,5 +675,5 @@
         </div>
       {/each}
     </div>
-  {/if}
+  </div>
 </div>
