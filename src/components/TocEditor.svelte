@@ -273,19 +273,31 @@
     return findFirst($tocItems);
   })();
 
-  const addTocItem = () => {
+  const addMultipleTocItems = (count) => {
     saveHistory();
+    const currentItems = $tocItems;
+    let startPage;
+    
+    if (currentItems.length > 0) {
+      startPage = Math.max(...currentItems.map(i => i.to)) + 1;
+    } else {
+      startPage = ($maxPage || 0) + 1;
+    }
+
     const uid = new ShortUniqueId({length: 10});
-    $tocItems = [
-      ...$tocItems,
-      {
-        id: uid.randomUUID(),
-        title: $t('toc.new_section_default'),
-        to: $maxPage + 1,
-        children: [],
-        open: true,
-      },
-    ];
+    const newItems = Array.from({length: count}, (_, i) => ({
+      id: uid.randomUUID(),
+      title: $t('toc.new_section_default'),
+      to: startPage + i,
+      children: [],
+      open: true,
+    }));
+
+    $tocItems = [...currentItems, ...newItems];
+  };
+
+  const addTocItem = () => {
+    addMultipleTocItems(1);
   };
 
   const updateTocItem = (item, updates, skipHistory = false) => {
@@ -393,11 +405,25 @@
       </section>
     {/if}
 
-    <button
-      on:click={addTocItem}
-      class="ml-9 mt-3 mb-4 btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
-    >
-      {$t('btn.add_section')}
-    </button>
+    <div class="flex items-center gap-2 ml-9 mt-3 mb-4">
+      <button
+        on:click={addTocItem}
+        class="btn font-bold bg-yellow-400 text-black border-2 border-black rounded-lg px-4 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
+      >
+        {$t('btn.add_section')}
+      </button>
+      <button
+        on:click={() => addMultipleTocItems(5)}
+        class="btn font-bold bg-gray-100 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
+      >
+        +5
+      </button>
+      <button
+        on:click={() => addMultipleTocItems(10)}
+        class="btn font-bold bg-gray-100 text-black border-2 border-black rounded-lg px-3 py-2 shadow-[2px_2px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all text-sm"
+      >
+        +10
+      </button>
+    </div>
   </div>
 </div>

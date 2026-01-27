@@ -60,14 +60,24 @@
   }
 
   function handleAddChild() {
+    const currentChildren = item.children || [];
+    let startPage;
+
+    if (currentChildren.length > 0) {
+      startPage = Math.max(...currentChildren.map((c) => c.to)) + 1;
+    } else {
+      startPage = item.to + 1;
+    }
+
     const newChild = {
       id: new ShortUniqueId({length: 10}),
       title: $t('toc.new_item_default') || 'New Item',
-      to: $maxPage + 1,
+      to: startPage,
       children: [],
       open: true,
     };
-    const updatedChildren = [...(item.children || []), newChild];
+    
+    const updatedChildren = [...currentChildren, newChild];
     onUpdate(item, {children: updatedChildren, open: true});
   }
 
