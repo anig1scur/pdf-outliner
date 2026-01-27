@@ -8,6 +8,7 @@
   import type {RenderTask} from 'pdfjs-dist';
 
   export let pdfState: PDFState;
+  export let instance: any = null;
   export let mode: 'single' | 'grid' = 'single';
   export let tocRanges: {start: number; end: number; id: string}[];
   export let activeRangeIndex: number = 0;
@@ -22,6 +23,7 @@
   let pdfServiceInstance: PDFService | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
   let scrollContainer: HTMLElement;
+  let canvasElement: HTMLCanvasElement;
 
   let canvasesToObserve: HTMLCanvasElement[] = [];
 
@@ -82,7 +84,10 @@
     cleanupObservers();
   });
 
-  $: ({filename, currentPage, scale, totalPages, instance} = pdfState);
+  $: ({filename, currentPage, scale, totalPages: stateTotalPages, instance: stateInstance} = pdfState);
+
+  $: activeInstance = instance || stateInstance;
+  $: activeTotalPages = activeInstance?.numPages || stateTotalPages;
 
   // Path finding
   function findActiveTocPath(
@@ -114,7 +119,7 @@
   let currentTocPath: TocItem[] = [];
   $: currentTocPath = findActiveTocPath($tocItems, currentPage, $tocConfig.pageOffset || 0);
 
-  $: if (instance && filename && filename !== loadedFilename) {
+  $: if (activeInstance && filename && filename !== loadedFilename) {
     loadedFilename = filename;
     tick().then(() => {
       dispatch('fileloaded', {
@@ -125,8 +130,8 @@
   }
 
   async function renderCurrentPage() {
-    if (!instance || !currentPage || !scale) return;
-    if (lastRenderedPage === currentPage && lastRenderedScale === scale && lastRenderedInstance === instance) {
+    if (!activeInstance || !currentPage || !scale) return;
+    if (lastRenderedPage === currentPage && lastRenderedScale === scale && lastRenderedInstance === activeInstance) {
       return;
     }
 
@@ -136,11 +141,11 @@
     }
 
     await tick();
-    const canvas = document.getElementById('pdf-canvas') as HTMLCanvasElement;
-    if (!canvas || !instance) return;
+    const canvas = canvasElement;
+    if (!canvas || !activeInstance) return;
 
     try {
-      const page = await instance.getPage(currentPage);
+      const page = await activeInstance.getPage(currentPage);
 
       const dpr = window.devicePixelRatio || 1;
       const viewport = page.getViewport({scale: 1.0});
@@ -178,7 +183,7 @@
 
       lastRenderedPage = currentPage;
       lastRenderedScale = scale;
-      lastRenderedInstance = instance;
+      lastRenderedInstance = activeInstance;
       currentRenderTask = null;
     } catch (e: any) {
       if (e?.name !== 'RenderingCancelledException') {
@@ -188,12 +193,12 @@
     }
   }
 
-  $: if (mode === 'single' && instance && currentPage && scale && containerWidth && containerHeight) {
+  $: if (mode === 'single' && activeInstance && currentPage && scale && containerWidth && containerHeight) {
     renderCurrentPage();
   }
 
   const goToNextPage = () => {
-    if (currentPage < totalPages) {
+    if (currentPage < activeTotalPages) {
       pdfState.currentPage += 1;
     }
   };
@@ -215,25 +220,33 @@
     pdfState.scale = 1.0;
   };
 
-  $: if (instance) {
-    if (gridPages.length !== totalPages || lastRenderedInstance !== instance) {
+  $: if (activeInstance && mode === 'grid') {
+    if (gridPages.length !== activeTotalPages || lastRenderedInstance !== activeInstance) {
       cleanupRenderTasks();
 
-      gridPages = Array.from({length: totalPages}, (_, i) => ({
+      gridPages = Array.from({length: activeTotalPages}, (_, i) => ({
         pageNum: i + 1,
         canvasId: `thumb-canvas-${i + 1}`,
       }));
       
-      lastRenderedInstance = instance;
+      lastRenderedInstance = activeInstance;
     }
   } else {
-    // Full reset when no instance
-    gridPages = [];
-    lastRenderedInstance = null;
-    lastRenderedPage = 0;
-    cleanupRenderTasks();
-    cleanupObservers();
+    if (activeInstance) {
+       if (gridPages.length > 0) {
+          gridPages = [];
+          cleanupRenderTasks();
+       }
+    } else {
+       // Full reset when no instance
+       gridPages = [];
+       lastRenderedInstance = null;
+       lastRenderedPage = 0;
+       cleanupRenderTasks();
+       cleanupObservers();
+    }
   }
+  
 
   async function autoScrollToActiveRange() {
     if (mode !== 'grid' || !scrollContainer) return;
@@ -416,13 +429,13 @@
             const canvas = entry.target as HTMLCanvasElement;
             const pageNum = parseInt(canvas.dataset.pageNum || '0', 10);
 
-            if (pageNum > 0 && instance && pdfServiceInstance) {
+            if (pageNum > 0 && activeInstance && pdfServiceInstance) {
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
 
               if (activeRenderTasks.has(pageNum)) return;
 
-              pdfServiceInstance.renderPageToCanvas(instance, pageNum, canvas, canvasWidth * dpr);
+              pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr);
 
               canvas.style.width = `${canvasWidth}px`;
               canvas.style.height = 'auto';
@@ -499,11 +512,11 @@
             <input
               type="number"
               min="1"
-              max={totalPages}
+              max={activeTotalPages}
               value={currentPage}
               on:change={(e) => {
                 const val = parseInt(e.currentTarget.value, 10);
-                if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                if (!isNaN(val) && val >= 1 && val <= activeTotalPages) {
                   pdfState.currentPage = val;
                 } else {
                   e.currentTarget.value = currentPage.toString();
@@ -511,7 +524,7 @@
               }}
               class="w-15 text-center border-b border-gray-300 focus:border-black outline-none bg-transparent p-0 text-gray-800"
             />
-            <span>/ {totalPages}</span>
+            <span>/ {activeTotalPages}</span>
           </div>
 
           {#if addPhysicalTocPage && jumpToTocPage && hasPreview}
@@ -594,14 +607,14 @@
         <div class="m-auto p-4 max-w-full">
           <canvas
             class="max-w-full block"
-            id="pdf-canvas"
+            bind:this={canvasElement}
           ></canvas>
         </div>
       </div>
 
       <button
         on:click={goToNextPage}
-        disabled={currentPage >= totalPages}
+        disabled={currentPage >= activeTotalPages}
         class="absolute right-2 top-1/2 -translate-y-1/2 p-1 md:right-4 md:p-2 rounded-full bg-white shadow-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed z-20 border-2 border-black"
       >
         <ChevronRight size={24} />

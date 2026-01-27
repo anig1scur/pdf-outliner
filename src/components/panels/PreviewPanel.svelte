@@ -79,17 +79,35 @@
 
     {#if pdfState.instance}
       <div class="relative z-10 h-full flex flex-col">
-        <PDFViewer
-          bind:pdfState
-          mode={isPreviewMode ? 'single' : 'grid'}
-          {tocRanges}
-          {activeRangeIndex}
-          on:updateActiveRange
-          on:fileloaded={forwardFileLoadedEvent}
-          {jumpToTocPage}
-          {addPhysicalTocPage}
-          hasPreview={!!previewPdfInstance}
-        />
+        <div class="contents" class:hidden={isPreviewMode}>
+          <PDFViewer
+            bind:pdfState
+            mode="grid"
+            instance={originalPdfInstance}
+            {tocRanges}
+            {activeRangeIndex}
+            on:updateActiveRange
+            on:fileloaded={forwardFileLoadedEvent}
+            {jumpToTocPage}
+            {addPhysicalTocPage}
+            hasPreview={!!previewPdfInstance}
+          />
+        </div>
+
+        <div class="contents" class:hidden={!isPreviewMode}>
+          <PDFViewer
+            bind:pdfState
+            mode="single"
+            instance={previewPdfInstance || originalPdfInstance}
+            {tocRanges}
+            {activeRangeIndex}
+            on:updateActiveRange
+            on:fileloaded={forwardFileLoadedEvent}
+            {jumpToTocPage}
+            {addPhysicalTocPage}
+            hasPreview={!!previewPdfInstance}
+          />
+        </div>
 
         <input
           type="file"
