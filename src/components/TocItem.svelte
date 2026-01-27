@@ -117,6 +117,21 @@
     onUpdate(item, {children: item.children}, true);
     onDragEnd();
   }
+
+  function handleTitleKeydown(e) {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const allInputs = Array.from(document.querySelectorAll('.toc-item-title'));
+      const index = allInputs.indexOf(e.target);
+      if (index !== -1) {
+        if (e.key === 'ArrowUp' && index > 0) {
+          allInputs[index - 1].focus();
+        } else if (e.key === 'ArrowDown' && index < allInputs.length - 1) {
+          allInputs[index + 1].focus();
+        }
+      }
+    }
+  }
 </script>
 
 {#if item}
@@ -160,8 +175,9 @@
           isFocused = false;
           handleUpdateTitle();
         }}
+        on:keydown={handleTitleKeydown}
         on:keypress={(e) => e.key === 'Enter' && e.target.blur()}
-        class="border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[100px]"
+        class="toc-item-title border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[100px]"
       />
 
       <input
