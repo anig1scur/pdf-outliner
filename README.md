@@ -32,4 +32,4 @@ Tocify is a free, online and open-source web application to add, edit, or genera
 
 You can support me by Alipay (scan QR code below) or [ko-fi](https://ko-fi.com/aerisz):
 
-![](./screenshots/support.png)
+![](./screenshots/support.webp)

@@ -481,7 +481,7 @@
             {/if}
           </div>
 
-          <div class="flex items-center sm:gap-1 md:gap-2">
+          <div class="flex items-center gap-1">
             <button
               on:click={zoomOut}
               class="p-1 md:p-2 rounded-lg hover:bg-gray-100 text-gray-600"
@@ -489,7 +489,7 @@
             >
               <ZoomOut size={20} />
             </button>
-            <span class="min-w-[50px] text-center text-gray-600 text-sm md:text-base md:min-w-[60px]">
+            <span class="min-w-[30px] text-center text-gray-600 text-sm md:text-base md:min-w-[40px]">
               {Math.round(scale * 100)}%
             </span>
             <button
