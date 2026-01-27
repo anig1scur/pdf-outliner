@@ -384,7 +384,7 @@
         on:finalize={handleDndFinalize}
         class="min-h-[20px]"
       >
-        {#each $tocItems as item (item.id)}
+        {#each $tocItems as item, i (item.id)}
           <div animate:flip={{duration: flipDurationMs}}>
             <TocItem
               {item}
@@ -399,6 +399,7 @@
               {pageOffset}
               {insertAtPage}
               {tocPageCount}
+              index={i + 1}
             />
           </div>
         {/each}
