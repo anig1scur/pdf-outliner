@@ -449,9 +449,22 @@ export class PDFService {
     }
   }
 
+  private static canvasRenderTasks = new WeakMap<HTMLCanvasElement, pdfjsLib.RenderTask>();
+
   async renderPageToCanvas(
       pdfDoc: pdfjsLib.PDFDocumentProxy, pageNumber: number,
     canvas: HTMLCanvasElement, width: number): Promise<pdfjsLib.RenderTask | undefined> {
+
+    const existingTask = PDFService.canvasRenderTasks.get(canvas);
+    if (existingTask) {
+      try {
+        existingTask.cancel();
+        await existingTask.promise.catch(() => { });
+      } catch (e) {
+      }
+      PDFService.canvasRenderTasks.delete(canvas);
+    }
+
     const page = await pdfDoc.getPage(pageNumber);
     const viewport = page.getViewport({scale: 1.0});
     const scale = width / viewport.width;
@@ -471,10 +484,17 @@ export class PDFService {
       viewport: scaledViewport,
     });
 
+    PDFService.canvasRenderTasks.set(canvas, renderTask);
+
     renderTask.promise.then(() => {
+      PDFService.canvasRenderTasks.delete(canvas);
       page.cleanup();
-    }).catch(() => {
+    }).catch((e: any) => {
+      PDFService.canvasRenderTasks.delete(canvas);
       page.cleanup();
+      if (e?.name === 'RenderingCancelledException') {
+        console.info(`Rendering cancelled, page ${ pageNumber }`);
+      }
     });
 
     return renderTask;

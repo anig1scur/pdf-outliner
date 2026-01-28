@@ -45,7 +45,7 @@
   let containerWidth = 0;
   let containerHeight = 0;
 
-  const activeRenderTasks = new Map<number, {task: RenderTask}>();
+  const activeRenderTasks = new Map<number, RenderTask>();
 
   const unsubscribePdfService = pdfService.subscribe((val) => (pdfServiceInstance = val));
 
@@ -62,7 +62,7 @@
     safeCancel(currentRenderTask);
     currentRenderTask = null;
 
-    activeRenderTasks.forEach(({task}) => safeCancel(task));
+    activeRenderTasks.forEach((task) => safeCancel(task));
     activeRenderTasks.clear();
   }
 
@@ -431,8 +431,6 @@
             if (pageNum > 0 && activeInstance && pdfServiceInstance) {
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
-
-              if (activeRenderTasks.has(pageNum)) return;
 
               pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr);
 

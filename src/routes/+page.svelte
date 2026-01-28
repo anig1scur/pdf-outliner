@@ -765,6 +765,10 @@
 
   onMount(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.name === 'RenderingCancelledException') {
+        event.preventDefault();
+        return;
+      }
       const msg = event.reason?.message || event.reason || 'Unknown Async Error';
       toastProps = {show: true, message: msg, type: 'error'};
       event.preventDefault();
