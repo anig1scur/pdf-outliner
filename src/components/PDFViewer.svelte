@@ -387,6 +387,10 @@
 
     if (!isSelecting) return;
 
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
     const touch = e.touches[0];
     if (!touch) return;
 
@@ -627,7 +631,8 @@
     <div
       class="grid grid-cols-2 gap-3 p-3 select-none md:grid-cols-3 md:gap-4 2xl:grid-cols-4 2xl:gap-5"
       class:cursor-grabbing={isSelecting}
-      on:touchmove={handleTouchMove}
+      class:touch-none={isSelecting}
+      on:touchmove|nonpassive={handleTouchMove}
       on:touchend={handleTouchEnd}
       on:touchcancel={handleTouchEnd}
     >

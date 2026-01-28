@@ -9,8 +9,10 @@
 }
 
 @layer base {
+  html,
   body {
     @apply bg-[#f9f8f5] font-sans;
+    touch-action: manipulation;
   }
 }
 
