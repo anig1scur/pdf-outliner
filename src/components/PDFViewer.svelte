@@ -45,7 +45,7 @@
   let containerWidth = 0;
   let containerHeight = 0;
 
-  const activeRenderTasks = new Map<number, {task: RenderTask}>();
+  const activeRenderTasks = new Map<number, RenderTask>();
 
   const unsubscribePdfService = pdfService.subscribe((val) => (pdfServiceInstance = val));
 
@@ -62,7 +62,7 @@
     safeCancel(currentRenderTask);
     currentRenderTask = null;
 
-    activeRenderTasks.forEach(({task}) => safeCancel(task));
+    activeRenderTasks.forEach((task) => safeCancel(task));
     activeRenderTasks.clear();
   }
 
@@ -432,9 +432,22 @@
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
 
-              if (activeRenderTasks.has(pageNum)) return;
+              // Cancel any existing render task for this page
+              const existingTask = activeRenderTasks.get(pageNum);
+              if (existingTask) {
+                safeCancel(existingTask);
+                activeRenderTasks.delete(pageNum);
+              }
 
-              pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr);
+              pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr)
+                .then((task) => {
+                  if (task) {
+                    activeRenderTasks.set(pageNum, task);
+                    task.promise
+                      .then(() => activeRenderTasks.delete(pageNum))
+                      .catch(() => activeRenderTasks.delete(pageNum));
+                  }
+                });
 
               canvas.style.width = `${canvasWidth}px`;
               canvas.style.height = 'auto';
