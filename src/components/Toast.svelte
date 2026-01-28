@@ -6,7 +6,6 @@
 
   export let message = 'Success!';
   export let duration = 3000;
-  export let delay = 0;
   export let type: 'success' | 'error' | 'info' = 'info';
 
   const dispatch = createEventDispatcher();
@@ -15,18 +14,18 @@
   onMount(() => {
     timeout = setTimeout(() => {
       dispatch('close');
-    }, duration + delay);
+    }, duration + (type === 'error' ? 3000 : 0));
     return () => clearTimeout(timeout);
   });
 
 </script>
 
 <div
-  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90%] md:w-fit transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center z-[999] border-2 border-black"
+  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90vw] lg:w-fit max-w-[90vw] transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center z-[999] border-2 border-black"
   class:bg-lime-400={type === 'success'}
   class:bg-red-500={type === 'error'}
   class:bg-yellow-400={type === 'info'}
-  transition:fly={{ y: -50, x: 0, duration: 300, opacity: 0.5, scale: 0.9 }}>
+  transition:fly={{ y: -50, x: 0, duration: 300, opacity: 0.5 }}>
   {#if type === 'success'}
     <CheckCircle
       size={20}

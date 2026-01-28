@@ -16,10 +16,10 @@
 
   let graphData = {nodes: [], edges: []};
 
-  // Reset graph when new file loaded
   $: {
     if (items) {
       graphData = {nodes: [], edges: []};
+      tick().then(drawWall);
     }
   }
   let isLoading = false;
@@ -231,8 +231,9 @@
   }
 
   function drawWall() {
-    if (!svg || !graphData.nodes.length) return;
+    if (!svg) return;
     svg.innerHTML = '';
+    if (!graphData.nodes.length) return;
     rc = rough.svg(svg);
 
     const inactiveGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');

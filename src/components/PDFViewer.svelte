@@ -221,16 +221,15 @@
   };
 
   $: if (activeInstance && mode === 'grid') {
-    if (gridPages.length !== activeTotalPages || lastRenderedInstance !== activeInstance) {
+    if (gridPages.length !== activeTotalPages) {
       cleanupRenderTasks();
 
       gridPages = Array.from({length: activeTotalPages}, (_, i) => ({
         pageNum: i + 1,
         canvasId: `thumb-canvas-${i + 1}`,
       }));
-      
-      lastRenderedInstance = activeInstance;
     }
+    lastRenderedInstance = activeInstance;
   } else {
     if (activeInstance) {
        if (gridPages.length > 0) {
