@@ -432,22 +432,7 @@
               const dpr = window.devicePixelRatio || 1;
               const canvasWidth = canvas.clientWidth;
 
-              // Cancel any existing render task for this page
-              const existingTask = activeRenderTasks.get(pageNum);
-              if (existingTask) {
-                safeCancel(existingTask);
-                activeRenderTasks.delete(pageNum);
-              }
-
-              pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr)
-                .then((task) => {
-                  if (task) {
-                    activeRenderTasks.set(pageNum, task);
-                    task.promise
-                      .then(() => activeRenderTasks.delete(pageNum))
-                      .catch(() => activeRenderTasks.delete(pageNum));
-                  }
-                });
+              pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr);
 
               canvas.style.width = `${canvasWidth}px`;
               canvas.style.height = 'auto';

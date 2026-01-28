@@ -810,6 +810,12 @@
   onMount(() => {
     const handleRejection = (event: PromiseRejectionEvent) => {
       const reason = event.reason;
+      
+      if (reason?.name === 'RenderingCancelledException') {
+        event.preventDefault();
+        return;
+      }
+      
       let msg = 'Unknown Async Error';
       
       if (reason instanceof Error) {
