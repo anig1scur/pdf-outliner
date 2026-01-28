@@ -5,7 +5,7 @@
   import {t} from 'svelte-i18n';
   import TocItem from './TocItem.svelte';
   import Tooltip from './Tooltip.svelte';
-  import {tocItems, maxPage, autoSaveEnabled} from '../stores';
+  import {tocItems, maxPage, autoSaveEnabled, dragDisabled} from '../stores';
 
   import {dndzone} from 'svelte-dnd-action';
   import {flip} from 'svelte/animate';
@@ -249,6 +249,11 @@
     });
   };
 
+  function handleMouseUp() {
+    $dragDisabled = true;
+  }
+
+
   function handleDndConsider(e) {
     handleDragStart();
     $tocItems = e.detail.items;
@@ -329,7 +334,7 @@
   $: promptTooltipText = $t('toc.prompt_intro');
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window on:keydown={handleKeydown} on:mouseup={handleMouseUp} on:touchend={handleMouseUp} />
 
 <div class="flex flex-col gap-4 mt-3">
   <div class="h-48 relative group">
@@ -378,6 +383,7 @@
         use:dndzone={{
           items: $tocItems,
           flipDurationMs,
+          dragDisabled: $dragDisabled,
           dropTargetStyle: {outline: '2px dashed #000', borderRadius: '8px'},
         }}
         on:consider={handleDndConsider}

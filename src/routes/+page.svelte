@@ -360,7 +360,7 @@
 
     const canvas = document.getElementById('offset-preview-canvas') as HTMLCanvasElement;
     if (canvas) {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const renderWidth = canvas.clientWidth * dpr;
       if (renderWidth === 0) {
         setTimeout(() => renderOffsetPreviewPage(pageNum), 100);

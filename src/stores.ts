@@ -18,6 +18,8 @@ type TocSession = {
 };
 
 export const maxPage = writable(0);
+export const dragDisabled = writable(true);
+
 
 export const tocItems = writable<any[]>([]);
 export const curFileFingerprint = writable<string>('');

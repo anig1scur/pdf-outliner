@@ -32,7 +32,7 @@
       on:click|stopPropagation
     >
       <div class="flex justify-between items-center mb-4">
-        <h2 class="text-2xl font-bold">{$t('offset.title')}</h2>
+        <h2 class="text-xl md:text-2xl font-bold">{$t('offset.title')}</h2>
         <button
           on:click={() => (showOffsetModal = false)}
           class="p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
@@ -42,12 +42,12 @@
         </button>
       </div>
       <div class="flex flex-col md:flex-row gap-6">
-        <div class="w-full md:w-1/3 flex flex-col text-xl">
+        <div class="w-full md:w-1/3 flex flex-col text-base md:text-xl">
           <p class="my-4 text-gray-700">
             {$t('offset.found_prefix')}
-            <strong class="text-black text-3xl block my-2">{firstTocItem?.title}</strong>
+            <strong class="text-black text-2xl md:text-3xl block my-2">{firstTocItem?.title}</strong>
             {$t('offset.found_on_prefix')}
-            <strong class="text-black text-3xl block my-2">
+            <strong class="text-black text-2xl md:text-3xl block my-2">
               {$t('offset.page_n', {
                 values: {n: firstTocItem?.to},
               })}

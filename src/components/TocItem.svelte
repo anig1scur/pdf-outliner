@@ -2,7 +2,7 @@
   import {ChevronRight, ChevronDown, Plus, Trash, GripVertical} from 'lucide-svelte';
   import ShortUniqueId from 'short-unique-id';
   import Self from './TocItem.svelte';
-  import {maxPage, tocConfig} from '../stores';
+  import {maxPage, tocConfig, dragDisabled} from '../stores';
   import {createEventDispatcher} from 'svelte';
   import {t} from 'svelte-i18n';
   import {dndzone} from 'svelte-dnd-action';
@@ -142,43 +142,50 @@
       class:bg-blue-200={isActive}
       class:font-bold={isActive}
     >
-      <div
-        class="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-gray-400 -mr-1 transition-opacity"
+      <div 
+        class="flex items-center gap-1 flex-1 min-w-0 h-full"
+        on:mousedown={() => ($dragDisabled = false)}
+        on:touchstart={() => ($dragDisabled = false)}
       >
-        <GripVertical size={16} />
+        <div
+          class="cursor-grab active:cursor-grabbing text-gray-400 transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100"
+        >
+          <GripVertical size={16} />
+        </div>
+
+        <button
+          on:click|stopPropagation={handleToggle}
+          class=" hover:bg-gray-200 rounded-md text-gray-500"
+          class:invisible={!item.children || item.children.length === 0}
+          title="Toggle"
+        >
+          {#if item.open}
+            <ChevronDown size={16} />
+          {:else}
+            <ChevronRight size={16} />
+          {/if}
+        </button>
+
+        {#if $tocConfig.prefixSettings.enabled}
+          <span class="text-xs text-gray-600 font-mono select-none pr-1">
+            {currentNumber}
+          </span>
+        {/if}
+
+        <input
+          type="text"
+          bind:value={editTitle}
+          on:focus={() => (isFocused = true)}
+          on:blur={() => {
+            isFocused = false;
+            handleUpdateTitle();
+          }}
+          on:keydown={handleTitleKeydown}
+          on:keypress={(e) => e.key === 'Enter' && e.target.blur()}
+          class="toc-item-title border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[100px]"
+        />
       </div>
 
-      <button
-        on:click={handleToggle}
-        class=" hover:bg-gray-200 rounded-md text-gray-500"
-        class:invisible={!item.children || item.children.length === 0}
-        title="Toggle"
-      >
-        {#if item.open}
-          <ChevronDown size={16} />
-        {:else}
-          <ChevronRight size={16} />
-        {/if}
-      </button>
-
-      {#if $tocConfig.prefixSettings.enabled}
-        <span class="text-xs text-gray-600 font-mono select-none pr-1">
-          {currentNumber}
-        </span>
-      {/if}
-
-      <input
-        type="text"
-        bind:value={editTitle}
-        on:focus={() => (isFocused = true)}
-        on:blur={() => {
-          isFocused = false;
-          handleUpdateTitle();
-        }}
-        on:keydown={handleTitleKeydown}
-        on:keypress={(e) => e.key === 'Enter' && e.target.blur()}
-        class="toc-item-title border-2 border-black rounded px-2 py-1 text-sm myfocus focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[100px]"
-      />
 
       <input
         type="number"
@@ -216,6 +223,7 @@
         use:dndzone={{
           items: item.children || [],
           flipDurationMs,
+          dragDisabled: $dragDisabled,
           dropTargetStyle: item.children?.length > 0 ? {outline: '2px dashed #000', borderRadius: '4px'} : {},
         }}
         on:consider={handleDndConsider}

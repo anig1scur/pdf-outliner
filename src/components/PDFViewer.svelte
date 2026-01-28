@@ -147,7 +147,7 @@
     try {
       const page = await activeInstance.getPage(currentPage);
 
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const viewport = page.getViewport({scale: 1.0});
       const availableWidth = Math.max(0, containerWidth - 32); // p-4
       const availableHeight = Math.max(0, containerHeight - 32);
@@ -433,7 +433,7 @@
             const pageNum = parseInt(canvas.dataset.pageNum || '0', 10);
 
             if (pageNum > 0 && activeInstance && pdfServiceInstance) {
-              const dpr = window.devicePixelRatio || 1;
+              const dpr = Math.min(window.devicePixelRatio || 1, 2);
               const canvasWidth = canvas.clientWidth;
 
               pdfServiceInstance.renderPageToCanvas(activeInstance, pageNum, canvas, canvasWidth * dpr);
