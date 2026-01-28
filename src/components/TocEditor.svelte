@@ -1,5 +1,5 @@
 <script>
-  import {onDestroy, tick} from 'svelte';
+  import {onDestroy, tick, createEventDispatcher} from 'svelte';
   import ShortUniqueId from 'short-unique-id';
   import {CircleHelpIcon, Sparkles, Loader2} from 'lucide-svelte';
   import {t} from 'svelte-i18n';
@@ -17,6 +17,7 @@
   export let tocPageCount = 0;
 
   export let apiConfig = {provider: '', apiKey: ''};
+  const dispatch = createEventDispatcher();
 
   const flipDurationMs = 200;
 
@@ -399,12 +400,13 @@
               onDelete={deleteTocItem}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
-              on:hoveritem
               {currentPage}
               {isPreview}
               {pageOffset}
               {insertAtPage}
               {tocPageCount}
+              on:hoveritem
+              on:jumpToPage={(e) => { dispatch('jumpToPage', e.detail);}}
               index={i + 1}
             />
           </div>

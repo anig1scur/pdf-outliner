@@ -114,6 +114,7 @@
   {#key $curFileFingerprint}
     <TocEditor
       on:hoveritem
+      on:jumpToPage={(e) => { dispatch('jumpToPage', e.detail); }}
       currentPage={pdfState.currentPage}
       isPreview={isPreviewMode}
       pageOffset={config.pageOffset}

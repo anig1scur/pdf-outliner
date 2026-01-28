@@ -880,6 +880,7 @@
           on:apiConfigSave={handleApiConfigSave}
           on:updateField={(e) => updateTocField(e.detail.path, e.detail.value)}
           on:jumpToTocPage={jumpToTocPage}
+          on:jumpToPage={(e) => { jumpToPage(e.detail.to); }}
           on:generateAi={generateTocFromAI}
           on:hoveritem={handleTocItemHover}
           on:fileselect={(e) => loadPdfFile(e.detail)}

@@ -10,9 +10,7 @@
 
   export let title = 'Untitled Book';
 
-  export let onJumpToPage = (pageNumber) => {
-    console.log('Jump to page:', pageNumber);
-  };
+  export let onJumpToPage = (pageNumber) => {};
 
   let graphData = {nodes: [], edges: []};
 

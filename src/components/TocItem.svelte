@@ -65,6 +65,13 @@
     }
   }
 
+  function handlePageInput(e) {
+    const val = parseInt(e.target.value);
+    if (!isNaN(val) && val > 0) {
+      dispatch('jumpToPage', {to: val});
+    }
+  }
+
   function handleAddChild() {
     const currentChildren = item.children || [];
     let startPage;
@@ -190,6 +197,7 @@
       <input
         type="number"
         bind:value={editPage}
+        on:input={handlePageInput}
         on:focus={() => (isPageFocused = true)}
         on:blur={() => {
           isPageFocused = false;
@@ -232,19 +240,20 @@
         {#each item.children || [] as child, i (child.id)}
           <div animate:flip={{duration: flipDurationMs}}>
             <Self
+              prefix={currentNumber}
+              index={i + 1}
               item={child}
               onUpdate={handleUpdateChild}
               onDelete={handleDeleteChild}
               {onDragStart}
               {onDragEnd}
-              on:hoveritem
               {currentPage}
               {isPreview}
               {pageOffset}
               {insertAtPage}
               {tocPageCount}
-              prefix={currentNumber}
-              index={i + 1}
+              on:hoveritem
+              on:jumpToPage={(e) => dispatch('jumpToPage', e.detail)}
             />
           </div>
         {/each}
