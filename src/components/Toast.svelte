@@ -21,7 +21,7 @@
 </script>
 
 <div
-  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90vw] lg:w-fit max-w-[90vw] transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center z-[999] border-2 border-black"
+  class="fixed md:top-5 md:right-5 text-black right-1/2 w-[90vw] md:w-fit max-w-[90vw] transform translate-x-1/2 md:-translate-x-0 p-2 md:p-4 rounded-lg shadow-[2px_2px_0px_rgba(0,0,0,1)] flex items-center z-[999] border-2 border-black"
   class:bg-lime-400={type === 'success'}
   class:bg-red-500={type === 'error'}
   class:bg-yellow-400={type === 'info'}
@@ -43,11 +43,11 @@
     />
   {/if}
 
-  <span class="font-semibold">{message}</span>
+  <span class="font-semibold pr-8">{message}</span>
 
   <button
     on:click={() => dispatch('close')}
-    class="ml-4 p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
+    class="absolute right-2 p-1 rounded-full text-black hover:bg-black hover:text-white transition-colors"
   >
     <X size={20} />
   </button>

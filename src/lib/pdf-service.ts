@@ -303,7 +303,7 @@ export class PDFService {
       // 绘制点线 (Dot Leader)
       if (dotLeader) {
         const lastLineTitle = lines[lines.length - 1];
-        const titleWidth = currentFont.widthOfTextAtSize(lastLineTitle, fontSize);
+        const titleWidth = currentFont.widthOfTextAtSize(lastLineTitle || '', fontSize);
         const dotsXStart =
             titleX + titleWidth + TOC_LAYOUT.ITEM.DOT_LEADER.GAP_TITLE;
         const dotsXEnd = pageWidth - TOC_LAYOUT.PAGE.MARGIN_X -
@@ -367,7 +367,7 @@ export class PDFService {
 
     for (const char of words) {
       const testLine = currentLine + char;
-      const width = font.widthOfTextAtSize(testLine, size);
+      const width = font.widthOfTextAtSize(testLine || '', size);
       if (width > maxWidth && currentLine !== '') {
         lines.push(currentLine);
         currentLine = char;
